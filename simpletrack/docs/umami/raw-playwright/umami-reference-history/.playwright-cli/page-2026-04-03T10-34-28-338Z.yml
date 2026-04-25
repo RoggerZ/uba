@@ -1,0 +1,417 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - img [ref=e10]
+          - generic [ref=e13]: umami
+        - button [ref=e14] [cursor=pointer]:
+          - img [ref=e16]
+      - generic [ref=e125]:
+        - button "Back" [ref=e126] [cursor=pointer]:
+          - generic [ref=e128]:
+            - img [ref=e130]
+            - generic [ref=e132]: Back
+        - generic [ref=e133]:
+          - generic [ref=e135]: Traffic
+          - button "Overview" [ref=e136] [cursor=pointer]:
+            - generic [ref=e138]:
+              - img [ref=e140]
+              - generic [ref=e143]: Overview
+          - button "Events" [ref=e144] [cursor=pointer]:
+            - generic [ref=e146]:
+              - img [ref=e148]
+              - generic [ref=e151]: Events
+          - button "Sessions" [ref=e152] [cursor=pointer]:
+            - generic [ref=e154]:
+              - img [ref=e156]
+              - generic [ref=e159]: Sessions
+          - button "Realtime" [ref=e160] [cursor=pointer]:
+            - generic [ref=e162]:
+              - img [ref=e164]
+              - generic [ref=e167]: Realtime
+          - button "Performance" [ref=e168] [cursor=pointer]:
+            - generic [ref=e170]:
+              - img [ref=e172]
+              - generic [ref=e175]: Performance
+          - button "Compare" [ref=e176] [cursor=pointer]:
+            - generic [ref=e178]:
+              - img [ref=e180]
+              - generic [ref=e183]: Compare
+          - button "Breakdown" [ref=e184] [cursor=pointer]:
+            - generic [ref=e186]:
+              - img [ref=e188]
+              - generic [ref=e190]: Breakdown
+        - generic [ref=e191]:
+          - generic [ref=e193]: Behavior
+          - button "Goals" [ref=e194] [cursor=pointer]:
+            - generic [ref=e196]:
+              - img [ref=e198]
+              - generic [ref=e202]: Goals
+          - button "Funnels" [ref=e203] [cursor=pointer]:
+            - generic [ref=e205]:
+              - img [ref=e207]
+              - generic [ref=e212]: Funnels
+          - button "Journeys" [ref=e213] [cursor=pointer]:
+            - generic [ref=e215]:
+              - img [ref=e217]
+              - generic [ref=e219]: Journeys
+          - button "Retention" [ref=e220] [cursor=pointer]:
+            - generic [ref=e222]:
+              - img [ref=e224]
+              - generic [ref=e226]: Retention
+          - button "Replays" [ref=e227] [cursor=pointer]:
+            - generic [ref=e229]:
+              - img [ref=e231]
+              - generic [ref=e234]: Replays
+        - generic [ref=e235]:
+          - generic [ref=e237]: Audience
+          - button "Segments" [ref=e238] [cursor=pointer]:
+            - generic [ref=e240]:
+              - img [ref=e242]
+              - generic [ref=e245]: Segments
+          - button "Cohorts" [ref=e246] [cursor=pointer]:
+            - generic [ref=e248]:
+              - img [ref=e250]
+              - generic [ref=e253]: Cohorts
+        - generic [ref=e254]:
+          - generic [ref=e256]: Growth
+          - button "UTM" [ref=e257] [cursor=pointer]:
+            - generic [ref=e259]:
+              - img [ref=e261]
+              - generic [ref=e264]: UTM
+          - button "Revenue" [ref=e265] [cursor=pointer]:
+            - generic [ref=e267]:
+              - img [ref=e269]
+              - generic [ref=e272]: Revenue
+          - button "Attribution" [ref=e273] [cursor=pointer]:
+            - generic [ref=e275]:
+              - img [ref=e277]
+              - generic [ref=e279]: Attribution
+      - button "rongjie.zhang0714@gmail.com" [ref=e61] [cursor=pointer]:
+        - generic [ref=e62]:
+          - img [ref=e64]
+          - generic [ref=e68]: rongjie.zhang0714@gmail.com
+    - generic [ref=e69]:
+      - generic [ref=e71]:
+        - button "rongjie.zhang0714@gmail.com" [ref=e72] [cursor=pointer]:
+          - generic [ref=e73]:
+            - img [ref=e75]
+            - generic [ref=e78]: rongjie.zhang0714@gmail.com
+          - img [ref=e80]
+        - img [ref=e281]
+        - generic [ref=e283]:
+          - button "abc Select" [ref=e284] [cursor=pointer]:
+            - generic [ref=e286]:
+              - img [ref=e288]
+              - generic [ref=e291]: abc
+            - img [ref=e293]
+          - combobox [ref=e297]
+      - generic [ref=e298]:
+        - generic [ref=e299]:
+          - link "abc" [ref=e303] [cursor=pointer]:
+            - /url: /analytics/us/websites/88cb8a93-e1b5-4f54-aed6-936b7d2e2549
+            - heading "abc" [level=2] [ref=e304]
+          - link "Edit" [ref=e307] [cursor=pointer]:
+            - /url: /analytics/us/websites/88cb8a93-e1b5-4f54-aed6-936b7d2e2549/settings
+            - generic [ref=e308]:
+              - img [ref=e310]
+              - text: Edit
+        - generic [ref=e314]:
+          - generic [ref=e316]:
+            - button "Filter" [ref=e318] [cursor=pointer]:
+              - generic [ref=e319]:
+                - img [ref=e321]
+                - generic [ref=e322]: Filter
+            - generic [ref=e324]:
+              - generic [ref=e325]:
+                - button [ref=e326] [cursor=pointer]:
+                  - img [ref=e328]
+                - button [disabled] [ref=e330] [cursor=pointer]:
+                  - img [ref=e332]
+              - generic [ref=e334]:
+                - button "Last 24 hours Select" [ref=e335] [cursor=pointer]:
+                  - generic [ref=e336]: Last 24 hours
+                  - img [ref=e338]
+                - combobox [ref=e342]
+          - generic [ref=e343]:
+            - generic [ref=e344]:
+              - generic [ref=e346]: Visitors
+              - generic "0" [ref=e348]
+              - generic "0" [ref=e349]:
+                - generic [ref=e351]: 0%
+            - generic [ref=e352]:
+              - generic [ref=e354]: Visits
+              - generic "0" [ref=e356]
+              - generic "0" [ref=e357]:
+                - generic [ref=e359]: 0%
+            - generic [ref=e360]:
+              - generic [ref=e362]: Views
+              - generic "0" [ref=e364]
+              - generic "0" [ref=e365]:
+                - generic [ref=e367]: 0%
+            - generic [ref=e368]:
+              - generic [ref=e370]: Bounce rate
+              - generic "NaN" [ref=e372]: 0%
+              - generic "NaN%" [ref=e373]:
+                - generic [ref=e375]: 0%
+            - generic [ref=e376]:
+              - generic [ref=e378]: Visit duration
+              - generic "NaN" [ref=e380]: 0s
+              - generic "0s" [ref=e381]:
+                - generic [ref=e383]: 0%
+          - generic [ref=e388]:
+            - generic [ref=e393]: Visitors
+            - generic [ref=e398]: Views
+          - generic [ref=e399]:
+            - generic [ref=e400]:
+              - generic [ref=e401]:
+                - heading "Pages" [level=2] [ref=e402]
+                - generic [ref=e403]:
+                  - tablist [ref=e404]:
+                    - tab "Path" [selected] [ref=e405] [cursor=pointer]
+                    - tab "Entry page" [ref=e406] [cursor=pointer]
+                    - tab "Exit page" [ref=e407] [cursor=pointer]
+                  - tabpanel "Path" [ref=e408]:
+                    - generic [ref=e409]: No data available.
+              - generic [ref=e410]:
+                - heading "Sources" [level=2] [ref=e411]
+                - generic [ref=e412]:
+                  - tablist [ref=e413]:
+                    - tab "Referrers" [selected] [ref=e414] [cursor=pointer]
+                    - tab "Channels" [ref=e415] [cursor=pointer]
+                  - tabpanel "Referrers" [ref=e416]:
+                    - generic [ref=e417]: No data available.
+            - generic [ref=e418]:
+              - generic [ref=e419]:
+                - heading "Environment" [level=2] [ref=e420]
+                - generic [ref=e421]:
+                  - tablist [ref=e422]:
+                    - tab "Browsers" [selected] [ref=e423] [cursor=pointer]
+                    - tab "OS" [ref=e424] [cursor=pointer]
+                    - tab "Devices" [ref=e425] [cursor=pointer]
+                  - tabpanel "Browsers" [ref=e426]:
+                    - generic [ref=e427]: No data available.
+              - generic [ref=e428]:
+                - heading "Location" [level=2] [ref=e429]
+                - generic [ref=e430]:
+                  - tablist [ref=e431]:
+                    - tab "Countries" [selected] [ref=e432] [cursor=pointer]
+                    - tab "Regions" [ref=e433] [cursor=pointer]
+                    - tab "Cities" [ref=e434] [cursor=pointer]
+                  - tabpanel "Countries" [ref=e435]:
+                    - generic [ref=e436]: No data available.
+            - generic [ref=e437]:
+              - img [ref=e440]
+              - generic [ref=e622]:
+                - heading "Traffic" [level=2] [ref=e623]
+                - generic [ref=e625]:
+                  - generic [ref=e628]: Sun
+                  - generic [ref=e630]: Mon
+                  - generic [ref=e632]: Tue
+                  - generic [ref=e634]: Wed
+                  - generic [ref=e636]: Thu
+                  - generic [ref=e638]: Fri
+                  - generic [ref=e640]: Sat
+                  - generic [ref=e641]:
+                    - generic [ref=e643]: 12am
+                    - generic [ref=e645]: 1am
+                    - generic [ref=e647]: 2am
+                    - generic [ref=e649]: 3am
+                    - generic [ref=e651]: 4am
+                    - generic [ref=e653]: 5am
+                    - generic [ref=e655]: 6am
+                    - generic [ref=e657]: 7am
+                    - generic [ref=e659]: 8am
+                    - generic [ref=e661]: 9am
+                    - generic [ref=e663]: 10am
+                    - generic [ref=e665]: 11am
+                    - generic [ref=e667]: 12pm
+                    - generic [ref=e669]: 1pm
+                    - generic [ref=e671]: 2pm
+                    - generic [ref=e673]: 3pm
+                    - generic [ref=e675]: 4pm
+                    - generic [ref=e677]: 5pm
+                    - generic [ref=e679]: 6pm
+                    - generic [ref=e681]: 7pm
+                    - generic [ref=e683]: 8pm
+                    - generic [ref=e685]: 9pm
+                    - generic [ref=e687]: 10pm
+                    - generic [ref=e689]: 11pm
+                  - generic [ref=e690]:
+                    - button [ref=e691]
+                    - button [ref=e692]
+                    - button [ref=e693]
+                    - button [ref=e694]
+                    - button [ref=e695]
+                    - button [ref=e696]
+                    - button [ref=e697]
+                    - button [ref=e698]
+                    - button [ref=e699]
+                    - button [ref=e700]
+                    - button [ref=e701]
+                    - button [ref=e702]
+                    - button [ref=e703]
+                    - button [ref=e704]
+                    - button [ref=e705]
+                    - button [ref=e706]
+                    - button [ref=e707]
+                    - button [ref=e708]
+                    - button [ref=e709]
+                    - button [ref=e710]
+                    - button [ref=e711]
+                    - button [ref=e712]
+                    - button [ref=e713]
+                    - button [ref=e714]
+                  - generic [ref=e715]:
+                    - button [ref=e716]
+                    - button [ref=e717]
+                    - button [ref=e718]
+                    - button [ref=e719]
+                    - button [ref=e720]
+                    - button [ref=e721]
+                    - button [ref=e722]
+                    - button [ref=e723]
+                    - button [ref=e724]
+                    - button [ref=e725]
+                    - button [ref=e726]
+                    - button [ref=e727]
+                    - button [ref=e728]
+                    - button [ref=e729]
+                    - button [ref=e730]
+                    - button [ref=e731]
+                    - button [ref=e732]
+                    - button [ref=e733]
+                    - button [ref=e734]
+                    - button [ref=e735]
+                    - button [ref=e736]
+                    - button [ref=e737]
+                    - button [ref=e738]
+                    - button [ref=e739]
+                  - generic [ref=e740]:
+                    - button [ref=e741]
+                    - button [ref=e742]
+                    - button [ref=e743]
+                    - button [ref=e744]
+                    - button [ref=e745]
+                    - button [ref=e746]
+                    - button [ref=e747]
+                    - button [ref=e748]
+                    - button [ref=e749]
+                    - button [ref=e750]
+                    - button [ref=e751]
+                    - button [ref=e752]
+                    - button [ref=e753]
+                    - button [ref=e754]
+                    - button [ref=e755]
+                    - button [ref=e756]
+                    - button [ref=e757]
+                    - button [ref=e758]
+                    - button [ref=e759]
+                    - button [ref=e760]
+                    - button [ref=e761]
+                    - button [ref=e762]
+                    - button [ref=e763]
+                    - button [ref=e764]
+                  - generic [ref=e765]:
+                    - button [ref=e766]
+                    - button [ref=e767]
+                    - button [ref=e768]
+                    - button [ref=e769]
+                    - button [ref=e770]
+                    - button [ref=e771]
+                    - button [ref=e772]
+                    - button [ref=e773]
+                    - button [ref=e774]
+                    - button [ref=e775]
+                    - button [ref=e776]
+                    - button [ref=e777]
+                    - button [ref=e778]
+                    - button [ref=e779]
+                    - button [ref=e780]
+                    - button [ref=e781]
+                    - button [ref=e782]
+                    - button [ref=e783]
+                    - button [ref=e784]
+                    - button [ref=e785]
+                    - button [ref=e786]
+                    - button [ref=e787]
+                    - button [ref=e788]
+                    - button [ref=e789]
+                  - generic [ref=e790]:
+                    - button [ref=e791]
+                    - button [ref=e792]
+                    - button [ref=e793]
+                    - button [ref=e794]
+                    - button [ref=e795]
+                    - button [ref=e796]
+                    - button [ref=e797]
+                    - button [ref=e798]
+                    - button [ref=e799]
+                    - button [ref=e800]
+                    - button [ref=e801]
+                    - button [ref=e802]
+                    - button [ref=e803]
+                    - button [ref=e804]
+                    - button [ref=e805]
+                    - button [ref=e806]
+                    - button [ref=e807]
+                    - button [ref=e808]
+                    - button [ref=e809]
+                    - button [ref=e810]
+                    - button [ref=e811]
+                    - button [ref=e812]
+                    - button [ref=e813]
+                    - button [ref=e814]
+                  - generic [ref=e815]:
+                    - button [ref=e816]
+                    - button [ref=e817]
+                    - button [ref=e818]
+                    - button [ref=e819]
+                    - button [ref=e820]
+                    - button [ref=e821]
+                    - button [ref=e822]
+                    - button [ref=e823]
+                    - button [ref=e824]
+                    - button [ref=e825]
+                    - button [ref=e826]
+                    - button [ref=e827]
+                    - button [ref=e828]
+                    - button [ref=e829]
+                    - button [ref=e830]
+                    - button [ref=e831]
+                    - button [ref=e832]
+                    - button [ref=e833]
+                    - button [ref=e834]
+                    - button [ref=e835]
+                    - button [ref=e836]
+                    - button [ref=e837]
+                    - button [ref=e838]
+                    - button [ref=e839]
+                  - generic [ref=e840]:
+                    - button [ref=e841]
+                    - button [ref=e842]
+                    - button [ref=e843]
+                    - button [ref=e844]
+                    - button [ref=e845]
+                    - button [ref=e846]
+                    - button [ref=e847]
+                    - button [ref=e848]
+                    - button [ref=e849]
+                    - button [ref=e850]
+                    - button [ref=e851]
+                    - button [ref=e852]
+                    - button [ref=e853]
+                    - button [ref=e854]
+                    - button [ref=e855]
+                    - button [ref=e856]
+                    - button [ref=e857]
+                    - button [ref=e858]
+                    - button [ref=e859]
+                    - button [ref=e860]
+                    - button [ref=e861]
+                    - button [ref=e862]
+                    - button [ref=e863]
+                    - button [ref=e864]
+  - alert [ref=e2]
+  - img

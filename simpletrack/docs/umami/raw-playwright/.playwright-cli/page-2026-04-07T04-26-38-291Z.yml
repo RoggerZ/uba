@@ -1,0 +1,37 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: Umami Cloud Research Demo
+    - heading "Tracking Demo" [level=1] [ref=e5]
+    - paragraph [ref=e6]: 这个页面用于验证 Umami Cloud 的 pageview、事件、identify 和 API send 链路。
+  - generic [ref=e7]:
+    - article [ref=e8]:
+      - heading "Tracker Setup" [level=2] [ref=e9]
+      - generic [ref=e10]: Website ID
+      - textbox "Website ID" [ref=e11]:
+        - /placeholder: 输入 Umami Cloud website id
+      - generic [ref=e12]: Script URL
+      - textbox "Script URL" [ref=e13]: https://cloud.umami.is/script.js
+      - generic [ref=e14]:
+        - button "Load tracker" [ref=e15] [cursor=pointer]
+        - button "Manual pageview" [ref=e16] [cursor=pointer]
+    - article [ref=e17]:
+      - heading "DOM Event" [level=2] [ref=e18]
+      - paragraph [ref=e19]: "使用 `data-umami-event` 验证声明式埋点。"
+      - button "Fire DOM event" [ref=e21] [cursor=pointer]
+    - article [ref=e22]:
+      - heading "track()" [level=2] [ref=e23]
+      - generic [ref=e24]: Event name
+      - textbox "Event name" [ref=e25]: demo_track_call
+      - generic [ref=e26]: Event data JSON
+      - textbox "Event data JSON" [ref=e27]: "{ \"surface\": \"tracking-demo\", \"variant\": \"js-call\", \"pricePlan\": \"starter\" }"
+      - button "Fire track()" [ref=e29] [cursor=pointer]
+    - article [ref=e30]:
+      - heading "identify()" [level=2] [ref=e31]
+      - generic [ref=e32]: Identity
+      - textbox "Identity" [ref=e33]: demo-user-001
+      - generic [ref=e34]: Identity data JSON
+      - textbox "Identity data JSON" [ref=e35]: "{ \"role\": \"founder\", \"workspace\": \"simpletrack\", \"cohort\": \"research\" }"
+      - button "Fire identify()" [ref=e37] [cursor=pointer]
+  - generic [ref=e38]:
+    - heading "Status" [level=2] [ref=e39]
+    - generic [ref=e40]: "[2026-04-07T04:26:38.201Z] demo page ready { \"origin\": \"http://localhost:4173\", \"href\": \"http://localhost:4173/index.html\" } Waiting for tracker initialization..."

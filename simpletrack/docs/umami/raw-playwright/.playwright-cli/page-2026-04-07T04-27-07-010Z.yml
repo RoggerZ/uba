@@ -1,0 +1,32 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - link "Umami Cloud" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e13]: Umami Cloud
+    - link "Sign up" [ref=e14] [cursor=pointer]:
+      - /url: /signup
+      - button "Sign up" [ref=e15]:
+        - generic [ref=e16]: Sign up
+  - generic [ref=e18]:
+    - heading "Log in" [level=2] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Email Address
+        - textbox "Text" [ref=e24]
+      - generic [ref=e25]:
+        - generic [ref=e26]: Password
+        - generic [ref=e27]:
+          - textbox "Password" [ref=e28]
+          - img [ref=e30]
+      - button "Log in" [ref=e35] [cursor=pointer]
+    - generic [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e38]: Don't have an account?
+        - link "Sign up" [ref=e39] [cursor=pointer]:
+          - /url: /signup
+      - link "Forgot password?" [ref=e40] [cursor=pointer]:
+        - /url: /forgot-password
+  - contentinfo [ref=e41]:
+    - generic [ref=e42]: © 2026 Umami Software, Inc.

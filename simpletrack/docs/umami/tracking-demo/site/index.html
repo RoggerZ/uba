@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Growth Console | SimpleTrack</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body data-page="landing" data-page-event="dashboard_viewed">
+    <header class="topbar">
+    <a class="brand" href="index.html"><span></span>SimpleTrack</a>
+    <nav><a aria-current="page" href="index.html">Product</a>
+<a href="pricing.html">Pricing</a>
+<a href="compare.html">Compare</a>
+<a href="docs.html">Docs</a>
+<a href="signup.html">Sign up</a></nav>
+    <a class="button small" data-st-event="signup_started" href="signup.html">Start</a>
+  </header>
+  <main class="marketing-shell">
+    <section class="hero-band">
+      <div class="hero-copy">
+        <span class="eyebrow">SimpleTrack Growth Console</span>
+        <h1>Acquisition, activation, and revenue in one compact operating view.</h1>
+        <p>A production-like SaaS surface for feeding Umami Cloud with real pageviews, sessions, events, filters, attribution, revenue, performance, and replay evidence.</p>
+        <div class="action-row">
+    <a class="button primary" data-st-event="signup_started" href="signup.html">Start trial</a>
+    <a class="button secondary" data-st-event="pricing_viewed" href="pricing.html">Inspect pricing</a>
+  </div>
+      </div>
+      <div class="product-preview" aria-label="SimpleTrack analytics preview">
+    <div class="preview-head">
+      <span>Growth baseline x3</span>
+      <strong>42 logical days</strong>
+    </div>
+    <section class="metric-strip" aria-label="Growth baseline metrics">
+    <div><span>Users</span><strong>648</strong><small>216 x 3 baseline</small></div>
+    <div><span>Sessions</span><strong>1,944</strong><small>3 per user</small></div>
+    <div><span>Events</span><strong>~19.4k</strong><small>8/10/12 templates</small></div>
+    <div><span>Revenue</span><strong>$6.3k</strong><small>54 paid workspaces</small></div>
+  </section>
+    <div class="preview-grid">
+      <div class="panel panel-wide">
+        <div class="panel-head"><span>Activation trend</span><strong>first_event_sent</strong></div>
+        <svg class="line-chart" viewBox="0 0 720 220" role="img" aria-label="42 day growth trend">
+    <defs>
+      <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#0b6f6a" stop-opacity="0.18" />
+        <stop offset="1" stop-color="#0b6f6a" stop-opacity="0" />
+      </linearGradient>
+    </defs>
+    <path class="grid" d="M36 42H684M36 92H684M36 142H684M36 192H684" />
+    <path class="area" d="M38 178C94 150 120 122 168 132C220 144 248 86 302 96C358 106 382 58 440 64C512 72 548 34 682 44L682 198L38 198Z" />
+    <path class="line" d="M38 178C94 150 120 122 168 132C220 144 248 86 302 96C358 106 382 58 440 64C512 72 548 34 682 44" />
+  </svg>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>UTM mix</span><strong>6 campaigns</strong></div>
+        <div class="bar-chart" role="img" aria-label="Campaign distribution">
+    <span style="--h:58%"></span><span style="--h:84%"></span><span style="--h:46%"></span>
+    <span style="--h:72%"></span><span style="--h:52%"></span><span style="--h:96%"></span>
+    <span style="--h:66%"></span><span style="--h:38%"></span><span style="--h:77%"></span>
+  </div>
+      </div>
+    </div>
+    <div class="table-panel compact-table">
+      <table>
+        <thead><tr><th>Campaign</th><th>Plan</th><th>Cohort</th><th>Event</th><th>Value</th></tr></thead>
+        <tbody><tr><td>producthunt_launch</td><td>trial</td><td>spring_launch</td><td>signup_completed</td><td>18.7%</td></tr>
+<tr><td>google_competitor</td><td>pro_monthly</td><td>paid_pilot</td><td>checkout_completed</td><td>$29</td></tr>
+<tr><td>docs_seo</td><td>free</td><td>self_serve_wave</td><td>first_event_sent</td><td>41.3%</td></tr>
+<tr><td>linkedin_founder</td><td>pro_annual</td><td>paid_pilot</td><td>subscription_upgraded</td><td>$290</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+    </section>
+    <section class="feature-band" aria-label="Simulation coverage">
+      <article><span>Traffic</span><strong>72 browser personas</strong><p>Real page transitions for sessions, realtime, performance, and replay checks.</p></article>
+      <article><span>Density</span><strong>576 batch users</strong><p>High-volume business events for breakdowns, funnels, UTM, and attribution.</p></article>
+      <article><span>Revenue</span><strong>54 paid workspaces</strong><p>Checkout events carry revenue, currency, plan, campaign, and cohort.</p></article>
+    </section>
+  </main>
+  </body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SimpleTrack Umami Debug</title>
+    <link rel="stylesheet" href="./site/styles.css" />
+    <script type="module" src="./debug.js"></script>
+  </head>
+  <body data-page="debug" data-page-event="debug_viewed">
+    <header class="topbar">
+      <a class="brand" href="./site/index.html"><span></span>SimpleTrack</a>
+      <nav>
+        <a href="./site/index.html">SaaS site</a>
+        <a aria-current="page" href="./debug.html">Debug</a>
+        <a href="./index.html">Legacy lab</a>
+      </nav>
+    </header>
+    <main class="marketing-shell">
+      <section class="hero-band">
+        <div class="hero-copy">
+          <span class="eyebrow">Umami Cloud research</span>
+          <h1>Tracker debug lab</h1>
+          <p>验证 initTracker、identifyBusinessUser、trackBusinessEvent 和 runPersonaStep。website id 只通过页面输入或 URL 参数传入，不写入仓库。</p>
+          <form class="signup-form" id="debug-form">
+            <label>Website ID<input id="website-id" name="websiteId" placeholder="paste website id for local verification" autocomplete="off" /></label>
+            <label>Script URL<input id="script-url" name="scriptUrl" value="https://cloud.umami.is/script.js" /></label>
+            <label>Persona<input id="persona-id" name="persona" value="debug-founder-001" /></label>
+            <button class="button primary" type="submit">Initialize tracker</button>
+          </form>
+          <div class="action-row">
+            <button class="button secondary" id="identify-button" type="button">identify()</button>
+            <button class="button secondary" id="track-button" type="button">track()</button>
+            <a class="button primary" href="./site/index.html">Open SaaS simulation</a>
+          </div>
+        </div>
+        <div class="product-preview">
+          <div class="preview-head"><span>Debug output</span><strong>queued calls appear here without website id</strong></div>
+          <pre class="debug-log" id="debug-log">Waiting for interaction...</pre>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

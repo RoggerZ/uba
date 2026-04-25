@@ -1,0 +1,334 @@
+- generic [active] [ref=e1]:
+  - link "Skip to Content" [ref=e2] [cursor=pointer]:
+    - /url: "#nextra-skip-nav"
+  - banner [ref=e3]:
+    - navigation [ref=e5]:
+      - link "Home page" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e7]:
+          - img [ref=e8]
+          - generic [ref=e9]: zen
+      - generic [ref=e10]:
+        - link "Home" [ref=e11] [cursor=pointer]:
+          - /url: /
+        - link "Documentation" [ref=e12] [cursor=pointer]:
+          - /url: /docs
+        - link "Playground" [ref=e13] [cursor=pointer]:
+          - /url: /playground
+        - link "Patterns" [ref=e14] [cursor=pointer]:
+          - /url: /patterns
+      - combobox "Search documentation…" [ref=e17]
+      - link "Project repository" [ref=e18] [cursor=pointer]:
+        - /url: https://github.com/umami-software/react-zen
+        - img "Project repository" [ref=e19]
+  - generic [ref=e21]:
+    - complementary [ref=e22]:
+      - list [ref=e25]:
+        - listitem [ref=e26]:
+          - link "Introduction" [ref=e27] [cursor=pointer]:
+            - /url: /patterns
+        - listitem [ref=e28]:
+          - button "Layout" [ref=e29] [cursor=pointer]:
+            - text: Layout
+            - img [ref=e30]
+          - list [ref=e33]:
+            - listitem [ref=e34]:
+              - link "App Shell" [ref=e35] [cursor=pointer]:
+                - /url: /patterns/layout/app-shell
+            - listitem [ref=e36]:
+              - link "Dashboard Grid" [ref=e37] [cursor=pointer]:
+                - /url: /patterns/layout/dashboard-grid
+            - listitem [ref=e38]:
+              - link "Page Header" [ref=e39] [cursor=pointer]:
+                - /url: /patterns/layout/page-header
+            - listitem [ref=e40]:
+              - link "Sidebar" [ref=e41] [cursor=pointer]:
+                - /url: /patterns/layout/sidebar
+            - listitem [ref=e42]:
+              - link "Split View" [ref=e43] [cursor=pointer]:
+                - /url: /patterns/layout/split-view
+        - listitem [ref=e44]:
+          - button "Navigation" [ref=e45] [cursor=pointer]:
+            - text: Navigation
+            - img [ref=e46]
+          - list [ref=e49]:
+            - listitem [ref=e50]:
+              - link "Command Palette" [ref=e51] [cursor=pointer]:
+                - /url: /patterns/navigation/command-palette
+            - listitem [ref=e52]:
+              - link "Nav Menu" [ref=e53] [cursor=pointer]:
+                - /url: /patterns/navigation/nav-menu
+            - listitem [ref=e54]:
+              - link "Stepper" [ref=e55] [cursor=pointer]:
+                - /url: /patterns/navigation/stepper
+        - listitem [ref=e56]:
+          - button "Data Display" [ref=e57] [cursor=pointer]:
+            - text: Data Display
+            - img [ref=e58]
+          - list [ref=e61]:
+            - listitem [ref=e62]:
+              - link "Empty State" [ref=e63] [cursor=pointer]:
+                - /url: /patterns/data-display/empty-state
+            - listitem [ref=e64]:
+              - link "Icon Label" [ref=e65] [cursor=pointer]:
+                - /url: /patterns/data-display/icon-label
+            - listitem [ref=e66]:
+              - link "List Item" [ref=e67] [cursor=pointer]:
+                - /url: /patterns/data-display/list-item
+            - listitem [ref=e68]:
+              - link "Stat Card" [ref=e69] [cursor=pointer]:
+                - /url: /patterns/data-display/stat-card
+        - listitem [ref=e70]:
+          - button "Feedback" [ref=e71] [cursor=pointer]:
+            - text: Feedback
+            - img [ref=e72]
+          - list [ref=e75]:
+            - listitem [ref=e76]:
+              - link "Error Page" [ref=e77] [cursor=pointer]:
+                - /url: /patterns/feedback/error-page
+            - listitem [ref=e78]:
+              - link "Skeleton Loader" [ref=e79] [cursor=pointer]:
+                - /url: /patterns/feedback/skeleton-loader
+        - listitem [ref=e80]:
+          - button "Forms" [ref=e81] [cursor=pointer]:
+            - text: Forms
+            - img [ref=e82]
+          - list [ref=e85]:
+            - listitem [ref=e86]:
+              - link "Filter Panel" [ref=e87] [cursor=pointer]:
+                - /url: /patterns/forms/filter-panel
+            - listitem [ref=e88]:
+              - link "Login Form" [ref=e89] [cursor=pointer]:
+                - /url: /patterns/forms/login-form
+            - listitem [ref=e90]:
+              - link "Settings Form" [ref=e91] [cursor=pointer]:
+                - /url: /patterns/forms/settings-form
+      - generic [ref=e92]:
+        - button "Light" [ref=e93] [cursor=pointer]:
+          - img [ref=e94]
+          - text: Light
+        - button "Collapse sidebar" [expanded] [ref=e96] [cursor=pointer]:
+          - img [ref=e97]
+    - navigation "table of contents" [ref=e100]:
+      - generic [ref=e101]:
+        - paragraph [ref=e102]: On This Page
+        - list [ref=e103]:
+          - listitem [ref=e104]:
+            - link "Source" [ref=e105] [cursor=pointer]:
+              - /url: "#source"
+          - listitem [ref=e106]:
+            - link "Variations" [ref=e107] [cursor=pointer]:
+              - /url: "#variations"
+          - listitem [ref=e108]:
+            - link "With navigation" [ref=e109] [cursor=pointer]:
+              - /url: "#with-navigation"
+          - listitem [ref=e110]:
+            - link "Sidebar closed by default" [ref=e111] [cursor=pointer]:
+              - /url: "#sidebar-closed-by-default"
+        - generic [ref=e112]:
+          - link "Question? Give us feedback" [ref=e113] [cursor=pointer]:
+            - /url: https://github.com/umami-software/react-zen/issues/new?title=Feedback%20for%20%E2%80%9CApp%20Shell%E2%80%9D&labels=feedback
+            - text: Question? Give us feedback
+            - img [ref=e114]
+          - link "Edit this page" [ref=e117] [cursor=pointer]:
+            - /url: https://github.com/umami-software/react-zen/tree/main/docs/content/patterns/layout/app-shell.mdx
+            - text: Edit this page
+            - img [ref=e118]
+          - button [disabled] [ref=e121] [cursor=pointer]:
+            - text: Scroll to top
+            - img [ref=e122]
+    - article [ref=e124]:
+      - generic [ref=e125]:
+        - link "Patterns" [ref=e126] [cursor=pointer]:
+          - /url: /patterns
+        - img [ref=e127]
+        - generic "Layout" [ref=e129]
+        - img [ref=e130]
+        - generic "App Shell" [ref=e132]
+      - generic [ref=e133]:
+        - button "Copy page" [ref=e134] [cursor=pointer]:
+          - img [ref=e135]
+          - text: Copy page
+        - button [ref=e138] [cursor=pointer]:
+          - img [ref=e139]
+      - main [ref=e141]:
+        - heading "App Shell" [level=1] [ref=e142]
+        - paragraph [ref=e143]:
+          - text: A full-page application layout with header, collapsible sidebar, and content area. Built using
+          - code [ref=e144]: Box
+          - text: ","
+          - code [ref=e145]: Column
+          - text: ","
+          - code [ref=e146]: Row
+          - text: ", and"
+          - code [ref=e147]: Button
+          - text: components.
+        - generic [ref=e149]:
+          - generic [ref=e152]:
+            - generic [ref=e153]:
+              - generic [ref=e154]:
+                - button [ref=e155] [cursor=pointer]:
+                  - img [ref=e157]
+                - generic [ref=e159]: My Application
+              - button [ref=e161] [cursor=pointer]:
+                - img [ref=e163]
+            - generic [ref=e166]:
+              - generic [ref=e168]:
+                - generic [ref=e169]:
+                  - img [ref=e171]
+                  - generic [ref=e174]: Dashboard
+                - generic [ref=e175] [cursor=pointer]:
+                  - img [ref=e177]
+                  - generic [ref=e182]: Users
+                - generic [ref=e183] [cursor=pointer]:
+                  - img [ref=e185]
+                  - generic [ref=e188]: Settings
+              - generic [ref=e189]: Main content area
+          - button "Show code" [ref=e191] [cursor=pointer]
+        - heading "SourcePermalink for this section" [level=2] [ref=e192]:
+          - text: Source
+          - link "Permalink for this section" [ref=e193] [cursor=pointer]:
+            - /url: "#source"
+            - text: "#"
+        - generic [ref=e196]:
+          - button "Copy code" [ref=e198] [cursor=pointer]:
+            - img [ref=e199]
+          - code [ref=e202]:
+            - generic [ref=e203]: "'use client';"
+            - generic [ref=e205]: "import { createContext, useContext, useState } from 'react';"
+            - generic [ref=e206]: "import { Box, Button, Column, Icon, Row } from '@umami/react-zen';"
+            - generic [ref=e207]: "import { PanelLeft } from 'lucide-react';"
+            - generic [ref=e209]: "const AppShellContext = createContext({"
+            - generic [ref=e210]: "isSidebarOpen: true,"
+            - generic [ref=e211]: "setSidebarOpen: () => {},"
+            - generic [ref=e212]: "});"
+            - generic [ref=e214]: "export function useAppShell() {"
+            - generic [ref=e215]: return useContext(AppShellContext);
+            - generic [ref=e216]: "}"
+            - generic [ref=e218]: "export function AppShell({ defaultSidebarOpen = true, children, ...props }) {"
+            - generic [ref=e219]: const [isSidebarOpen, setSidebarOpen] = useState(defaultSidebarOpen);
+            - generic [ref=e221]: return (
+            - generic [ref=e222]: "<AppShellContext.Provider value={{ isSidebarOpen, setSidebarOpen }}>"
+            - generic [ref=e223]: "<Box height=\"100%\" {...props}>"
+            - generic [ref=e224]: "<Column height=\"100%\">{children}</Column>"
+            - generic [ref=e225]: </Box>
+            - generic [ref=e226]: </AppShellContext.Provider>
+            - generic [ref=e227]: );
+            - generic [ref=e228]: "}"
+            - generic [ref=e230]: "export function AppShellHeader({ children }) {"
+            - generic [ref=e231]: return (
+            - generic [ref=e232]: <Row
+            - generic [ref=e233]: paddingX="4"
+            - generic [ref=e234]: paddingY="3"
+            - generic [ref=e235]: alignItems="center"
+            - generic [ref=e236]: justifyContent="space-between"
+            - generic [ref=e237]: backgroundColor="surface-raised"
+            - generic [ref=e238]: borderColor="muted"
+            - generic [ref=e239]: border="bottom"
+            - generic [ref=e240]: ">"
+            - generic [ref=e241]: "{children}"
+            - generic [ref=e242]: </Row>
+            - generic [ref=e243]: );
+            - generic [ref=e244]: "}"
+            - generic [ref=e246]: "export function AppShellBody({ children }) {"
+            - generic [ref=e247]: return (
+            - generic [ref=e248]: <Row flexGrow="1" overflow="hidden">
+            - generic [ref=e249]: "{children}"
+            - generic [ref=e250]: </Row>
+            - generic [ref=e251]: );
+            - generic [ref=e252]: "}"
+            - generic [ref=e254]: "export function AppShellSidebar({ width = '14rem', children, ...props }) {"
+            - generic [ref=e255]: "const { isSidebarOpen } = useAppShell();"
+            - generic [ref=e257]: if (!isSidebarOpen) return null;
+            - generic [ref=e259]: return (
+            - generic [ref=e260]: <Box
+            - generic [ref=e261]: "width={width}"
+            - generic [ref=e262]: height="100%"
+            - generic [ref=e263]: backgroundColor="surface-raised"
+            - generic [ref=e264]: borderColor="muted"
+            - generic [ref=e265]: border="right"
+            - generic [ref=e266]: flexShrink="0"
+            - generic [ref=e267]: overflow="auto"
+            - generic [ref=e268]: "{...props}"
+            - generic [ref=e269]: ">"
+            - generic [ref=e270]: "{children}"
+            - generic [ref=e271]: </Box>
+            - generic [ref=e272]: );
+            - generic [ref=e273]: "}"
+            - generic [ref=e275]: "export function AppShellContent({ children, ...props }) {"
+            - generic [ref=e276]: return (
+            - generic [ref=e277]: "<Box flexGrow=\"1\" overflow=\"auto\" {...props}>"
+            - generic [ref=e278]: "{children}"
+            - generic [ref=e279]: </Box>
+            - generic [ref=e280]: );
+            - generic [ref=e281]: "}"
+            - generic [ref=e283]: "export function AppShellSidebarToggle() {"
+            - generic [ref=e284]: "const { isSidebarOpen, setSidebarOpen } = useAppShell();"
+            - generic [ref=e286]: return (
+            - generic [ref=e287]: "<Button variant=\"quiet\" onPress={() => setSidebarOpen(!isSidebarOpen)}>"
+            - generic [ref=e288]: "<Icon style={{ transform: isSidebarOpen ? undefined : 'scaleX(-1)' }}>"
+            - generic [ref=e289]: <PanelLeft />
+            - generic [ref=e290]: </Icon>
+            - generic [ref=e291]: </Button>
+            - generic [ref=e292]: );
+            - generic [ref=e293]: "}"
+        - heading "VariationsPermalink for this section" [level=2] [ref=e294]:
+          - text: Variations
+          - link "Permalink for this section" [ref=e295] [cursor=pointer]:
+            - /url: "#variations"
+            - text: "#"
+        - heading "With navigationPermalink for this section" [level=3] [ref=e296]:
+          - text: With navigation
+          - link "Permalink for this section" [ref=e297] [cursor=pointer]:
+            - /url: "#with-navigation"
+            - text: "#"
+        - generic [ref=e299]:
+          - generic [ref=e302]:
+            - generic [ref=e303]:
+              - generic [ref=e304]:
+                - button [ref=e305] [cursor=pointer]:
+                  - img [ref=e307]
+                - generic [ref=e309]: Dashboard
+              - generic [ref=e310]:
+                - button [ref=e311] [cursor=pointer]:
+                  - img [ref=e312]
+                - button [ref=e315] [cursor=pointer]:
+                  - img [ref=e316]
+            - generic [ref=e319]:
+              - generic [ref=e321]:
+                - generic [ref=e322]:
+                  - img [ref=e324]
+                  - generic [ref=e327]: Dashboard
+                - generic [ref=e328] [cursor=pointer]:
+                  - img [ref=e330]
+                  - generic [ref=e335]: Users
+                - generic [ref=e336] [cursor=pointer]:
+                  - img [ref=e338]
+                  - generic [ref=e341]: Settings
+              - generic [ref=e342]: Main content area
+          - button "Show code" [ref=e344] [cursor=pointer]
+        - heading "Sidebar closed by defaultPermalink for this section" [level=3] [ref=e345]:
+          - text: Sidebar closed by default
+          - link "Permalink for this section" [ref=e346] [cursor=pointer]:
+            - /url: "#sidebar-closed-by-default"
+            - text: "#"
+        - generic [ref=e348]:
+          - generic [ref=e351]:
+            - generic [ref=e353]:
+              - button [ref=e354] [cursor=pointer]:
+                - img [ref=e356]
+              - generic [ref=e358]: Compact View
+            - generic [ref=e360]: Click the toggle to show sidebar
+          - button "Show code" [ref=e362] [cursor=pointer]
+      - generic [ref=e363]:
+        - link "Introduction" [ref=e364] [cursor=pointer]:
+          - /url: /patterns
+          - img [ref=e365]
+          - text: Introduction
+        - link "Dashboard Grid" [ref=e367] [cursor=pointer]:
+          - /url: /patterns/layout/dashboard-grid
+          - text: Dashboard Grid
+          - img [ref=e368]
+  - generic [ref=e370]:
+    - separator [ref=e371]
+    - contentinfo [ref=e372]: MIT 2026 © Umami Software.

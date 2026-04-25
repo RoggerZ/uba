@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Checkout Complete | SimpleTrack</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body data-page="paid" data-page-event="checkout_completed">
+    <header class="topbar">
+    <a class="brand" href="index.html"><span></span>SimpleTrack</a>
+    <nav><a href="index.html">Product</a>
+<a href="pricing.html">Pricing</a>
+<a href="compare.html">Compare</a>
+<a href="docs.html">Docs</a>
+<a href="signup.html">Sign up</a></nav>
+    <a class="button small" data-st-event="signup_started" href="signup.html">Start</a>
+  </header>
+  <main class="marketing-shell">
+    <section class="hero-band">
+      <div class="hero-copy">
+        <span class="eyebrow">Paid workspace</span>
+        <h1>Revenue is attached to the same journey that produced the signup.</h1>
+        <p>The success state gives Revenue, Goals, Funnels, and Attribution a concrete conversion endpoint.</p>
+        <div class="action-row">
+    <a class="button primary" data-st-event="billing_viewed" href="billing.html">View billing</a>
+    <a class="button secondary" data-st-event="dashboard_viewed" href="app/dashboard.html">Open dashboard</a>
+  </div>
+      </div>
+      <div class="checkout-panel">
+      <div class="invoice-line"><span>Plan</span><strong data-plan-label>Pro Monthly</strong></div>
+      <div class="invoice-line"><span>Campaign</span><strong data-campaign-label>producthunt_launch</strong></div>
+      <div class="invoice-line"><span>Cohort</span><strong data-cohort-label>spring_launch</strong></div>
+      <div class="invoice-line total"><span>Revenue</span><strong data-revenue-label>$29 USD</strong></div>
+    </div>
+    </section>
+    <section class="feature-band" aria-label="Simulation coverage">
+      <article><span>Traffic</span><strong>72 browser personas</strong><p>Real page transitions for sessions, realtime, performance, and replay checks.</p></article>
+      <article><span>Density</span><strong>576 batch users</strong><p>High-volume business events for breakdowns, funnels, UTM, and attribution.</p></article>
+      <article><span>Revenue</span><strong>54 paid workspaces</strong><p>Checkout events carry revenue, currency, plan, campaign, and cohort.</p></article>
+    </section>
+  </main>
+  </body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard | SimpleTrack</title>
+    <link rel="stylesheet" href="../styles.css" />
+    <script type="module" src="../main.js"></script>
+  </head>
+  <body data-page="dashboard" data-page-event="dashboard_viewed">
+    <main class="workspace">
+    <aside class="sidebar">
+      <a class="brand" href="../index.html"><span></span>SimpleTrack</a>
+      <nav><a aria-current="page" href="../app/dashboard.html">Dashboard</a>
+<a href="../app/events.html">Events</a>
+<a href="../app/funnels.html">Funnels</a>
+<a href="../app/segments.html">Segments</a>
+<a href="../app/cohorts.html">Cohorts</a>
+<a href="../billing.html">Billing</a></nav>
+      <div class="side-note">
+        <span>Preset</span>
+        <strong>growth-baseline-x3</strong>
+        <small>1944 sessions / ~19,440 events</small>
+      </div>
+    </aside>
+    <section class="workpane">
+      <header class="toolbar">
+        <div>
+          <span class="eyebrow">Overview</span>
+          <h1>Growth health for the last 42 logical days.</h1>
+          <p>Acquisition quality, activation rate, cohort health, and revenue movement are visible without leaving the first viewport.</p>
+        </div>
+        <div class="toolbar-actions" aria-label="Filters">
+          <button data-st-event="filter_applied" data-st-prop-field="campaign">Campaign</button>
+          <button data-st-event="filter_applied" data-st-prop-field="cohort">Cohort</button>
+          <button data-st-event="filter_applied" data-st-prop-field="plan">Plan</button>
+        </div>
+      </header>
+      <section class="metric-strip" aria-label="Growth baseline metrics">
+    <div><span>Users</span><strong>648</strong><small>216 x 3 baseline</small></div>
+    <div><span>Sessions</span><strong>1,944</strong><small>3 per user</small></div>
+    <div><span>Events</span><strong>~19.4k</strong><small>8/10/12 templates</small></div>
+    <div><span>Revenue</span><strong>$6.3k</strong><small>54 paid workspaces</small></div>
+  </section>
+      <section class="filter-bar" aria-label="Active filters">
+        <button data-st-event="filter_applied" data-st-prop-campaign="producthunt_launch">producthunt_launch</button>
+        <button data-st-event="segment_opened" data-st-prop-segment="activated_trials">activated_trials</button>
+        <button data-st-event="cohort_opened" data-st-prop-cohort="paid_pilot">paid_pilot</button>
+        <button data-st-event="filter_applied" data-st-prop-plan="pro_monthly">pro_monthly</button>
+      </section>
+      <section class="analysis-grid">
+        <div class="panel panel-wide">
+          <div class="panel-head"><span>42 day signal</span><strong>Dashboard</strong></div>
+          <svg class="line-chart" viewBox="0 0 720 220" role="img" aria-label="42 day growth trend">
+    <defs>
+      <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#0b6f6a" stop-opacity="0.18" />
+        <stop offset="1" stop-color="#0b6f6a" stop-opacity="0" />
+      </linearGradient>
+    </defs>
+    <path class="grid" d="M36 42H684M36 92H684M36 142H684M36 192H684" />
+    <path class="area" d="M38 178C94 150 120 122 168 132C220 144 248 86 302 96C358 106 382 58 440 64C512 72 548 34 682 44L682 198L38 198Z" />
+    <path class="line" d="M38 178C94 150 120 122 168 132C220 144 248 86 302 96C358 106 382 58 440 64C512 72 548 34 682 44" />
+  </svg>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span>Campaign mix</span><strong>6 groups</strong></div>
+          <div class="bar-chart" role="img" aria-label="Campaign distribution">
+    <span style="--h:58%"></span><span style="--h:84%"></span><span style="--h:46%"></span>
+    <span style="--h:72%"></span><span style="--h:52%"></span><span style="--h:96%"></span>
+    <span style="--h:66%"></span><span style="--h:38%"></span><span style="--h:77%"></span>
+  </div>
+        </div>
+      </section>
+      <section class="table-panel">
+        <div class="panel-head"><span>Breakdown</span><strong>Plan x Campaign x Cohort</strong></div>
+        <table>
+          <thead><tr><th>Campaign</th><th>Plan</th><th>Cohort</th><th>Event</th><th>Value</th><th>Use</th></tr></thead>
+          <tbody><tr><td>producthunt_launch</td><td>trial</td><td>spring_launch</td><td>signup_completed</td><td>18.7%</td><td>goal</td></tr>
+<tr><td>google_brand</td><td>trial</td><td>self_serve_wave</td><td>first_event_sent</td><td>43.1%</td><td>activation</td></tr>
+<tr><td>google_competitor</td><td>pro_monthly</td><td>paid_pilot</td><td>checkout_completed</td><td>$29</td><td>revenue</td></tr>
+<tr><td>docs_seo</td><td>free</td><td>self_serve_wave</td><td>install_started</td><td>31.8%</td><td>journey</td></tr>
+<tr><td>linkedin_founder</td><td>pro_annual</td><td>paid_pilot</td><td>subscription_upgraded</td><td>$290</td><td>upgrade</td></tr></tbody>
+        </table>
+      </section>
+      <div class="action-row">
+    <a class="button primary" data-st-event="filter_applied" href="../app/events.html">Apply campaign filter</a>
+    <a class="button secondary" data-st-event="checkout_started" href="../checkout.html">Start checkout</a>
+  </div>
+    </section>
+  </main>
+  </body>
+</html>

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Umami Tracking Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f6f8;
+        --panel: #ffffff;
+        --text: #18212f;
+        --muted: #617089;
+        --line: #d6dde8;
+        --accent: #0f6cbd;
+        --accent-2: #16325b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "PingFang SC", sans-serif;
+        background: linear-gradient(180deg, #eef3fb 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 40px 20px 80px;
+      }
+
+      h1,
+      h2 {
+        margin: 0 0 12px;
+      }
+
+      p {
+        margin: 0 0 12px;
+        color: var(--muted);
+      }
+
+      .hero {
+        margin-bottom: 24px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 18px 40px rgba(16, 24, 40, 0.06);
+      }
+
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        margin-bottom: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 108px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font: inherit;
+        font-weight: 600;
+        color: #fff;
+        background: var(--accent);
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: var(--accent-2);
+      }
+
+      button[data-umami-event] {
+        background: #0d8a6a;
+      }
+
+      pre {
+        margin: 0;
+        padding: 16px;
+        border-radius: 12px;
+        background: #101828;
+        color: #d0d5dd;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #e8f2fd;
+        color: var(--accent-2);
+        font-size: 12px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="badge">Umami Cloud Research Demo</div>
+        <h1>Tracking Demo</h1>
+        <p>这个页面用于验证 Umami Cloud 的 pageview、事件、identify 和 API send 链路。</p>
+      </section>
+
+      <section class="grid two">
+        <article class="card">
+          <h2>Tracker Setup</h2>
+          <label for="website-id">Website ID</label>
+          <input id="website-id" placeholder="输入 Umami Cloud website id" />
+
+          <label for="script-url">Script URL</label>
+          <input id="script-url" value="https://cloud.umami.is/script.js" />
+
+          <div class="actions">
+            <button id="load-tracker">Load tracker</button>
+            <button id="track-pageview" class="secondary">Manual pageview</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>DOM Event</h2>
+          <p>使用 `data-umami-event` 验证声明式埋点。</p>
+          <div class="actions">
+            <button
+              data-umami-event="demo_signup_click"
+              data-umami-event-plan="cloud-research"
+              data-umami-event-surface="tracking-demo"
+            >
+              Fire DOM event
+            </button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>track()</h2>
+          <label for="track-name">Event name</label>
+          <input id="track-name" value="demo_track_call" />
+
+          <label for="track-data">Event data JSON</label>
+          <textarea id="track-data">{ "surface": "tracking-demo", "variant": "js-call", "pricePlan": "starter" }</textarea>
+
+          <div class="actions">
+            <button id="fire-track">Fire track()</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>identify()</h2>
+          <label for="identify-id">Identity</label>
+          <input id="identify-id" value="demo-user-001" />
+
+          <label for="identify-data">Identity data JSON</label>
+          <textarea id="identify-data">{ "role": "founder", "workspace": "simpletrack", "cohort": "research" }</textarea>
+
+          <div class="actions">
+            <button id="fire-identify">Fire identify()</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="card" style="margin-top: 16px">
+        <h2>Status</h2>
+        <pre id="status-log">Waiting for tracker initialization...</pre>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

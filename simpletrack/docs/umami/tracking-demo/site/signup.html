@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Create Workspace | SimpleTrack</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body data-page="signup" data-page-event="signup_started">
+    <header class="topbar">
+    <a class="brand" href="index.html"><span></span>SimpleTrack</a>
+    <nav><a href="index.html">Product</a>
+<a href="pricing.html">Pricing</a>
+<a href="compare.html">Compare</a>
+<a href="docs.html">Docs</a>
+<a aria-current="page" href="signup.html">Sign up</a></nav>
+    <a class="button small" data-st-event="signup_started" href="signup.html">Start</a>
+  </header>
+  <main class="marketing-shell">
+    <section class="hero-band">
+      <div class="hero-copy">
+        <span class="eyebrow">Workspace setup</span>
+        <h1>Create a workspace with the same plan, campaign, and cohort context.</h1>
+        <p>The form is intentionally lightweight so real browser personas can complete it and still generate pageviews, interactions, and identity calls.</p>
+        <div class="action-row">
+    <a class="button primary" data-st-event="signup_completed" href="signup-success.html">Create workspace</a>
+    <a class="button secondary" data-st-event="pricing_viewed" href="pricing.html">Review pricing</a>
+  </div>
+      </div>
+      <form class="signup-form" data-st-event="signup_completed">
+      <label>Work email<input name="email" type="email" value="founder@example.com" autocomplete="email" /></label>
+      <label>Workspace size<select name="workspaceSize"><option>1-10</option><option selected>11-50</option><option>51-200</option></select></label>
+      <label>Primary goal<select name="goal"><option>Activation</option><option selected>Revenue attribution</option><option>Retention</option></select></label>
+      <button class="button primary" type="submit">Create workspace</button>
+    </form>
+    </section>
+    <section class="feature-band" aria-label="Simulation coverage">
+      <article><span>Traffic</span><strong>72 browser personas</strong><p>Real page transitions for sessions, realtime, performance, and replay checks.</p></article>
+      <article><span>Density</span><strong>576 batch users</strong><p>High-volume business events for breakdowns, funnels, UTM, and attribution.</p></article>
+      <article><span>Revenue</span><strong>54 paid workspaces</strong><p>Checkout events carry revenue, currency, plan, campaign, and cohort.</p></article>
+    </section>
+  </main>
+  </body>
+</html>
