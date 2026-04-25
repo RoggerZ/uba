@@ -181,18 +181,20 @@ async function prepareTarget(page, prepare) {
   }
 
   if (prepare === "select-checkout-attribution") {
-    await page.locator("select").nth(3).selectOption("event").catch(() => null);
+    const selectedType = await page.locator("select").nth(3).selectOption("event").then(() => true).catch(() => false);
     await page.waitForTimeout(1000);
     const searchInputs = page.locator('input[type="search"]');
     const count = await searchInputs.count().catch(() => 0);
+    let selectedStep = false;
     if (count > 0) {
       const target = searchInputs.nth(count - 1);
       await target.fill("checkout_completed").catch(() => null);
       await page.waitForTimeout(1000);
       await target.press("Enter").catch(() => null);
+      selectedStep = (await target.inputValue().catch(() => "")) === "checkout_completed";
     }
     await settle(page);
-    return true;
+    return selectedType && selectedStep;
   }
 
   return false;
@@ -229,6 +231,9 @@ async function captureTarget(page, target) {
   }
   const clicked = await clickLabel(page, labels);
   const prepared = await prepareTarget(page, prepare);
+  if (prepare && !prepared) {
+    throw new Error(`Unable to prepare ${id} with action ${prepare}. Run configure-cloud-reports.mjs first if the required report object is missing.`);
+  }
   if (await isLoginPage(page)) {
     throw new Error(`Cloud redirected to login while capturing ${id}. No formal screenshots were written.`);
   }

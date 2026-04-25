@@ -60,13 +60,21 @@ node bulk-send.mjs --website-id YOUR_WEBSITE_ID --dry-run
 node bulk-send.mjs --website-id YOUR_WEBSITE_ID --hostname localhost --base-url http://localhost:4173/site
 ```
 
+## Cloud Report Objects
+
+```powershell
+npx --yes -p playwright node configure-cloud-reports.mjs --website-id YOUR_WEBSITE_ID --user-data-dir "%TEMP%\\simpletrack-umami-playwright-profile"
+```
+
+脚本会通过已登录浏览器 UI 幂等配置 `Checkout Completed Goal`、`Growth Baseline Checkout Funnel`、`Producthunt Launch Segment`、`Paid Checkout Cohort`。对象已存在时只返回 `exists`，不会重复创建；可用 `--only goal,funnel` 或 `--dry-run` 做局部复验。不要把账号、cookie、token、storage state 或真实 website id 写入仓库。
+
 ## Cloud Snapshots
 
 ```powershell
 npx --yes -p playwright node capture-cloud-snapshots.mjs --website-id YOUR_WEBSITE_ID --headed --login-wait-ms 120000
 ```
 
-脚本会打开 Umami Cloud analytics 页面；如果当前浏览器没有登录态，会在 headed 模式下等待登录完成，再尝试采集 P07-S01 到 P08-S09，并补采 P08-S05A / P08-S06A 配置态。Attribution 截图会先切到 `Triggered event / checkout_completed` 口径。不要把 `website id`、账号、cookie、token 或 storage state 写入仓库；如需 `--storage-state`，路径必须放在仓库外。
+脚本会打开 Umami Cloud analytics 页面；如果当前浏览器没有登录态，会在 headed 模式下等待登录完成，再尝试采集 P07-S01 到 P08-S09，并补采 P08-S05A / P08-S06A 配置态。Attribution 截图会先切到 `Triggered event / checkout_completed` 口径。需要配置态的目标如果准备失败，脚本会停止并提示先运行 `configure-cloud-reports.mjs`。不要把 `website id`、账号、cookie、token 或 storage state 写入仓库；如需 `--storage-state`，路径必须放在仓库外。
 如果检测到 Cloud 登录页，脚本会停止并不写入正式 P07-Sxx / P08-Sxx 截图。
 默认输出目录固定为本目录上一级的 `snapshots/`。如果只是复验脚本动作，请用 `--output-root` 指向仓库外临时目录，复验后删除临时截图。
 默认会对页面里可见的邮箱账号文本做截图 mask；如果只想复验单张，可追加 `--only P08-S09` 或 `--only attribution`。只有在本地临时排查时才使用 `--no-redact`。

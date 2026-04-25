@@ -301,6 +301,8 @@ graph TD
 
 ## 官方来源索引
 
+2026-04-26 已对本文档集中引用的 `docs.umami.is` 官方链接做状态复验：共 55 个官方文档 URL，均返回 `200`。这只证明链接可达，不替代各能力页里的中文解读和本地 Cloud 实操证据边界。
+
 ### 总览
 
 - [Introduction](https://docs.umami.is/docs)
