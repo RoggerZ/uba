@@ -28,7 +28,7 @@
   - 重点回答我们已经验证了什么、页面和交互长什么样
 - `snapshots/` + `快照索引.md` + `快照进度.md`
   - 面向截图、操作流和阶段证据的归档层
-  - Phase 07 / Phase 08 已完成 `growth-baseline-x3` 三倍样本的真实 Cloud 复验和截图；当前剩余项是高级报告对象配置、Attribution 口径和 Replays 套餐限制
+  - Phase 07 / Phase 08 已完成 `growth-baseline-x3` 三倍样本的真实 Cloud 复验和截图；高级报告对象配置、Funnel、Goals、Segments、Cohorts、Attribution 口径已补齐，当前剩余边界主要是 Replays 套餐限制、Revenue 多轮重跑累积口径和 Retention 长窗口结论
 
 建议先读 `docs/README.md` 建立能力框架，再回到主调研文档和快照证据层做交叉验证。
 

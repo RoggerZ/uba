@@ -14,7 +14,7 @@
 - `bulk-send.mjs`：`growth-baseline-x3` 批量事件发送脚本。
 - `run-browser-flows.mjs`：使用真实浏览器跑 72 个 persona 的三段式流量。
 - `send-event.mjs`：单事件服务端发送脚本。
-- `probe-cloud-read-apis.mjs`：登录态下批量抓取 Cloud 读接口和页面空态证据。
+- `probe-cloud-read-apis.mjs`：登录态下批量抓取 Cloud 读接口，复核 Overview、Realtime、Events、Sessions、Revenue 等读侧结果。
 - `generate-site.mjs`：仿真站和归档文档生成器。
 
 ## Start
