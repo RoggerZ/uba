@@ -37,9 +37,15 @@ Replays 本质上是会话回放。它把用户在页面上的操作轨迹重建
 - 产品配置页至少要暴露采样率、遮罩策略、最长回放时长和保留周期，否则后续隐私与成本都会失控。
 
 ## 关联现有证据
+
+### 本地已验证
+
 - 本地已验证：`simpletrack/docs/umami/snapshots/phase-08-growth-and-monetization-insights/README.md` 记录 `P08-S04` 已完成 Replays 页面截图，页面可达。
 - 本地边界：当前账号/套餐提示 `This feature requires a Business plan subscription.`，网站元数据为 `replayEnabled=false`，所以只能证明入口和套餐限制，不能写成“回放播放态已验证”。
 - 本地可借鉴证据：`simpletrack/docs/umami/snapshots/phase-07-traffic-and-behavior-insights/` 已有 Sessions、Realtime、Performance 结果态，可作为后续把 Replays 接入排障链路的前置证据。
+
+### 官方文档补充
+
 - 官方文档证据：`/docs/replays` 是独立页面，明确说明了启用方式、采样率、遮罩级别、最长时长、保留周期和回放访问入口。
 
 ## 官方链接

@@ -39,8 +39,14 @@ Compare 是一个“时间对时间”的对照视图。它会把同一网站在
 - 当对比出现异常时，下一步按钮最好直接引导到 Breakdown 或 Filters，而不是让用户自己猜该去哪页。
 
 ## 关联现有证据
+
+### 本地已验证
+
 - 本地证据：`simpletrack/docs/umami/snapshots/phase-07-traffic-and-behavior-insights/README.md` 记录 `P07-S04` 已完成 Compare 截图，当前周期指标和路径表有数据。
 - 本地可借鉴证据：`simpletrack/docs/umami/snapshots/phase-06-reports-review/README.md` 和 `flow.md` 已验证 Reports 入口、日期范围切换与高阶报表进入路径。
+
+### 官方文档补充
+
 - 官方文档证据：Compare 页面与 Guide 页面都明确描述了跨时间段对比。
 
 ## 官方链接
