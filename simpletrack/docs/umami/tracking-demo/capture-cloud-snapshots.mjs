@@ -49,6 +49,7 @@ const targets = [
   ["P07-S05", "phase-07-traffic-and-behavior-insights", "breakdown", ["Breakdown", "BreakDown"]],
   ["P07-S06", "phase-07-traffic-and-behavior-insights", "goals", ["Goals"]],
   ["P07-S07", "phase-07-traffic-and-behavior-insights", "filter", ["Filter", "Filters"]],
+  ["P07-S08", "phase-07-traffic-and-behavior-insights", "filter-segment-applied", ["Compare"], "apply-producthunt-segment-filter"],
   ["P08-S01", "phase-08-growth-and-monetization-insights", "funnels", ["Funnels"]],
   ["P08-S02", "phase-08-growth-and-monetization-insights", "journeys", ["Journeys"]],
   ["P08-S03", "phase-08-growth-and-monetization-insights", "retention", ["Retention"]],
@@ -178,6 +179,20 @@ async function prepareTarget(page, prepare) {
     const opened = await clickEditInRow(page, "Paid Checkout Cohort");
     await settle(page);
     return opened;
+  }
+
+  if (prepare === "apply-producthunt-segment-filter") {
+    const opened = await clickButtonByText(page, "Filter");
+    if (!opened) return false;
+    await page.waitForTimeout(800);
+    await page.getByRole("tab", { name: "Segments" }).click().catch(() => null);
+    await page.waitForTimeout(700);
+    await page.getByRole("option", { name: "Producthunt Launch Segment" }).click().catch(() => null);
+    await page.waitForTimeout(700);
+    const applied = await clickButtonByText(page, "Apply");
+    await settle(page);
+    const text = await page.evaluate(() => document.body?.innerText || "").catch(() => "");
+    return applied && text.includes("Producthunt Launch Segment");
   }
 
   if (prepare === "select-checkout-attribution") {

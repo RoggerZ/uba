@@ -69,6 +69,7 @@ SimpleTrack 如果要做自己的分析底座，Filters 应该先于图表复杂
 - `simpletrack/docs/umami/snapshots/phase-05-dashboard-components/P05-C14-filter-dialog-fields.png`：Fields 结构。
 - `simpletrack/docs/umami/snapshots/phase-05-dashboard-components/P05-C15-filter-match-dropdown.png`：`All / Any` 匹配模式。
 - `simpletrack/docs/umami/snapshots/phase-07-traffic-and-behavior-insights/README.md`：`P07-S07` 已完成 Filter 截图，过滤弹窗可用，底层 Compare 有数据。
+- `simpletrack/docs/umami/snapshots/phase-07-traffic-and-behavior-insights/P07-S08-filter-segment-applied.png`：已保存 Segment 应用到 Compare 后，指标按切片重算。
 
 ### 官方文档补充
 

@@ -9,3 +9,4 @@
 7. 恢复登录态后重新采集 P07-S01 到 P07-S07，并对顶部账号和左下账号区做邮箱脱敏。
 8. 2026-04-25 晚间修正为普通 Chrome User-Agent 后补跑真实流量和批量事件，Sessions、Realtime、Performance、Compare、Breakdown、Filter 已进入有数据态。
 9. 通过 Cloud UI 创建 `Checkout Completed Goal`，类型为 `Triggered event`，value 为 `checkout_completed`，重新采集 `P07-S06`。
+10. 在 Compare 页面应用已保存的 `Producthunt Launch Segment`，采集 `P07-S08`，确认命名 Segment 可以回到分析页复用并触发指标重算。

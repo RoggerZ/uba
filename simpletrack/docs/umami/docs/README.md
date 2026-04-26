@@ -143,8 +143,8 @@ graph TD
 | `11 Journeys` | 高 | `P06-S03`、`P06-S10` | 可直接作为路径分析参考 |
 | `12 Retention` | 中高 | `P08-S03` 已有留存矩阵和 cohort 数据，`P06-S04` 可证实入口 | 可作为 cohort 留存结构参考，长窗口结论仍需更长样本 |
 | `13 Replays` | 中 | `P08-S04` 已验证入口和 Business plan 限制 | 引用时应明确“当前账号受套餐限制，未验证回放播放态” |
-| `14 Filters` | 高 | `P03-S07`、`P05-C14`、`P05-C15` | 可直接作为过滤器结构参考 |
-| `15 Segments` | 中高 | `P05-C16` Filter 结构 + `P08-S05 / P08-S05A` 保存对象与配置态 | 可作为“可保存筛选”设计参考；列表页不直接展示人数 |
+| `14 Filters` | 高 | `P03-S07`、`P05-C14`、`P05-C15`、`P07-S08` | 可直接作为过滤器结构与应用后重算参考 |
+| `15 Segments` | 高 | `P05-C16` Filter 结构 + `P07-S08` 应用态 + `P08-S05 / P08-S05A` 保存对象与配置态 | 可作为“可保存筛选”设计参考；列表页不直接展示人数，应用到分析页后会重算指标 |
 | `16 Cohorts` | 中高 | `P08-S06 / P08-S06A` 保存对象与事件 cohort 配置态 | 可作为 Cohort 对象规划参考；人数展示需要结合 Retention 等结果页 |
 | `17 UTM` | 高 | `P08-S07` 已有 6 组 campaign 的非零 views | 可作为增长来源分析结果态参考 |
 | `18 Revenue` | 高 | `P08-S08` 已有收入总额、订单和 revenue session 证据 | 可作为收入事件入库和报表结果态参考；注意当前数值是多轮重跑累积 |
@@ -191,7 +191,7 @@ graph TD
 | `12 Retention` | `Phase 06` `Phase 08` | `## 11. Events、Funnels、Journeys、Retention、Realtime 分别在看什么` `## 14. growth-baseline-x3 仿真站打通计划` | `P08-S03` 已有留存矩阵 |
 | `13 Replays` | `Phase 08` | `## 14. growth-baseline-x3 仿真站打通计划` | `P08-S04` 已验证套餐限制 |
 | `14 Filters` | `Phase 03` `Phase 05` | `## 8. Filter 里的 Fields 是怎么用的` | `P03-S07` `P05-C14` `P05-C15` 最关键 |
-| `15 Segments` | `Phase 05` `Phase 08` | `## 9. Filter 里的 Segments 和 Cohorts 是怎么用的` | `P08-S05 / P08-S05A` 已验证保存对象和 campaign 配置 |
+| `15 Segments` | `Phase 05` `Phase 07` `Phase 08` | `## 9. Filter 里的 Segments 和 Cohorts 是怎么用的` | `P07-S08` 已验证应用态，`P08-S05 / P08-S05A` 已验证保存对象和 campaign 配置 |
 | `16 Cohorts` | `Phase 08` | `## 9. Filter 里的 Segments 和 Cohorts 是怎么用的` | `P08-S06 / P08-S06A` 已验证保存对象和 event cohort 配置 |
 | `17 UTM` | `Phase 08` | `## 14. growth-baseline-x3 仿真站打通计划` | `P08-S07` 已有 campaign 结果态 |
 | `18 Revenue` | `Phase 08` | `## 14. growth-baseline-x3 仿真站打通计划` | `P08-S08` 已有收入结果态 |

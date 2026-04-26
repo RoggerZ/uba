@@ -115,7 +115,7 @@ SimpleTrack 可以按这个顺序实现：先做 Website Board，再做 Mixed Bo
 
 ### 官方文档补充
 
-- 本地当前还没有单独的 Links / Pixels / Teams 管理页截图。
+- Boards 已通过列表、类型下拉和配置壳截图形成较强本地证据；Links / Pixels / Teams 本轮主要作为官方文档和产品设计输入，后续如进入 SimpleTrack 主路径再补管理页截图。
 - 官方文档已经把 Share URL、Board share、Link、Pixel、Team、API 分成独立文档，说明这些能力在产品里应该保持清晰边界。
 
 ## 官方链接

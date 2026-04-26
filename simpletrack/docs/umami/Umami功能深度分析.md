@@ -947,12 +947,12 @@ Realtime 是什么：
 | Compare | plan / campaign / cohort 属性 | P07-S04 | 已截图；当前周期指标与路径表有数据 |
 | BreakDown | source / medium / plan / role / cohort 属性 | P07-S05 | 已截图；路径 breakdown 表有数据 |
 | Goals | signup / first event / checkout 目标事件 | P07-S06 | 已截图；`Checkout Completed Goal` 显示 `49 / 1.73k`，转化率 `3%` |
-| Filter | plan / campaign / cohort / role / workspaceSize 字段 | P07-S07 | 已截图；Filter 弹窗可用，底层 Compare 有数据 |
+| Filter | plan / campaign / cohort / role / workspaceSize 字段 | P07-S07, P07-S08 | 已截图；Filter 弹窗可用，Segment 应用后 Compare 指标会按切片重算 |
 | Funnels | pricing -> signup -> install -> first_event -> checkout | P08-S01 | 已截图；`Growth Baseline Checkout Funnel` 显示 `1.68k -> 45 -> 45 visitors` |
 | Journeys | 获客、激活、产品内、收入路径 | P08-S02 | 已截图；路径流有真实非零数据 |
 | Retention | 三组 cohort 和 42 天逻辑跨度属性 | P08-S03 | 已截图；留存矩阵已有 cohort 数据 |
 | Replays | 真实浏览器 session，需账号支持 recorder | P08-S04 | 已截图；Business plan 限制 |
-| Segments | `segment_opened` 与命名切片属性 | P08-S05, P08-S05A | 已截图；已保存 `Producthunt Launch Segment`，配置为 `UTM Campaign is producthunt_launch` |
+| Segments | `segment_opened` 与命名切片属性 | P07-S08, P08-S05, P08-S05A | 已截图；已保存 `Producthunt Launch Segment`，配置为 `UTM Campaign is producthunt_launch`，并已应用到 Compare 形成结果态 |
 | Cohorts | `spring_launch` / `self_serve_wave` / `paid_pilot` | P08-S06, P08-S06A | 已截图；已保存 `Paid Checkout Cohort`，配置为 `Triggered event checkout_completed` / `Last 90 days` |
 | UTM | 6 组 campaign 的 URL 参数与事件属性 | P08-S07 | 已截图；6 组 campaign 已出现非零 views |
 | Revenue | 54 条 `checkout_completed` 收入事件 | P08-S08 | 已截图；当前累积站点结果为 `$11.86k / 355 orders` |
@@ -972,11 +972,11 @@ Realtime 是什么：
 2. 直发脚本修正：`send-event.mjs` 与 `bulk-send.mjs` 的默认端点已经改成 `https://api-gateway.umami.dev/api/send`，与真实浏览器写入链路保持一致。
 3. 根因修正：早期空态主要来自脚本使用自定义 User-Agent，Cloud 将这类请求按 bot / 非人类流量处理；切换为普通 Chrome UA 后，写入响应开始带 `sessionId / visitId`，Cloud 读接口也开始返回真实数据。
 4. 当前读侧证据：登录态探针显示 Overview stats 为 `pageviews=118 / visitors=2 / visits=2`，Sessions count 为 `1733`，Realtime 返回 112 条活动项，Events 已按事件名聚合，Revenue sessions count 为 `100`；Revenue 页面当前显示 `$11.86k / 355 orders`，这是多轮 smoke、旧 UA、修正 UA 和重跑后的累积站点结果，不等同于单次默认样本只跑一遍。
-5. 高级对象证据：通过 Cloud UI 创建 `Checkout Completed Goal`、`Growth Baseline Checkout Funnel`、`Producthunt Launch Segment`、`Paid Checkout Cohort`，并将 Attribution conversion step 切到 `Triggered event / checkout_completed`；Goals、Funnels、Attribution 已显示非零结果，Segments/Cohorts 已保留配置态截图。
+5. 高级对象证据：通过 Cloud UI 创建 `Checkout Completed Goal`、`Growth Baseline Checkout Funnel`、`Producthunt Launch Segment`、`Paid Checkout Cohort`，并将 Attribution conversion step 切到 `Triggered event / checkout_completed`；Goals、Funnels、Attribution 已显示非零结果，Segments 已补充应用后结果态，Cohorts 已保留配置态截图。
 
 另外，`Replays` 页面现在有明确产品发现：页面可达，但当前账号/套餐提示 `This feature requires a Business plan subscription.`，而网站元数据里 `replayEnabled=false`。这个能力应当按套餐限制记录，而不是按“未验证”处理。
 
-仍需明确的边界是：`Replays` 受当前账号套餐限制，无法验证播放态；`Segments / Cohorts` 当前证明的是可保存、可复用的人群对象，列表页本身不直接展示人数；Revenue 与 Attribution 的当前数值来自多轮重跑后的累积站点结果。
+仍需明确的边界是：`Replays` 受当前账号套餐限制，无法验证播放态；`Cohorts` 当前证明的是可保存、可复用的人群对象，列表页本身不直接展示人数；Revenue 与 Attribution 的当前数值来自多轮重跑后的累积站点结果。
 
 ## 15. 关联文件
 
