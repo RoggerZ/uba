@@ -34,6 +34,7 @@
 - `src/simpletrack-saas` 在 Windows 下验证 Supastarter 时使用 Node 24.1.0 或其他满足 Prisma 要求的版本（Node 20.19+、22.12+、24.0+）；Node 22.10.0 会导致 Prisma preinstall 失败。
 - `src/simpletrack-saas` 如果 npm/pnpm 网络失败，优先设置 `HTTP_PROXY`、`HTTPS_PROXY`、`npm_config_proxy`、`npm_config_https_proxy` 为 `http://localhost:7897`，并设置 `npm_config_registry=https://registry.npmjs.org/`，避免落到不稳定镜像源。
 - `src/simpletrack-saas` 的 `saas` type-check 如果报 `packages/database/prisma/generated/client` 缺失，先运行 `pnpm --filter @repo/database run generate`，再重跑 type-check。
+- 后续遇到依赖安装、网络代理、SSH 权限、子仓库推送、构建验证、数据库连接等卡壳问题时，不要把排障细节继续写进 README；统一记录到 `docs/开发环境卡壳问题记录.md`，README 只保留初始化和常用命令入口。
 
 ## Go 代码注释与 godoc 规范
 
