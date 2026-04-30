@@ -330,11 +330,17 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 - 实现 `DirectBus` 和 `RedisStreamBus`。
 - 保留 `KafkaBus` adapter 目录和接口，后续从 Sarama producer/consumer 迁入。
 - 本地 Redis 使用 `redis/redis-stack:latest` 容器镜像。
+- Redis Stream 消费采用 pending 优先：写入成功才 ack，失败保留 pending 并优先重试。
+- Redis Stream 支持 `MaxAttempts` 与 `DeadLetterStream`，达到上限后写入死信队列并 ack 原消息。
+- `ingestion` processor 将重复事件写入视为成功处理，避免 at-least-once delivery 造成重复入库。
 
 验收：
 
 - collect 发送事件后能进入 Redis Stream。
 - consumer group 能消费并 ack。
+- 消费失败后能重新读取 pending 消息，并按 Redis consumer group pending metadata 计算 attempt。
+- 达到 `MaxAttempts` 后能进入死信队列，原消息 pending 数归零。
+- 重复事件写入能被视为成功消费，不触发无限重试。
 - Redis Stream 与 KafkaBus 使用同一事件协议。
 
 ### Step 4：ClickHouse 写入和 Realtime
@@ -423,6 +429,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | P1 运行依赖 | Redis Stream + MySQL + ClickHouse 可跑通；Kafka 非必选 |
 | Kafka 保留 | `KafkaBus` 接口和 adapter 边界存在，不删除高吞吐路线 |
 | 事件协议 | 标准字段清楚，不提供 xwl_bi legacy 字段兼容 |
+| Redis Stream 消费 | pending 优先重试，写入成功才 ack，超过 `MaxAttempts` 后进入死信队列 |
 | 表策略 | P1 采用按 project/source 物理分表的方案 B，但上层仍只面对统一 `events` 逻辑模型 |
 | ClickHouse 写入 | 事件明细高吞吐写入默认使用原生 batch writer，并建立与 GORM `CreateInBatches` 的压测对照 |
 | 幂等入库 | 重复消费同一 `event_id` 不会在数据库产生两份事件明细 |
@@ -438,7 +445,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 
 - 方案 B 下物理表名 hash 规则、DDL 迁移策略和跨 source 查询 fan-out / merge 细节。
 - GORM `CreateInBatches` 与 `clickhouse-go/v2 PrepareBatch` 在 `analytics-core` 事件模型上的压测差异。
-- Redis Stream 与 KafkaBus 的 ack、checkpoint、幂等、死信队列具体实现。
+- KafkaBus 的 ack、checkpoint、幂等、死信队列具体实现如何与 Redis Stream 保持一致。
 - KafkaBus 迁移时如何复用 xwl_bi 现有 consumer offset 和 acceptance status 思路。
 - Funnel / Retention 查询如何落到统一 GORM query builder。
 - `analytics-core` 压测基线指标、数据量级和验收阈值。
