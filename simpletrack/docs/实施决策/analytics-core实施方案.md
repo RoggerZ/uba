@@ -79,7 +79,7 @@ P1 先落地最小可用链路：
 | ClickHouse 事件写入 | 高吞吐写入优先用 `clickhouse-go/v2` 原生 batch writer | GORM 支持 `CreateInBatches`，但事件明细是写入热路径；xwl_bi 既有调优经验也指向原生批量插入更适合高频 ClickHouse 写入 |
 | Redis | P1 使用 `redis/redis-stack:latest` 容器镜像 | Redis Stack 方便本地开发和后续扩展，P1 先用 Redis Stream 承接轻量事件队列 |
 | Kafka | 保留 `KafkaBus` | Kafka 仍是高吞吐事件流路线，但不是 P1 必选运行依赖 |
-| HTTP API | 使用活跃维护的 fasthttp，不沿用 xwl_bi 的 `buaazp/fasthttprouter` 路由层 | fasthttp 本体更新活跃，适合事件上报热路径；xwl_bi 的 `fasthttprouter` 依赖活跃度低。fasthttp 只放在 HTTP 适配层，不进入 `collect.Handler` |
+| HTTP API | 使用活跃维护的 fasthttp，不沿用 xwl_bi 的 `buaazp/fasthttprouter` 路由层 | fasthttp 本体更新活跃，适合事件上报热路径；xwl_bi 的 `fasthttprouter` 依赖活跃度低。fasthttp 只放在 HTTP 适配层，避免对 `collect.Handler` 形成框架耦合 |
 
 GORM 参考：
 
@@ -320,7 +320,7 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 - 定义 event name、source id、timestamp、distinct id、properties 校验规则。
 - 不提供 xwl_bi legacy 字段兼容。xwl_bi 后续迁移时应改为写入新协议。
 - 当前已落地 `collect.Normalize`，负责把 collect 请求标准化为 `EventEnvelope`，并校验事件 ID、租户、项目、数据源、事件名、用户标识和时间戳。
-- 当前已落地 `collect.Handler`，负责调用 `Normalize` 并把标准化后的事件发布到 `EventBus`；HTTP collect API 只做协议适配，不重复实现校验和发布逻辑。
+- 当前已落地 `collect.Handler`，这里的 Handler 指 `internal/collect/handler.go` 中的事件上报核心处理器，不是 HTTP 路由 handler；它负责调用 `Normalize` 并把标准化后的事件发布到 `EventBus`。HTTP collect API 只做协议适配，不重复实现校验和发布逻辑。
 - 当前已落地 fasthttp `POST /collect` 入口，负责 JSON 解码、HTTP 状态码和响应格式；`collect.Handler` 继续保持框架无关。
 
 验收：

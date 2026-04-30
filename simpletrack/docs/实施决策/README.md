@@ -17,6 +17,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-01 | 澄清 `collect.Handler` 是事件上报核心处理器而非 HTTP 路由函数，并将“污染”表述改为“框架耦合 / 边界穿透”；同步 `analytics-core` 子仓到 `0c6bf8c` | analytics-core、HTTP collect API、协作规范 |
 | 2026-04-30 | 评估 xwl_bi 的 Fiber 与 fasthttp/fasthttprouter HTTP 栈，确认 `analytics-core` 的 collect HTTP API 使用活跃维护的 fasthttp，并保持 `collect.Handler` 框架无关 | analytics-core、HTTP collect API、协作规范 |
 | 2026-04-29 | 创建实施决策库，写入总方向、待评审方向和维护规则 | 决策管理 |
 | 2026-04-29 | 增加修订记录、实施计划完成列表、当前进度和下一步动作 | 决策管理、阶段推进 |
@@ -62,7 +63,7 @@
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github-simpletrack:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
 | P1-001 | EventBus 抽象设计 | 已完成 | 已落地 `EventEnvelope`、`EventBus`、`DirectBus`、`RedisStreamBus` 和 `KafkaBus` 包边界；Redis Stream 已支持 pending 优先重试、`MaxAttempts` 死信队列和消费成功后 ack；ingestion processor 已把重复事件写入视为成功处理 | 进入 P1-002，继续实现 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环 |
 | P1-000B | 引入 xwl_bi 后端参考快照 | 已完成 | 已将本地 `xwl_bi` 后端代码和顶层关键文档复制到 `references/xwl_bi-backend/`，并明确为只读架构设计参考快照，不包含 Vue2 前端、日志和二进制 | 仅按需 refresh 快照；主要参考模块边界、启动装配、消费链路、ClickHouse 写入/查询分层和元数据流转，不直接在快照中开发 |
-| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、`collect.Handler`、fasthttp `POST /collect` 入口、`EventWriter` 写入接口和 ClickHouse `TableRouter`；子仓提交 `5732eaf` 已推送 | 继续实现 ClickHouse batch `EventWriter`、Realtime/Events 查询 |
+| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、`collect.Handler`、fasthttp `POST /collect` 入口、`EventWriter` 写入接口和 ClickHouse `TableRouter`；子仓提交 `0c6bf8c` 已推送 | 继续实现 ClickHouse batch `EventWriter`、Realtime/Events 查询 |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 已完成 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本；marketing 文案、pricing 语义、docs/quickstart、mail-preview 品牌文案和截图级验证已完成；公开站点首屏已露出下一节内容 | 后续只做轻量文案和视觉微调，不阻塞 P1 数据管道 |
 | INFRA-001 | SimpleTrack GitHub SSH 与子仓库推送配置 | 已完成 | 已生成并记录 `id_ed25519_simpletrack` 专用 key 流程，`src/analytics-core` 和 `src/simpletrack-saas` 固定使用 `config_simpletrack + core.sshCommand`，父仓已提交相关 Q&A 和 AGENTS 规则 | 后续新机器按 Q&A 复现；默认 SSH config ACL 可暂不阻塞主线 |
 
