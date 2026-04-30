@@ -13,3 +13,9 @@
 [submodule "template-src/ai-supastarter-template"]
 	path = template-src/ai-supastarter-template
 	url = git@github.com:xueaifu/ai-supastarter-template.git
+[submodule "src/analytics-core"]
+	path = src/analytics-core
+	url = git@github.com:simpletrack/analytics-core.git
+[submodule "src/simpletrack-saas"]
+	path = src/simpletrack-saas
+	url = git@github.com:simpletrack/simpletrack-saas.git

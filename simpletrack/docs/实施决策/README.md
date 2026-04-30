@@ -30,6 +30,7 @@
 | 2026-04-30 | 本地创建 `src/analytics-core` 独立仓库骨架，并从 Supastarter 初始化 `src/simpletrack-saas` 工作副本；远端推送受 GitHub 权限或仓库创建状态阻塞 | P1 底座、SaaS 工作副本 |
 | 2026-04-30 | 在 `src/simpletrack-saas` 完成 Supastarter P1 页面草案 spike：挂载 Websites、Realtime、Events 到组织内导航并通过 saas type-check | Supastarter spike、P1 产品层 |
 | 2026-04-30 | 为 `analytics-core` 增加 Redis Stream 集成测试，并用 `redis/redis-stack:latest` 验证 publish / consume / ack / pending=0 | analytics-core、EventBus、Redis Stream |
+| 2026-04-30 | 修复 SimpleTrack 专用 SSH 身份，成功推送 `analytics-core` 与 `simpletrack-saas` 远端，并将二者作为父仓子模块挂载 | 仓库治理、P1 底座 |
 
 ## 实施计划完成列表
 
@@ -47,10 +48,10 @@
 | P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；本地工作副本已创建并通过 `pnpm --filter saas run type-check`；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位，并继续 subscription gate / mail-preview spike |
 | P0-005 | xwl_bi 分析数据面抽核方案 | 已完成 | 已确认 P1 新建独立业务无关仓库 `analytics-core`，不复用旧 Vue2 后台，不整仓改名 | 进入 P1-000 实施设计 |
 | P1-000A | 输出 `analytics-core` 实施方案 | 已完成 | 已新增 `analytics-core实施方案.md`，并补充方案 B 物理分表、原生 ClickHouse batch writer、入库幂等去重、tenant/project/source 映射 | 根据评审继续细化接口和表模型 |
-| P1-000 | 创建 `analytics-core` 独立核心仓库 | 进行中 | 本地 `src/analytics-core` 已初始化为独立 Git 仓库并提交最小 Go module；远端 `simpletrack/analytics-core` 推送被当前 SSH 身份权限阻塞 | 修复 GitHub 写权限后推送远端，并在父仓提交 gitlink |
+| P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github.com:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
 | P1-001 | EventBus 抽象设计 | 进行中 | 已落地 `EventEnvelope`、`EventBus`、`DirectBus`、`RedisStreamBus` 和 `KafkaBus` 包边界；已用 Redis Stack 验证 publish / consume / ack / pending=0 | 继续设计失败重试、死信队列和幂等入库边界 |
 | P1-002 | 数据管道最小闭环 | 待完成 | P1 目标已确定 | 实现 tracker -> collect -> storage -> Realtime/Events |
-| P1-003 | 产品官网 / Marketing Site / 公开站点 | 进行中 | 已从 `template-src/ai-supastarter-template` 初始化本地 `src/simpletrack-saas` 工作副本；SaaS app 页面挂载已验证，marketing/docs 还未截图级验证 | 创建或授权 `simpletrack/simpletrack-saas` 远端后推送，并启动 Supastarter marketing/docs 验证 |
+| P1-003 | 产品官网 / Marketing Site / 公开站点 | 进行中 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本，远端为 `git@github.com:simpletrack/simpletrack-saas.git`；SaaS app 页面挂载已验证，marketing/docs 还未截图级验证 | 启动 Supastarter marketing/docs 验证 |
 
 ### 状态重置规则
 
@@ -80,11 +81,9 @@
 
 下一步：
 
-1. 修复 GitHub 权限或创建远端仓库：`simpletrack/analytics-core`、`simpletrack/simpletrack-saas`。
-2. 推送 `src/analytics-core` 和 `src/simpletrack-saas` 后，在父仓提交两个子仓库 gitlink。
-3. 在 `src/simpletrack-saas` 继续 Supastarter 1 天 spike：subscription gate、邮件模板、marketing/docs 预览。
-4. 继续完善 `analytics-core` 的失败重试、死信队列和幂等入库边界。
-5. 先使用 Supastarter 的 marketing/docs app 做产品官网和 docs；效果满足就直接使用，否则轻量定制。
+1. 在 `src/simpletrack-saas` 继续 Supastarter 1 天 spike：subscription gate、邮件模板、marketing/docs 预览。
+2. 继续完善 `analytics-core` 的失败重试、死信队列和幂等入库边界。
+3. 先使用 Supastarter 的 marketing/docs app 做产品官网和 docs；效果满足就直接使用，否则轻量定制。
 
 ## 当前已确定的总方向
 
