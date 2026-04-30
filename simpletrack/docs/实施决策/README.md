@@ -17,6 +17,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-01 | 调整 `analytics-core` 本地 compose 默认端口，避开本机 Redis/MySQL 端口冲突，并记录 Docker 卡壳处理；同步子仓提交到 `c7aa2cb` | analytics-core、本地运行依赖、开发环境 |
 | 2026-05-01 | 在 `analytics-core` 新增 Redis Stack、MySQL、ClickHouse 本地 `docker-compose.yml` 和 README 运行说明；同步子仓提交到 `0bd1cc4` | analytics-core、本地运行依赖、端到端验证 |
 | 2026-05-01 | 在 `analytics-core` 落地 `storage.EventReader` 和 ClickHouse/GORM 查询执行器，让 Realtime/Events query plan 能扫成 `EventRecord`；同步子仓提交到 `a072275` | analytics-core、Realtime、Events、ClickHouse 查询 |
 | 2026-05-01 | 明确 `analytics-core` 的 `ingestion.Processor` 是 P1 worker 边界，补充 Run 级测试和 Example；同步子仓提交到 `a22ab6e` | analytics-core、ingestion worker、队列消费 |
@@ -69,7 +70,7 @@
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github-simpletrack:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
 | P1-001 | EventBus 抽象设计 | 已完成 | 已落地 `EventEnvelope`、`EventBus`、`DirectBus`、`RedisStreamBus` 和 `KafkaBus` 包边界；Redis Stream 已支持 pending 优先重试、`MaxAttempts` 死信队列和消费成功后 ack；ingestion processor 已把重复事件写入视为成功处理 | 进入 P1-002，继续实现 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环 |
 | P1-000B | 引入 xwl_bi 后端参考快照 | 已完成 | 已将本地 `xwl_bi` 后端代码和顶层关键文档复制到 `references/xwl_bi-backend/`，并明确为只读架构设计参考快照，不包含 Vue2 前端、日志和二进制 | 仅按需 refresh 快照；主要参考模块边界、启动装配、消费链路、ClickHouse 写入/查询分层和元数据流转，不直接在快照中开发 |
-| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、`collect.Handler`、fasthttp `POST /collect` 入口、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、`EventWriteGuard` 幂等边界、GORM/MySQL `IngestionStatusGuard`、`EventQueryBuilder` 查询边界、`storage.EventReader` 查询执行器、`ingestion.Processor` worker 边界和本地 Redis/MySQL/ClickHouse compose；子仓提交 `0bd1cc4` 已推送 | 继续做最小端到端验证脚本 / 命令，打通 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader |
+| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、`collect.Handler`、fasthttp `POST /collect` 入口、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、`EventWriteGuard` 幂等边界、GORM/MySQL `IngestionStatusGuard`、`EventQueryBuilder` 查询边界、`storage.EventReader` 查询执行器、`ingestion.Processor` worker 边界和本地 Redis/MySQL/ClickHouse compose；子仓提交 `c7aa2cb` 已推送，Redis Stream 集成测试已在 Docker Redis 上通过 | 继续做最小端到端验证脚本 / 命令，打通 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 已完成 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本；marketing 文案、pricing 语义、docs/quickstart、mail-preview 品牌文案和截图级验证已完成；公开站点首屏已露出下一节内容 | 后续只做轻量文案和视觉微调，不阻塞 P1 数据管道 |
 | INFRA-001 | SimpleTrack GitHub SSH 与子仓库推送配置 | 已完成 | 已生成并记录 `id_ed25519_simpletrack` 专用 key 流程，`src/analytics-core` 和 `src/simpletrack-saas` 固定使用 `config_simpletrack + core.sshCommand`，父仓已提交相关 Q&A 和 AGENTS 规则 | 后续新机器按 Q&A 复现；默认 SSH config ACL 可暂不阻塞主线 |
 
@@ -103,7 +104,7 @@
 - `analytics-core` 已完成 `storage.EventQueryBuilder` 契约和 ClickHouse/GORM query plan builder，Events 与 Realtime 查询共用同一套字段白名单、表路由、时间范围和分页限制。
 - `analytics-core` 已完成 `storage.EventReader` 契约和 ClickHouse/GORM 查询执行器，执行 query plan 后返回 storage-neutral `EventRecord`。
 - `analytics-core` 已明确 `ingestion.Processor` 是 P1 worker 边界，EventBus adapter 负责 ack/nack，Processor 只把消息写入 `storage.EventWriter` 并把错误交回队列重试/死信策略。
-- `analytics-core` 已新增本地 `docker-compose.yml`，包含 Redis Stack、MySQL 8.4、ClickHouse 25.3，并在 README 记录启动、端口和 Redis Stream 集成测试入口。
+- `analytics-core` 已新增本地 `docker-compose.yml`，包含 Redis Stack、MySQL 8.4、ClickHouse 25.3，并在 README 记录启动、避开冲突的高位端口和 Redis Stream 集成测试入口。
 
 正在推进：
 
