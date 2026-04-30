@@ -1,0 +1,10 @@
+{
+  "directives": [
+    {
+      "directive": "For SimpleTrack production-oriented prototypes, prefer mature frameworks/templates over hand-rolled UI. Next.js is the preferred production framework when the prototype is expected to continue into production code; use mature UI libraries/templates first and evaluate paid frameworks/templates if free options do not meet review quality.",
+      "priority": "high",
+      "context": "SimpleTrack framework direction after reviewing Awesome-independent-tools patterns",
+      "timestamp": "2026-04-29T01:49:54.798Z"
+    }
+  ]
+}

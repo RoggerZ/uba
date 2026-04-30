@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Litlyx Tracking Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f7fb;
+        --panel: #ffffff;
+        --text: #101828;
+        --muted: #667085;
+        --line: #d9dce6;
+        --accent: #7c3aed;
+        --accent-2: #111827;
+        --good: #0f9f6e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "PingFang SC", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top right, rgba(124, 58, 237, 0.08), transparent 26%),
+          linear-gradient(180deg, #f8f9fc 0%, var(--bg) 100%);
+      }
+
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 40px 20px 72px;
+      }
+
+      h1,
+      h2 {
+        margin: 0 0 12px;
+      }
+
+      p {
+        margin: 0 0 12px;
+        color: var(--muted);
+      }
+
+      .hero {
+        margin-bottom: 24px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(124, 58, 237, 0.1);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--panel);
+        padding: 20px;
+        box-shadow: 0 20px 36px rgba(16, 24, 40, 0.06);
+      }
+
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        margin-bottom: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        font: inherit;
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 108px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font: inherit;
+        font-weight: 700;
+        color: #fff;
+        background: var(--accent-2);
+        cursor: pointer;
+      }
+
+      button.primary {
+        background: var(--accent);
+      }
+
+      button.event {
+        background: var(--good);
+      }
+
+      .hint {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .status {
+        margin-top: 16px;
+      }
+
+      pre {
+        margin: 0;
+        padding: 16px;
+        border-radius: 14px;
+        background: #0f172a;
+        color: #d0d5dd;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="badge">Litlyx Research Demo</div>
+        <h1>Tracking Demo</h1>
+        <p>这个页面用于验证 Litlyx 的浏览器脚本接入、自动 pageview 和自定义事件。</p>
+      </section>
+
+      <section class="grid two">
+        <article class="card">
+          <h2>Tracker Setup</h2>
+          <label for="workspace-id">Workspace ID</label>
+          <input id="workspace-id" placeholder="Paste your Litlyx workspace ID here" />
+
+          <label for="script-url">Script URL</label>
+          <input
+            id="script-url"
+            value="https://cdn.jsdelivr.net/npm/litlyx-js@latest/browser/litlyx.js"
+          />
+
+          <div class="actions">
+            <button id="load-tracker" class="primary">Load tracker</button>
+          </div>
+          <p class="hint">
+            According to the official universal setup docs, loading the browser script with
+            <code>data-workspace</code> will start page analytics automatically.
+          </p>
+        </article>
+
+        <article class="card">
+          <h2>Recommended Verification</h2>
+          <ul>
+            <li>Load the tracker and refresh once to produce a pageview.</li>
+            <li>Trigger a few custom events with different metadata payloads.</li>
+            <li>Return to Litlyx Product and Raw Data to observe the results.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Custom Event A</h2>
+          <label for="event-a-name">Event name</label>
+          <input id="event-a-name" value="demo_signup_click" />
+
+          <label for="event-a-metadata">Metadata JSON</label>
+          <textarea id="event-a-metadata">{
+  "surface": "tracking-demo",
+  "section": "pricing",
+  "variant": "hero-cta"
+}</textarea>
+
+          <div class="actions">
+            <button id="fire-event-a" class="event">Fire event A</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Custom Event B</h2>
+          <label for="event-b-name">Event name</label>
+          <input id="event-b-name" value="demo_checkout_started" />
+
+          <label for="event-b-metadata">Metadata JSON</label>
+          <textarea id="event-b-metadata">{
+  "surface": "tracking-demo",
+  "plan": "starter",
+  "currency": "USD"
+}</textarea>
+
+          <div class="actions">
+            <button id="fire-event-b" class="event">Fire event B</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="card status">
+        <h2>Status</h2>
+        <pre id="status-log">Waiting for tracker initialization...</pre>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

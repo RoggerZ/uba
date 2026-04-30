@@ -1,0 +1,28 @@
+# Context Snapshot
+
+- Task statement: Implement the Umami Cloud deep research, fine-grained screenshot capture, snapshot index, operation flows, and tracking demo under `simpletrack/docs/umami/`, while keeping `simpletrack/prototype/simpletrack-umami-inspired/` in place.
+- Desired outcome:
+  - `docs/umami/` contains the research doc, snapshot index, progress ledger, tracking demo, staged snapshots, and raw Playwright artifacts.
+  - Umami Cloud login, website creation, tracking install, events, dashboard/boards components, and reports are captured with screenshot evidence and operation flows.
+  - Documentation references stable snapshot IDs and phase flows.
+- Known facts and evidence:
+  - `prototype/umami-reference/` existed and has been moved to `docs/umami/umami-reference/`.
+  - Raw `.playwright-cli` history has been moved to `docs/umami/raw-playwright/umami-reference-history/`.
+  - `docs/umami/` skeleton files, phase directories, and `tracking-demo/` have been created.
+  - Local demo is reachable at `http://localhost:4173/index.html`.
+  - Umami Cloud login succeeded with the provided account.
+  - A new website `simpletrack-local` with domain `localhost` now exists in the Umami Cloud website list.
+- Constraints:
+  - Do not move `simpletrack/prototype/simpletrack-umami-inspired/`.
+  - Do not write credentials into repo files.
+  - New screenshots must be stored under `docs/umami/snapshots/`.
+  - Raw Playwright output stays under `docs/umami/raw-playwright/`.
+- Unknowns and open questions:
+  - Exact website settings/install page path for the new site.
+  - Exact board/dashboard component picker flow, dropdown set, and preview matrix.
+  - Which report pages are visible and data-backed in the current account.
+- Likely codebase touchpoints:
+  - `simpletrack/docs/umami/`
+  - `simpletrack/docs/umami/tracking-demo/`
+  - `simpletrack/docs/umami/snapshots/`
+  - `simpletrack/README.md`
