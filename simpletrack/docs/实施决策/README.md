@@ -11,6 +11,7 @@
 | [技术栈底座决策.md](技术栈底座决策.md) | 记录当前已经形成的技术底座方向和边界 | 已确定 + 待评审 |
 | [付费SaaS模板本地对比.md](付费SaaS模板本地对比.md) | 基于 `template-src` 本地源码和 MakerKit 官方资料对比付费模板 | 已确定先选 Supastarter，持续更新 |
 | [analytics-core实施方案.md](analytics-core实施方案.md) | 记录 `analytics-core` 的 P1 抽取边界、模块草案、EventBus 方案和 xwl_bi 代码评审结论 | 已确定，设计细节持续评审 |
+| [xwl_bi后端架构参考映射.md](xwl_bi后端架构参考映射.md) | 将 `references/xwl_bi-backend/` 的后端架构设计映射到 `analytics-core`，明确只参考架构不搬旧业务代码 | 已确定，持续更新 |
 
 ## 修订记录
 
@@ -38,6 +39,7 @@
 | 2026-04-30 | 在 `analytics-core` 落地 Redis Stream pending 优先重试、MaxAttempts 死信队列和 ingestion 幂等处理边界，并通过 `go test ./...` | analytics-core、EventBus、ingestion |
 | 2026-04-30 | 将本地 `xwl_bi` 后端源码与关键文档复制为 `references/xwl_bi-backend/` 只读临时参考快照，供 `analytics-core` 实现对照使用 | 分析数据面、参考资产、仓库治理 |
 | 2026-04-30 | 在 `analytics-core` 落地 collect 请求标准化、`EventWriter` 写入接口和 ClickHouse `TableRouter`，启动 P1-002 数据管道最小闭环实现 | analytics-core、collect、storage、ClickHouse |
+| 2026-04-30 | 新增 xwl_bi 后端架构参考映射，明确快照主要参考模块边界、启动装配、消费链路、ClickHouse 写入/查询分层和分析服务拆分 | analytics-core、xwl_bi 参考、后端架构 |
 
 ## 实施计划完成列表
 
