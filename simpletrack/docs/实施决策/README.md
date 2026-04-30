@@ -12,11 +12,13 @@
 | [付费SaaS模板本地对比.md](付费SaaS模板本地对比.md) | 基于 `template-src` 本地源码和 MakerKit 官方资料对比付费模板 | 已确定先选 Supastarter，持续更新 |
 | [analytics-core实施方案.md](analytics-core实施方案.md) | 记录 `analytics-core` 的 P1 抽取边界、模块草案、EventBus 方案和 xwl_bi 代码评审结论 | 已确定，设计细节持续评审 |
 | [xwl_bi后端架构参考映射.md](xwl_bi后端架构参考映射.md) | 将 `references/xwl_bi-backend/` 的后端架构设计映射到 `analytics-core`，明确只参考架构不搬旧业务代码 | 已确定，持续更新 |
+| [Umami源代码参考映射.md](Umami源代码参考映射.md) | 将 `references/umami/` 的官方源码快照映射到 SimpleTrack P1/P2/P3 实施边界，明确只参考对象体系和实现策略 | 已确定，持续更新 |
 
 ## 修订记录
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-01 | 将 Umami 官方 GitHub 源码克隆为 `references/umami/` 只读参考快照，新增源码实现审阅和参考映射文档 | Umami 参考资产、analytics-core、Realtime、Events、仓库治理 |
 | 2026-05-01 | 在 `analytics-core` 新增 Redis Stack、MySQL、ClickHouse 本地 `docker-compose.yml` 和 README 运行说明；同步子仓提交到 `0bd1cc4` | analytics-core、本地运行依赖、端到端验证 |
 | 2026-05-01 | 在 `analytics-core` 落地 `storage.EventReader` 和 ClickHouse/GORM 查询执行器，让 Realtime/Events query plan 能扫成 `EventRecord`；同步子仓提交到 `a072275` | analytics-core、Realtime、Events、ClickHouse 查询 |
 | 2026-05-01 | 明确 `analytics-core` 的 `ingestion.Processor` 是 P1 worker 边界，补充 Run 级测试和 Example；同步子仓提交到 `a22ab6e` | analytics-core、ingestion worker、队列消费 |
@@ -69,6 +71,7 @@
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github-simpletrack:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
 | P1-001 | EventBus 抽象设计 | 已完成 | 已落地 `EventEnvelope`、`EventBus`、`DirectBus`、`RedisStreamBus` 和 `KafkaBus` 包边界；Redis Stream 已支持 pending 优先重试、`MaxAttempts` 死信队列和消费成功后 ack；ingestion processor 已把重复事件写入视为成功处理 | 进入 P1-002，继续实现 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环 |
 | P1-000B | 引入 xwl_bi 后端参考快照 | 已完成 | 已将本地 `xwl_bi` 后端代码和顶层关键文档复制到 `references/xwl_bi-backend/`，并明确为只读架构设计参考快照，不包含 Vue2 前端、日志和二进制 | 仅按需 refresh 快照；主要参考模块边界、启动装配、消费链路、ClickHouse 写入/查询分层和元数据流转，不直接在快照中开发 |
+| P1-000C | 引入 Umami 官方源码参考快照 | 已完成 | 已将 Umami 官方 GitHub 源码克隆到 `references/umami/`，删除上游 `.git` 元数据并记录 commit；已新增源码审阅和实施映射文档 | 仅按需 refresh 快照；主要参考 tracker、collect、事件/会话模型、Realtime/Events 查询、ClickHouse schema，不直接复制代码 |
 | P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、`collect.Handler`、fasthttp `POST /collect` 入口、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、`EventWriteGuard` 幂等边界、GORM/MySQL `IngestionStatusGuard`、`EventQueryBuilder` 查询边界、`storage.EventReader` 查询执行器、`ingestion.Processor` worker 边界和本地 Redis/MySQL/ClickHouse compose；子仓提交 `0bd1cc4` 已推送 | 继续做最小端到端验证脚本 / 命令，打通 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 已完成 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本；marketing 文案、pricing 语义、docs/quickstart、mail-preview 品牌文案和截图级验证已完成；公开站点首屏已露出下一节内容 | 后续只做轻量文案和视觉微调，不阻塞 P1 数据管道 |
 | INFRA-001 | SimpleTrack GitHub SSH 与子仓库推送配置 | 已完成 | 已生成并记录 `id_ed25519_simpletrack` 专用 key 流程，`src/analytics-core` 和 `src/simpletrack-saas` 固定使用 `config_simpletrack + core.sshCommand`，父仓已提交相关 Q&A 和 AGENTS 规则 | 后续新机器按 Q&A 复现；默认 SSH config ACL 可暂不阻塞主线 |
@@ -96,6 +99,7 @@
 - `simpletrack/README.md` 已作为 SimpleTrack 资料入口提交。
 - `analytics-core` 已完成 EventBus 抽象、Redis Stream pending 优先重试、死信队列和幂等 ingestion processor。
 - `references/xwl_bi-backend/` 已加入为只读临时参考快照，供 `analytics-core` 实现映射时查阅。
+- `references/umami/` 已加入为 Umami 官方源码只读参考快照，供 tracker、collect、事件/会话模型、Realtime/Events 查询和 ClickHouse schema 对照。
 - `analytics-core` 已完成 collect 请求标准化、storage `EventWriter` 接口和 ClickHouse `TableRouter` 契约。
 - `analytics-core` 已完成 `collect.Handler` 和 fasthttp `POST /collect` 入口，能把 JSON 请求转换为 `EventEnvelope` 并发布到 EventBus。
 - `analytics-core` 已完成 ClickHouse native batch `BatchWriter`，使用 `clickhouse-go/v2 PrepareBatch` 通过 `EventWriter` 接口写入动态物理事件表，并预留 `EventWriteGuard` 幂等边界。
@@ -110,12 +114,13 @@
 - Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载、UI-only subscription gate、marketing 文案、pricing 语义、docs/quickstart、mail-preview 和浏览器截图验证。
 - `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、ClickHouse query reader、worker 边界和本地运行依赖已完成，下一步进入最小端到端验证。
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
+- Umami 官方源码只读快照已就位，主要用于参考分析对象体系、tracker 采集、事件属性、Realtime/Events 读侧、ClickHouse 明细与聚合模型。
 - 企业分析控制台 UI 可改造性确认。
 - 产品官网 / Marketing Site / docs 公开站点的信息架构已按 P1 验收完成，后续只做轻量优化。
 
 下一步：
 
-1. 启动 `analytics-core` 本地 Redis/MySQL/ClickHouse 依赖，用最小端到端链路验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader。
+1. 启动 `analytics-core` 本地 Redis/MySQL/ClickHouse 依赖，用最小端到端链路验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader，并对照 Umami 源码里的 `event_data`、Realtime 和 Events 查询口径补齐验收点。
 2. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
 3. 公开站点继续使用 Supastarter 的 marketing/docs app，后续只做轻量文案和视觉微调。
 4. 每次子仓库提交推送后，先提交子仓，再更新父仓 gitlink 和实施进度文档。
@@ -135,8 +140,9 @@
 11. 生产 SaaS 模板先选择 Supastarter for Next.js；MakerKit 只保留为 B2B 企业控制面对照和备选。
 12. 支付先按 Supastarter 已支持的 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入；KYC/KYB、退款、拒付、发票、税务和费用结构放到上线前逐项处理。
 13. `analytics-core` 参考 Umami 的分析对象体系和 Litlyx 的首价值、Raw Events、Show test data 经验。
-14. `analytics-core` 的 ClickHouse 表策略直接采用方案 B，按 `tenant_id / project_id / source_id` 路由到物理事件表，上层仍使用统一 `events` 逻辑模型。
-15. ClickHouse 事件写入热路径优先使用原生 batch writer，入库按 `(tenant_id, project_id, source_id, event_id)` 做幂等去重。
+14. Umami 官方源码只作为只读实现参考：可参考 tracker、collect、事件/会话模型、Realtime/Events 查询和 ClickHouse schema，不直接复制 Umami 源码或采用其 Next.js API route 热路径架构。
+15. `analytics-core` 的 ClickHouse 表策略直接采用方案 B，按 `tenant_id / project_id / source_id` 路由到物理事件表，上层仍使用统一 `events` 逻辑模型。
+16. ClickHouse 事件写入热路径优先使用原生 batch writer，入库按 `(tenant_id, project_id, source_id, event_id)` 做幂等去重。
 
 ## 当前待评审的总方向
 

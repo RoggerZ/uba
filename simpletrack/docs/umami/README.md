@@ -5,6 +5,7 @@
 ## 目录结构
 
 - `Umami功能深度分析.md`: 主调研文档
+- `docs/21-源代码实现参考.md`: Umami 官方源码实现审阅与 SimpleTrack 映射
 - `docs/`: 官方文档双视角中文解读
   - 入口：[docs/README.md](./docs/README.md)
   - 落地评审：[SimpleTrack 落地评审清单](./docs/落地评审清单.md)
@@ -17,6 +18,7 @@
 - `umami-reference/`: 历史参考截图
 - `snapshots/`: 按阶段归档的正式快照
 - `raw-playwright/`: 原始 Playwright 抓取与控制台文件
+- `../../../references/umami/`: Umami 官方 GitHub 源码只读快照，源码边界见 `SIMPLETRACK_REFERENCE.md`
 
 ## 资料分层
 
@@ -39,6 +41,7 @@
 如果你要把调研结果用于 SimpleTrack 产品评审，可以直接看 `docs/落地评审清单.md`。
 如果你要进入开发排期和阶段拆分，可以直接看 `docs/SimpleTrack实施路线图.md`。
 如果你要开始设计 SimpleTrack 的事件和字段，可以直接看 `docs/数据模型与事件字典.md`。
+如果你要参考 Umami 的真实源码实现，可以直接看 `docs/21-源代码实现参考.md`，再回看 `../../../references/umami/`。
 
 ## 快照规范
 
