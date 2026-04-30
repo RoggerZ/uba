@@ -25,6 +25,7 @@
 | 2026-04-29 | 确认生产 SaaS 模板先选择 Supastarter for Next.js，MakerKit 降为 B2B 对照和备选 | SaaS 模板选型 |
 | 2026-04-29 | 新增 `analytics-core` 实施方案，纳入 xwl_bi analyze/code-review 证据，并补充 Umami、Litlyx 参考边界 | 分析数据面、P1 实施 |
 | 2026-04-29 | 支付路线改为先按 Supastarter 支持的 provider 接入，KYC/KYB、发票税务、退款拒付等放到上线前后置检查 | 支付与商业化 |
+| 2026-04-30 | 补齐 analytics-core 评审 Q&A：GitHub 组织、tenant/project/source、ack/重试/死信、consumer offset、acceptance status、GORM query builder 和 UI 策略 | 分析数据面、协作规范、Q&A |
 
 ## 实施计划完成列表
 
@@ -41,7 +42,7 @@
 | P0-003 | 企业分析控制台 UI 可改造性评审 | 进行中 | 本地 Supastarter 已有 SaaS app、admin、organizations、payments、settings；MakerKit 作为 B2B 对照 | 做截图级评审和 1 天 UI spike |
 | P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位和本地 spike |
 | P0-005 | xwl_bi 分析数据面抽核方案 | 已完成 | 已确认 P1 新建独立业务无关仓库 `analytics-core`，不复用旧 Vue2 后台，不整仓改名 | 进入 P1-000 实施设计 |
-| P1-000A | 输出 `analytics-core` 实施方案 | 已完成 | 已新增 `analytics-core实施方案.md`，包含模块草案、EventBus 草案、xwl_bi 代码证据和 Umami/Litlyx 参考边界 | 根据评审继续细化接口和表模型 |
+| P1-000A | 输出 `analytics-core` 实施方案 | 已完成 | 已新增 `analytics-core实施方案.md`，包含模块草案、EventBus 草案、xwl_bi 代码证据、表策略、GORM query builder 和 Umami/Litlyx 参考边界 | 根据评审继续细化接口和表模型 |
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 待完成 | 仓库名已确定，不带 `simpletrack` 或 `xwl`；实施方案已输出 | 按实施方案创建仓库骨架 |
 | P1-001 | EventBus 抽象设计 | 进行中 | 已在实施方案中给出 DirectBus / RedisStreamBus / KafkaBus 草案 | 进入代码级接口设计和 Redis Stream spike |
 | P1-002 | 数据管道最小闭环 | 待完成 | P1 目标已确定 | 实现 tracker -> collect -> storage -> Realtime/Events |
@@ -78,7 +79,7 @@
 1. 在 Supastarter 本地源码中做 1 天 spike：Website、Realtime、Events、subscription gate、邮件模板。
 2. 按 `analytics-core实施方案.md` 创建核心仓库骨架。
 3. 把 EventBus 草案推进到代码级接口，优先实现 Redis Stream。
-4. 设计产品官网 / Marketing Site / docs 公开站点的首版结构。
+4. 先使用 Supastarter 的 marketing/docs app 做产品官网和 docs；效果满足就直接使用，否则轻量定制。
 
 ## 当前已确定的总方向
 
@@ -102,7 +103,7 @@
 2. 支付 provider 的具体上线顺序和平台配置，放到上线前处理。
 3. `analytics-core` 的表模型、接口分层、存储模型和从 xwl_bi 抽取的具体代码步骤。
 4. 企业级控制台 UI 是否直接跟随 Supastarter UI 栈，还是在模板 shell 内重做业务控制台。
-5. 产品官网 / Marketing Site 是否直接使用 Supastarter 的 marketing/docs app，还是另做轻量定制。
+5. Supastarter 的 marketing/docs app 是否满足产品官网和 docs 需要；若不满足再轻量定制。
 
 ## 维护规则
 
