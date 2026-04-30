@@ -88,13 +88,15 @@ simpletrack/
 
 ## 当前状态
 
-- 当前以方案文档为主
-- 技术架构已有较明确草案
-- 目录里暂未落地对应的正式应用代码
+- 当前处于 P0 产品与底座确认阶段，并已进入部分 P1 前置底座实施。
+- 生产 SaaS 模板已确定先选择 Supastarter for Next.js。
+- `src/simpletrack-saas/` 已从 Supastarter 初始化为独立子仓库，已挂载 Websites、Realtime、Events 页面草案。
+- `src/analytics-core/` 已创建为独立业务无关分析核心仓库，已验证 Redis Stream publish / consume / ack 链路。
+- `simpletrack/docs/实施决策/` 是当前实施进度和阶段计划的主要来源。
 
 如果后续进入实现阶段，建议优先补齐：
 
-- MVP 功能边界
-- SDK 与事件模型定义
-- 数据表设计与采集链路
-- 本地开发与部署说明
+- Supastarter subscription gate、mail-preview、marketing/docs 验证
+- `analytics-core` 失败重试、死信队列和幂等入库边界
+- tracker -> collect -> storage -> Realtime/Events 最小闭环
+- 产品官网 / Marketing Site / docs/quickstart 截图级验证

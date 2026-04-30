@@ -22,6 +22,8 @@
 - `simpletrack/docs/实施决策/README.md` 必须维护修订记录、实施计划完成列表、当前进度和下一步动作。
 - 实施计划状态统一使用：`待完成`、`进行中`、`已完成`、`暂缓`、`已否决`。
 - 每次完成任务、确认决策、改变阶段范围或发现实现偏离计划时，必须同步更新实施计划完成列表。
+- 仓库治理变化也算实施进度变化；创建或推送子仓库、修改子模块 gitlink、调整远端地址、SSH key/Host 或 `core.sshCommand` 时，也必须同步更新 `simpletrack/docs/实施决策/README.md` 的修订记录、实施计划完成列表、当前进度和下一步动作。
+- `src/analytics-core` 或 `src/simpletrack-saas` 有变更时，必须先提交并推送子仓库，再更新父仓子模块 gitlink、相关文档和父仓提交。
 - 已标记 `已完成` 的任务如果进入功能重构、范围重开、验收失败或实现被替换，必须把状态重置为 `待完成`，并在修订记录中说明原因。
 - P1 已确定包含 `analytics-core` 独立核心仓库建设：仓库名只用 `analytics-core`，不得带 `simpletrack` 或 `xwl`；从 xwl_bi 抽取分析数据面核心，保留 KafkaBus，前期优先 Redis Stream，不复用旧 Vue2 后台界面。
 - P1 已确定包含产品官网 / Marketing Site / 公开站点：需要产品介绍、定价/订阅入口、docs/quickstart；不要把它仅理解为单张 landing page。

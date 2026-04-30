@@ -31,6 +31,7 @@
 | 2026-04-30 | 在 `src/simpletrack-saas` 完成 Supastarter P1 页面草案 spike：挂载 Websites、Realtime、Events 到组织内导航并通过 saas type-check | Supastarter spike、P1 产品层 |
 | 2026-04-30 | 为 `analytics-core` 增加 Redis Stream 集成测试，并用 `redis/redis-stack:latest` 验证 publish / consume / ack / pending=0 | analytics-core、EventBus、Redis Stream |
 | 2026-04-30 | 修复 SimpleTrack 专用 SSH 身份，成功推送 `analytics-core` 与 `simpletrack-saas` 远端，并将二者作为父仓子模块挂载 | 仓库治理、P1 底座 |
+| 2026-04-30 | 固化 Windows SSH 仓库权限配置、专用 key 初始化流程和 `core.sshCommand` 规则，并补充 SimpleTrack 目录 README | 仓库治理、协作规范、文档入口 |
 
 ## 实施计划完成列表
 
@@ -45,13 +46,14 @@
 | P0-001 | Next.js 可交互原型 | 进行中 | 原型方向已确定，需继续按生产可迁移骨架推进 | 完成 Next.js 迁移和页面验证 |
 | P0-002 | SaaS 模板选型评估 | 已完成 | 已确定先选择 Supastarter for Next.js；MakerKit 保留为 B2B 对照和备选 | 进入 Supastarter 1 天 SimpleTrack spike |
 | P0-003 | 企业分析控制台 UI 可改造性评审 | 进行中 | `src/simpletrack-saas` 已能在 Supastarter `apps/saas` 组织内导航挂载 Websites、Realtime、Events 页面草案 | 做截图级评审，确认密度、表格、侧边栏和空态是否满足企业分析控制台 |
-| P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；本地工作副本已创建并通过 `pnpm --filter saas run type-check`；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位，并继续 subscription gate / mail-preview spike |
+| P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；`src/simpletrack-saas` 已作为独立子仓库推送并通过 `pnpm --filter saas run type-check`；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位，并继续 subscription gate / mail-preview spike |
 | P0-005 | xwl_bi 分析数据面抽核方案 | 已完成 | 已确认 P1 新建独立业务无关仓库 `analytics-core`，不复用旧 Vue2 后台，不整仓改名 | 进入 P1-000 实施设计 |
 | P1-000A | 输出 `analytics-core` 实施方案 | 已完成 | 已新增 `analytics-core实施方案.md`，并补充方案 B 物理分表、原生 ClickHouse batch writer、入库幂等去重、tenant/project/source 映射 | 根据评审继续细化接口和表模型 |
-| P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github.com:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
+| P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github-simpletrack:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
 | P1-001 | EventBus 抽象设计 | 进行中 | 已落地 `EventEnvelope`、`EventBus`、`DirectBus`、`RedisStreamBus` 和 `KafkaBus` 包边界；已用 Redis Stack 验证 publish / consume / ack / pending=0 | 继续设计失败重试、死信队列和幂等入库边界 |
 | P1-002 | 数据管道最小闭环 | 待完成 | P1 目标已确定 | 实现 tracker -> collect -> storage -> Realtime/Events |
-| P1-003 | 产品官网 / Marketing Site / 公开站点 | 进行中 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本，远端为 `git@github.com:simpletrack/simpletrack-saas.git`；SaaS app 页面挂载已验证，marketing/docs 还未截图级验证 | 启动 Supastarter marketing/docs 验证 |
+| P1-003 | 产品官网 / Marketing Site / 公开站点 | 进行中 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本，远端为 `git@github-simpletrack:simpletrack/simpletrack-saas.git`；SaaS app 页面挂载已验证，marketing/docs 还未截图级验证 | 启动 Supastarter marketing/docs 验证 |
+| INFRA-001 | SimpleTrack GitHub SSH 与子仓库推送配置 | 已完成 | 已生成并记录 `id_ed25519_simpletrack` 专用 key 流程，`src/analytics-core` 和 `src/simpletrack-saas` 固定使用 `config_simpletrack + core.sshCommand`，父仓已提交相关 Q&A 和 AGENTS 规则 | 后续新机器按 Q&A 复现；默认 SSH config ACL 可暂不阻塞主线 |
 
 ### 状态重置规则
 
@@ -71,11 +73,14 @@
 - 初步确定 P1 范围。
 - 初步确定 Next.js 主线和成熟 SaaS 模板优先路线。
 - 确认 `analytics-core` 作为 P1 独立核心仓库建设方向。
+- `src/analytics-core` 和 `src/simpletrack-saas` 已作为独立子仓库推送，并挂载到父仓子模块。
+- SimpleTrack 专用 SSH key、`github-simpletrack` Host、`config_simpletrack` 和仓库级 `core.sshCommand` 规则已固化到 Q&A 与 `AGENTS.md`。
+- `simpletrack/README.md` 已作为 SimpleTrack 资料入口提交。
 
 正在推进：
 
-- Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建本地工作副本，并完成 Websites、Realtime、Events 组织内页面挂载；待远端仓库/权限就绪后推送。
-- `analytics-core` 模块边界、命名规范、队列抽象和依赖设计。
+- Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载；下一步验证 subscription gate、mail-preview、marketing/docs。
+- `analytics-core` 模块边界、命名规范、队列抽象和依赖设计：已完成 Redis Stream publish / consume / ack 验证，下一步进入失败重试、死信队列和幂等入库边界。
 - 企业分析控制台 UI 可改造性确认。
 - 产品官网 / Marketing Site / docs 公开站点的信息架构。
 
@@ -84,6 +89,7 @@
 1. 在 `src/simpletrack-saas` 继续 Supastarter 1 天 spike：subscription gate、邮件模板、marketing/docs 预览。
 2. 继续完善 `analytics-core` 的失败重试、死信队列和幂等入库边界。
 3. 先使用 Supastarter 的 marketing/docs app 做产品官网和 docs；效果满足就直接使用，否则轻量定制。
+4. 每次子仓库提交推送后，先提交子仓，再更新父仓 gitlink 和实施进度文档。
 
 ## 当前已确定的总方向
 
