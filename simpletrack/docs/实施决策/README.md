@@ -28,6 +28,7 @@
 | 2026-04-30 | 补齐 analytics-core 评审 Q&A：GitHub 组织、tenant/project/source、ack/重试/死信、consumer offset、acceptance status、GORM query builder 和 UI 策略 | 分析数据面、协作规范、Q&A |
 | 2026-04-30 | 确认 ClickHouse 表策略直接采用方案 B，事件写入热路径使用原生 batch writer，入库必须按 event_id 幂等去重 | analytics-core、ClickHouse、数据入库 |
 | 2026-04-30 | 本地创建 `src/analytics-core` 独立仓库骨架，并从 Supastarter 初始化 `src/simpletrack-saas` 工作副本；远端推送受 GitHub 权限或仓库创建状态阻塞 | P1 底座、SaaS 工作副本 |
+| 2026-04-30 | 在 `src/simpletrack-saas` 完成 Supastarter P1 页面草案 spike：挂载 Websites、Realtime、Events 到组织内导航并通过 saas type-check | Supastarter spike、P1 产品层 |
 
 ## 实施计划完成列表
 
@@ -41,14 +42,14 @@
 | PLAN-004 | 建立支付服务说明目录 | 已完成 | 已创建 Stripe / Polar / Lemon Squeezy 对比，并明确先按 Supastarter provider 接入 | 上线收费前补 Paddle/Creem/Dodo 和个人开发者收款检查 |
 | P0-001 | Next.js 可交互原型 | 进行中 | 原型方向已确定，需继续按生产可迁移骨架推进 | 完成 Next.js 迁移和页面验证 |
 | P0-002 | SaaS 模板选型评估 | 已完成 | 已确定先选择 Supastarter for Next.js；MakerKit 保留为 B2B 对照和备选 | 进入 Supastarter 1 天 SimpleTrack spike |
-| P0-003 | 企业分析控制台 UI 可改造性评审 | 进行中 | 本地 Supastarter 已有 SaaS app、admin、organizations、payments、settings；MakerKit 作为 B2B 对照 | 做截图级评审和 1 天 UI spike |
-| P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位和本地 spike |
+| P0-003 | 企业分析控制台 UI 可改造性评审 | 进行中 | `src/simpletrack-saas` 已能在 Supastarter `apps/saas` 组织内导航挂载 Websites、Realtime、Events 页面草案 | 做截图级评审，确认密度、表格、侧边栏和空态是否满足企业分析控制台 |
+| P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；本地工作副本已创建并通过 `pnpm --filter saas run type-check`；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位，并继续 subscription gate / mail-preview spike |
 | P0-005 | xwl_bi 分析数据面抽核方案 | 已完成 | 已确认 P1 新建独立业务无关仓库 `analytics-core`，不复用旧 Vue2 后台，不整仓改名 | 进入 P1-000 实施设计 |
 | P1-000A | 输出 `analytics-core` 实施方案 | 已完成 | 已新增 `analytics-core实施方案.md`，并补充方案 B 物理分表、原生 ClickHouse batch writer、入库幂等去重、tenant/project/source 映射 | 根据评审继续细化接口和表模型 |
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 进行中 | 本地 `src/analytics-core` 已初始化为独立 Git 仓库并提交最小 Go module；远端 `simpletrack/analytics-core` 推送被当前 SSH 身份权限阻塞 | 修复 GitHub 写权限后推送远端，并在父仓提交 gitlink |
 | P1-001 | EventBus 抽象设计 | 进行中 | 已落地 `EventEnvelope`、`EventBus`、`DirectBus`、`RedisStreamBus` 编译实现和 `KafkaBus` 包边界；`go test ./...` 通过 | 接入真实 Redis Stack 容器做 publish / consume / ack 验证 |
 | P1-002 | 数据管道最小闭环 | 待完成 | P1 目标已确定 | 实现 tracker -> collect -> storage -> Realtime/Events |
-| P1-003 | 产品官网 / Marketing Site / 公开站点 | 进行中 | 已从 `template-src/ai-supastarter-template` 初始化本地 `src/simpletrack-saas` 工作副本；模板源保持不直接修改 | 创建或授权 `simpletrack/simpletrack-saas` 远端后推送，并启动 Supastarter marketing/docs/saas 验证 |
+| P1-003 | 产品官网 / Marketing Site / 公开站点 | 进行中 | 已从 `template-src/ai-supastarter-template` 初始化本地 `src/simpletrack-saas` 工作副本；SaaS app 页面挂载已验证，marketing/docs 还未截图级验证 | 创建或授权 `simpletrack/simpletrack-saas` 远端后推送，并启动 Supastarter marketing/docs 验证 |
 
 ### 状态重置规则
 
@@ -71,7 +72,7 @@
 
 正在推进：
 
-- Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建本地工作副本，待远端仓库/权限就绪后继续提交和验证。
+- Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建本地工作副本，并完成 Websites、Realtime、Events 组织内页面挂载；待远端仓库/权限就绪后推送。
 - `analytics-core` 模块边界、命名规范、队列抽象和依赖设计。
 - 企业分析控制台 UI 可改造性确认。
 - 产品官网 / Marketing Site / docs 公开站点的信息架构。
@@ -80,7 +81,7 @@
 
 1. 修复 GitHub 权限或创建远端仓库：`simpletrack/analytics-core`、`simpletrack/simpletrack-saas`。
 2. 推送 `src/analytics-core` 和 `src/simpletrack-saas` 后，在父仓提交两个子仓库 gitlink。
-3. 在 `src/simpletrack-saas` 继续 Supastarter 1 天 spike：Website、Realtime、Events、subscription gate、邮件模板。
+3. 在 `src/simpletrack-saas` 继续 Supastarter 1 天 spike：subscription gate、邮件模板、marketing/docs 预览。
 4. 用 Redis Stack 容器验证 `analytics-core` 的 RedisStreamBus publish / consume / ack。
 5. 先使用 Supastarter 的 marketing/docs app 做产品官网和 docs；效果满足就直接使用，否则轻量定制。
 
