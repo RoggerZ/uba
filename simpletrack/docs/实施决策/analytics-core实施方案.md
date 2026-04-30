@@ -55,6 +55,7 @@ P1 先落地最小可用链路：
 | sinker 已有完整 ETL 链路 | `cmd/sinker/internal/runner/report_handler.go:139` 描述 context extraction、geo enrich、metric parse、ensure columns、metadata、status、metric batch | 可作为 ingestion pipeline 参考，但要拆小接口 |
 | realtime 链路轻量 | `cmd/sinker/internal/runner/realtime_handler.go:12` 说明不做动态补列和复杂校验，只快速入批并 ack | 可作为 P1 Realtime 写入路径参考 |
 | ClickHouse 初始化仍有旧表语义 | `cmd/init_app/ck/init.go:30`、`70` 创建 acceptance status 和 realtime warehousing 表，包含 `xwl_kafka_offset` | P1 可保留 status/realtime 思路，但表名字段要重命名 |
+| HTTP 入口分裂且上报路由依赖偏旧 | `router/index.go` 使用 Fiber 做后台控制面；`cmd/report_server/runtime.go` 使用 fasthttp + `buaazp/fasthttprouter` 做上报入口；`go.mod` 中 `fasthttprouter` 为 v0.1.1 | 参考 xwl_bi 的 fasthttp collect 启动装配和中间件编排；`analytics-core` P1 采用 fasthttp，但不复用低活跃的 `fasthttprouter` |
 
 ## code-review 风险结论
 
@@ -78,6 +79,7 @@ P1 先落地最小可用链路：
 | ClickHouse 事件写入 | 高吞吐写入优先用 `clickhouse-go/v2` 原生 batch writer | GORM 支持 `CreateInBatches`，但事件明细是写入热路径；xwl_bi 既有调优经验也指向原生批量插入更适合高频 ClickHouse 写入 |
 | Redis | P1 使用 `redis/redis-stack:latest` 容器镜像 | Redis Stack 方便本地开发和后续扩展，P1 先用 Redis Stream 承接轻量事件队列 |
 | Kafka | 保留 `KafkaBus` | Kafka 仍是高吞吐事件流路线，但不是 P1 必选运行依赖 |
+| HTTP API | 使用活跃维护的 fasthttp，不沿用 xwl_bi 的 `buaazp/fasthttprouter` 路由层 | fasthttp 本体更新活跃，适合事件上报热路径；xwl_bi 的 `fasthttprouter` 依赖活跃度低。fasthttp 只放在 HTTP 适配层，不进入 `collect.Handler` |
 
 GORM 参考：
 
@@ -318,7 +320,8 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 - 定义 event name、source id、timestamp、distinct id、properties 校验规则。
 - 不提供 xwl_bi legacy 字段兼容。xwl_bi 后续迁移时应改为写入新协议。
 - 当前已落地 `collect.Normalize`，负责把 collect 请求标准化为 `EventEnvelope`，并校验事件 ID、租户、项目、数据源、事件名、用户标识和时间戳。
-- 当前已落地 `collect.Handler`，负责调用 `Normalize` 并把标准化后的事件发布到 `EventBus`；真实 HTTP collect API 后续只做协议适配，不重复实现校验和发布逻辑。
+- 当前已落地 `collect.Handler`，负责调用 `Normalize` 并把标准化后的事件发布到 `EventBus`；HTTP collect API 只做协议适配，不重复实现校验和发布逻辑。
+- 当前已落地 fasthttp `POST /collect` 入口，负责 JSON 解码、HTTP 状态码和响应格式；`collect.Handler` 继续保持框架无关。
 
 验收：
 
@@ -434,6 +437,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | P1 运行依赖 | Redis Stream + MySQL + ClickHouse 可跑通；Kafka 非必选 |
 | Kafka 保留 | `KafkaBus` 接口和 adapter 边界存在，不删除高吞吐路线 |
 | 事件协议 | 标准字段清楚，不提供 xwl_bi legacy 字段兼容 |
+| HTTP collect API | 使用 fasthttp 作为事件上报热路径 HTTP 库，fasthttp 只做协议适配，核心校验和发布逻辑仍由 `collect.Handler` 承接 |
 | Redis Stream 消费 | pending 优先重试，写入成功才 ack，超过 `MaxAttempts` 后进入死信队列 |
 | 表策略 | P1 采用按 project/source 物理分表的方案 B，但上层仍只面对统一 `events` 逻辑模型 |
 | ClickHouse 写入 | 事件明细高吞吐写入默认使用原生 batch writer，并建立与 GORM `CreateInBatches` 的压测对照 |

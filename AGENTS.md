@@ -32,7 +32,7 @@
 - `analytics-core` 的实施方案维护在 `simpletrack/docs/实施决策/analytics-core实施方案.md`；每次修改其模块边界、EventBus、命名映射、存储模型或验收标准时，必须同步更新实施决策 README 的修订记录和实施计划完成列表。
 - `analytics-core` 和 SimpleTrack 分析产品参考采用“双参考”：Umami 用于分析对象体系、事件语义、Realtime/Events/Funnels/Journeys/Retention/Segments 边界；Litlyx 用于短接入链路、Raw Events 验收、Product 空态/示例态/真实态和 Show test data 教育方式。
 - `analytics-core` 的 P1-001 EventBus 抽象已完成：Redis Stream 采用 pending 优先重试，写入成功后 ack，超过 `MaxAttempts` 进入死信队列；下一步主线是 P1-002 的 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环。
-- `analytics-core` 的 P1-002 已启动：collect 请求标准化、`collect.Handler`、storage `EventWriter` 接口和 ClickHouse `TableRouter` 已落地；下一步不要绕开这些契约，真实 HTTP collect API、ClickHouse batch writer 和 Realtime/Events 查询都必须复用它们。
+- `analytics-core` 的 P1-002 已启动：collect 请求标准化、`collect.Handler`、fasthttp `POST /collect`、storage `EventWriter` 接口和 ClickHouse `TableRouter` 已落地；下一步不要绕开这些契约，ClickHouse batch writer 和 Realtime/Events 查询都必须复用它们。
 - `src/simpletrack-saas` 在 Windows 下验证 Supastarter 时使用 Node 24.1.0 或其他满足 Prisma 要求的版本（Node 20.19+、22.12+、24.0+）；Node 22.10.0 会导致 Prisma preinstall 失败。
 - `src/simpletrack-saas` 如果 npm/pnpm 网络失败，优先设置 `HTTP_PROXY`、`HTTPS_PROXY`、`npm_config_proxy`、`npm_config_https_proxy` 为 `http://localhost:7897`，并设置 `npm_config_registry=https://registry.npmjs.org/`，避免落到不稳定镜像源。
 - `src/simpletrack-saas` 的 `saas` type-check 如果报 `packages/database/prisma/generated/client` 缺失，先运行 `pnpm --filter @repo/database run generate`，再重跑 type-check。
@@ -42,6 +42,7 @@
 
 ## Go 代码注释与 godoc 规范
 
+- Go HTTP 服务入口优先使用成熟第三方框架或活跃第三方 HTTP 库；只有没有合适成熟方案时才考虑标准库 `net/http` 直接作为服务入口。`analytics-core` 的事件上报热路径已确定使用活跃维护的 `github.com/valyala/fasthttp`，不使用标准库 router，也不沿用 xwl_bi 中低活跃的 `buaazp/fasthttprouter` 路由层。
 - 修改 Go 代码时必须按 Go 标准库 `$GOROOT/src` 的 godoc 质量作为唯一参照，尤其适用于 `src/analytics-core`。
 - 所有导出的函数、类型、接口、常量、变量和结构体字段必须有英文 godoc 注释，100% 覆盖；注释必须以被声明对象名称开头，例如 `// EventBus publishes validated events ...`。
 - 包级注释必须以 `Package xxx ...` 开头，说明包职责、使用场景和边界。
