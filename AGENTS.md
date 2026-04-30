@@ -32,6 +32,24 @@
 - `analytics-core` 的实施方案维护在 `simpletrack/docs/实施决策/analytics-core实施方案.md`；每次修改其模块边界、EventBus、命名映射、存储模型或验收标准时，必须同步更新实施决策 README 的修订记录和实施计划完成列表。
 - `analytics-core` 和 SimpleTrack 分析产品参考采用“双参考”：Umami 用于分析对象体系、事件语义、Realtime/Events/Funnels/Journeys/Retention/Segments 边界；Litlyx 用于短接入链路、Raw Events 验收、Product 空态/示例态/真实态和 Show test data 教育方式。
 
+## Go 代码注释与 godoc 规范
+
+- 修改 Go 代码时必须按 Go 标准库 `$GOROOT/src` 的 godoc 质量作为唯一参照，尤其适用于 `src/analytics-core`。
+- 所有导出的函数、类型、接口、常量、变量和结构体字段必须有英文 godoc 注释，100% 覆盖；注释必须以被声明对象名称开头，例如 `// EventBus publishes validated events ...`。
+- 包级注释必须以 `Package xxx ...` 开头，说明包职责、使用场景和边界。
+- 注释统一使用英文；禁止在 Go 代码注释中写中文解释。
+- godoc 注释使用标准格式：单行使用 `// Name ...`，多行可用 `/* */`，但仍需保持 godoc 可渲染、可读。
+- 句首大写；简短单句注释通常不加句号，若后续有多句说明、NOTE、WARNING 或 Example 段落，则按英文段落正常使用标点。
+- 结构体字段优先使用行末注释，例如 `TenantID string // tenant boundary key`；同类字段说明不要拆到字段上方单独成行。
+- 同一结构体内连续字段默认不留空行；只有需要表达明确语义分组时才允许空行，并在分组起始处添加英文分组注释，例如 `// Group: ingestion metadata`。
+- 非导出标识符只要业务含义、边界条件、副作用或性能特征无法让同类 Go 开发者在 3 秒内看懂，就必须补英文注释；简单常量或自解释局部变量可豁免。
+- 复杂路径必须在关键行上方或行尾补英文注释，解释为什么这样做，而不是复述代码做了什么；范围包括阶段切换、状态机、关键依赖装配、option pattern、plugin load、多层条件分支、早期 return、降级、熔断、重试、缓存回源、并发原语、goroutine、init、background task、metric 注册、反射、unsafe、cgo 和性能优化 trick。
+- 公共 API 或容易误用的函数/类型必须提供可编译的 `Example{Name}` 示例，覆盖正常路径、错误路径和常见配置场景；示例应通过 `go test` 校验，并在需要时包含期望输出。
+- 示例密度不得低于每 10 个导出标识符 1 个完整 Example；新增公共 API 时优先随代码一起补示例，而不是事后集中补。
+- 存在并发安全、性能陷阱或资源泄露风险时，godoc 首段必须使用 `NOTE:` 或 `WARNING:` 标注关键风险。
+- 注释整改应随功能修改小步完成；如果需要全库注释整改，先提交独立整改计划，避免一次性机械刷大量低价值注释。
+- Go 代码整改完成后，按可用工具执行 `go doc -all`、`golint`、`go vet`、`go test -run Example` 和 `go test ./...`；如果仓库启用 `golangci-lint`，CI 必须包含并通过 `godox`、`gomnd`、`exhaustive` 等相关检查，未通过不得合并。
+
 ## Umami 调研资产规范
 
 当修改 `simpletrack/docs/umami/` 下的文件时，交付物必须保持三层结构：
