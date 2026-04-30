@@ -1,5 +1,50 @@
 # UBA
 
+## 项目初始化和依赖安装
+
+首次拉取工作区后，先同步子模块：
+
+```powershell
+git pull --ff-only
+git submodule update --init --recursive
+```
+
+`src/simpletrack-saas` 是 SimpleTrack 的 Supastarter 工作副本。Windows 本地验证建议使用 Node 24.1.0，避免 Prisma 在 Node 22.10.0 下安装失败：
+
+```powershell
+nvm use 24.1.0
+```
+
+如果 npm / pnpm 下载依赖失败，优先使用本机代理和官方 npm registry：
+
+```powershell
+$env:HTTP_PROXY = "http://localhost:7897"
+$env:HTTPS_PROXY = "http://localhost:7897"
+$env:npm_config_proxy = "http://localhost:7897"
+$env:npm_config_https_proxy = "http://localhost:7897"
+$env:npm_config_registry = "https://registry.npmjs.org/"
+```
+
+进入 `src/simpletrack-saas` 后安装依赖：
+
+```powershell
+& "$env:USERPROFILE\AppData\Local\nvm\v24.1.0\npm.cmd" exec --yes pnpm@10.9.0 -- --config.manage-package-manager-versions=false --config.package-manager-strict=false --registry=https://registry.npmjs.org/ install --frozen-lockfile
+```
+
+如果 `saas` type-check 报 Prisma generated client 缺失，先生成 Prisma client：
+
+```powershell
+$env:DATABASE_URL = "postgresql://postgres:postgres@127.0.0.1:5432/simpletrack"
+& "$env:USERPROFILE\AppData\Local\nvm\v24.1.0\npm.cmd" exec --yes pnpm@10.9.0 -- --config.manage-package-manager-versions=false --config.package-manager-strict=false --filter @repo/database run generate
+```
+
+当前 SimpleTrack Supastarter 验证命令：
+
+```powershell
+$env:DATABASE_URL = "postgresql://postgres:postgres@127.0.0.1:5432/simpletrack"
+& "$env:USERPROFILE\AppData\Local\nvm\v24.1.0\npm.cmd" exec --yes pnpm@10.9.0 -- --config.manage-package-manager-versions=false --config.package-manager-strict=false --filter saas --filter marketing --filter docs run type-check
+```
+
 这个仓库目前是一个以产品研究和方案沉淀为主的工作区，围绕行为分析产品方向拆成两个子项目：
 
 - `simpletrack`：面向中小型 SaaS 团队的极简 Web / SaaS 行为分析方案
