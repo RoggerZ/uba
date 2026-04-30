@@ -2,7 +2,7 @@
 
 > 状态：已确定 P1 执行，模块设计持续评审  
 > 最近更新：2026-04-30  
-> 来源：基于 xwl_bi 本地代码的 analyze + code-review 梳理，并结合 Umami、Litlyx 两个参考产品的调研资产。
+> 来源：基于 xwl_bi 本地代码的 analyze + code-review 梳理，并结合 Umami、Litlyx 两个参考产品的调研资产。`references/xwl_bi-backend/` 主要作为后端架构设计参考，不作为代码搬运来源。
 
 ## 结论
 
@@ -45,6 +45,7 @@ P1 先落地最小可用链路：
 | 发现 | 证据 | 判断 |
 | --- | --- | --- |
 | xwl_bi 已经是分析型 Go 服务 | `C:/Users/admin/Documents/src/xwl_bi/go.mod:1` module 为 `github.com/1340691923/xwl_bi`，依赖 ClickHouse、Sarama Kafka、MySQL、Redis、Fiber | 技术栈适合作为抽取来源，但命名和模块边界需要重构 |
+| 本地参考快照已进入父仓 | `references/xwl_bi-backend/` 保留后端源码和关键文档，不包含旧 Vue2 前端、日志和二进制 | 主要参考模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分，不直接照搬旧业务代码 |
 | 启动层强绑定 Kafka、Redis、MySQL、ClickHouse | `cmd/report_server/main.go:58` 到 `63` 初始化 Kafka sync/async producer、Redis、MySQL、ClickHouse | 需要把全局初始化改成依赖注入或 adapter 装配 |
 | 采集入口已经有较清晰 orchestration | `controller/report_ingress_handler.go:47` 到 `49` 描述 Resolve -> Build -> SendReportData 流程 | 可作为 `collect` 接口和 handler 的抽取参考 |
 | 请求解码仍绑定旧字段 | `controller/report_request_decoder.go:70` 读取 `xwl_distinct_id`、`xwl_ip`、`xwl_part_date` | 需要定义新事件协议；旧字段只作为抽取参考，不做 legacy 兼容 |
