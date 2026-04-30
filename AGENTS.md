@@ -53,10 +53,16 @@
 - 同一结构体内连续字段默认不留空行；只有需要表达明确语义分组时才允许空行，并在分组起始处添加英文分组注释，例如 `// Group: ingestion metadata`。
 - 非导出标识符只要业务含义、边界条件、副作用或性能特征无法让同类 Go 开发者在 3 秒内看懂，就必须补英文注释；简单常量或自解释局部变量可豁免。
 - 复杂路径必须在关键行上方或行尾补英文注释，解释为什么这样做，而不是复述代码做了什么；范围包括阶段切换、状态机、关键依赖装配、option pattern、plugin load、多层条件分支、早期 return、降级、熔断、重试、缓存回源、并发原语、goroutine、init、background task、metric 注册、反射、unsafe、cgo 和性能优化 trick。
+- 注释强度必须随架构风险提高：HTTP/队列/存储/查询/幂等/重试/ack/死信/批量写入/动态表路由等边界代码，至少要在包注释、核心类型注释和核心函数注释中说明职责、不负责什么、为什么依赖只能停留在当前层。
+- 框架适配层必须写清楚边界：例如 `httpapi` 可以认识 `fasthttp.RequestCtx`，但 `collect.Handler`、`EventBus`、`ingestion`、`storage` 不应接收 HTTP 框架对象；注释中优先使用“framework coupling”“boundary crossing”等明确表述，避免使用容易误解的“pollution”。
+- 核心处理器必须说明输入、输出、副作用和错误分类。例如 collect handler 要写明输入是 `collect.Request`，输出是 `EventEnvelope`，副作用是发布到 `EventBus`，validation error 与 publish error 的语义不同。
+- 新增 HTTP/队列/存储入口时，必须同时补齐：包级边界注释、核心构造函数注释、主处理函数注释、至少一个可编译 Example，以及覆盖正常路径和关键错误路径的测试。
+- 禁止为了满足注释数量写低价值注释，例如“set status code”“return error”这类复述代码的注释；注释应解释命名无法承载的边界、原因、约束、风险和长期维护意图。
 - 公共 API 或容易误用的函数/类型必须提供可编译的 `Example{Name}` 示例，覆盖正常路径、错误路径和常见配置场景；示例应通过 `go test` 校验，并在需要时包含期望输出。
 - 示例密度不得低于每 10 个导出标识符 1 个完整 Example；新增公共 API 时优先随代码一起补示例，而不是事后集中补。
 - 存在并发安全、性能陷阱或资源泄露风险时，godoc 首段必须使用 `NOTE:` 或 `WARNING:` 标注关键风险。
 - 注释整改应随功能修改小步完成；如果需要全库注释整改，先提交独立整改计划，避免一次性机械刷大量低价值注释。
+- 上述注释规范是强制性的，不是建议。凡是新增或修改架构边界、框架适配层、核心处理器、队列、存储、查询、幂等、重试、ack、死信、批量写入、动态表路由等代码，如果缺少对应边界注释、核心类型/函数 godoc、关键路径说明和必要 Example，任务视为未完成，不得提交或宣称完成。
 - Go 代码整改完成后，按可用工具执行 `go doc -all`、`golint`、`go vet`、`go test -run Example` 和 `go test ./...`；如果仓库启用 `golangci-lint`，CI 必须包含并通过 `godox`、`gomnd`、`exhaustive` 等相关检查，未通过不得合并。
 
 ## Umami 调研资产规范
