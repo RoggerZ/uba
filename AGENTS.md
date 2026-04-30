@@ -32,7 +32,7 @@
 - `analytics-core` 的实施方案维护在 `simpletrack/docs/实施决策/analytics-core实施方案.md`；每次修改其模块边界、EventBus、命名映射、存储模型或验收标准时，必须同步更新实施决策 README 的修订记录和实施计划完成列表。
 - `analytics-core` 和 SimpleTrack 分析产品参考采用“双参考”：Umami 用于分析对象体系、事件语义、Realtime/Events/Funnels/Journeys/Retention/Segments 边界；Litlyx 用于短接入链路、Raw Events 验收、Product 空态/示例态/真实态和 Show test data 教育方式。
 - `analytics-core` 的 P1-001 EventBus 抽象已完成：Redis Stream 采用 pending 优先重试，写入成功后 ack，超过 `MaxAttempts` 进入死信队列；下一步主线是 P1-002 的 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环。
-- `analytics-core` 的 P1-002 已启动：collect 请求标准化、`collect.Handler`、fasthttp `POST /collect`、storage `EventWriter` 接口和 ClickHouse `TableRouter` 已落地；下一步不要绕开这些契约，ClickHouse batch writer 和 Realtime/Events 查询都必须复用它们。
+- `analytics-core` 的 P1-002 已启动：collect 请求标准化、`collect.Handler`、fasthttp `POST /collect`、storage `EventWriter` 接口、ClickHouse `TableRouter` 和 native batch `BatchWriter` 已落地；下一步不要绕开这些契约，真实 `EventWriteGuard` status/checkpoint 存储和 Realtime/Events 查询都必须复用它们。
 - `src/simpletrack-saas` 在 Windows 下验证 Supastarter 时使用 Node 24.1.0 或其他满足 Prisma 要求的版本（Node 20.19+、22.12+、24.0+）；Node 22.10.0 会导致 Prisma preinstall 失败。
 - `src/simpletrack-saas` 如果 npm/pnpm 网络失败，优先设置 `HTTP_PROXY`、`HTTPS_PROXY`、`npm_config_proxy`、`npm_config_https_proxy` 为 `http://localhost:7897`，并设置 `npm_config_registry=https://registry.npmjs.org/`，避免落到不稳定镜像源。
 - `src/simpletrack-saas` 的 `saas` type-check 如果报 `packages/database/prisma/generated/client` 缺失，先运行 `pnpm --filter @repo/database run generate`，再重跑 type-check。
@@ -45,11 +45,13 @@
 - Go HTTP 服务入口优先使用成熟第三方框架或活跃第三方 HTTP 库；只有没有合适成熟方案时才考虑标准库 `net/http` 直接作为服务入口。`analytics-core` 的事件上报热路径已确定使用活跃维护的 `github.com/valyala/fasthttp`，不使用标准库 router，也不沿用 xwl_bi 中低活跃的 `buaazp/fasthttprouter` 路由层。
 - 修改 Go 代码时必须按 Go 标准库 `$GOROOT/src` 的 godoc 质量作为唯一参照，尤其适用于 `src/analytics-core`。
 - 所有导出的函数、类型、接口、常量、变量和结构体字段必须有英文 godoc 注释，100% 覆盖；注释必须以被声明对象名称开头，例如 `// EventBus publishes validated events ...`。
+- 结构体字段和接口方法/字段注释是强制项：新增或修改任何 struct/interface 时，每个字段、方法、嵌入成员都必须说明职责、输入输出语义或边界约束；即使是非导出类型，只要属于核心链路、adapter、测试假对象或容易误用的配置，也必须补英文注释。
 - 包级注释必须以 `Package xxx ...` 开头，说明包职责、使用场景和边界。
 - 注释统一使用英文；禁止在 Go 代码注释中写中文解释。
 - godoc 注释使用标准格式：单行使用 `// Name ...`，多行可用 `/* */`，但仍需保持 godoc 可渲染、可读。
 - 句首大写；简短单句注释通常不加句号，若后续有多句说明、NOTE、WARNING 或 Example 段落，则按英文段落正常使用标点。
 - 结构体字段优先使用行末注释，例如 `TenantID string // tenant boundary key`；同类字段说明不要拆到字段上方单独成行。
+- 接口方法优先在方法上一行写注释，例如 `// Publish appends one validated event to the queue.`；不要只在接口类型总注释里笼统说明后省略方法语义。
 - 同一结构体内连续字段默认不留空行；只有需要表达明确语义分组时才允许空行，并在分组起始处添加英文分组注释，例如 `// Group: ingestion metadata`。
 - 非导出标识符只要业务含义、边界条件、副作用或性能特征无法让同类 Go 开发者在 3 秒内看懂，就必须补英文注释；简单常量或自解释局部变量可豁免。
 - 复杂路径必须在关键行上方或行尾补英文注释，解释为什么这样做，而不是复述代码做了什么；范围包括阶段切换、状态机、关键依赖装配、option pattern、plugin load、多层条件分支、早期 return、降级、熔断、重试、缓存回源、并发原语、goroutine、init、background task、metric 注册、反射、unsafe、cgo 和性能优化 trick。
