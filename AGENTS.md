@@ -36,6 +36,8 @@
 - `src/simpletrack-saas` 如果 npm/pnpm 网络失败，优先设置 `HTTP_PROXY`、`HTTPS_PROXY`、`npm_config_proxy`、`npm_config_https_proxy` 为 `http://localhost:7897`，并设置 `npm_config_registry=https://registry.npmjs.org/`，避免落到不稳定镜像源。
 - `src/simpletrack-saas` 的 `saas` type-check 如果报 `packages/database/prisma/generated/client` 缺失，先运行 `pnpm --filter @repo/database run generate`，再重跑 type-check。
 - 后续遇到依赖安装、网络代理、SSH 权限、子仓库推送、构建验证、数据库连接等卡壳问题时，不要把排障细节继续写进 README；统一记录到 `docs/开发环境卡壳问题记录.md`，README 只保留初始化和常用命令入口。
+- `references/xwl_bi-backend/` 是从本地 `xwl_bi` 复制进来的只读临时参考快照，仅用于 `analytics-core` 实现对照；不要把它当作活跃模块开发，也不要在其中直接实现新功能。
+- 如需刷新 `references/xwl_bi-backend/`，必须按“重新快照”的方式整体替换，并在 `references/xwl_bi-backend/README.md` 与实施决策文档中记录新的来源 commit。
 
 ## Go 代码注释与 godoc 规范
 

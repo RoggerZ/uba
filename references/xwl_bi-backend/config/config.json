@@ -1,0 +1,162 @@
+{
+  "manager": {
+    "port": 8090,
+    "jwtSecret": "1340691923@qq.com",
+    "deBug": true
+  },
+  "report": {
+    "reportPort":8091,
+    "readTimeout":20,
+    "writeTimeout":20,
+    "maxConnsPerIP":100000,
+    "maxRequestsPerConn":100000,
+    "idleTimeout":20,
+    "skipSigned":"report-tools-bypass",
+    "signaturePathPrefix":"/api/v3/reporter",
+    "userAgentBanList":["mpcrawler"]
+  },
+  "sinker": {
+    "reportAcceptStatus":{
+      "bufferSize": 999,
+      "flushInterval": 2
+    },
+    "reportData2CK":{
+      "bufferSize": 1000,
+      "flushInterval": 2
+    },
+    "realTimeWarehousing":{
+      "bufferSize": 1000,
+      "flushInterval": 2
+    },
+    "reportConsumerPool": {
+      "minWorkers": 0,
+      "maxWorkers": 0,
+      "queueSize": 0,
+      "tuneIntervalSeconds": 0,
+      "drainTimeoutSeconds": 0
+    },
+    "reportPersistPool": {
+      "minWorkers": 0,
+      "maxWorkers": 0,
+      "queueSize": 0,
+      "tuneIntervalSeconds": 0,
+      "drainTimeoutSeconds": 0
+    },
+    "adminHttpHost": "127.0.0.1",
+    "adminHttpPort": 8094,
+    "adminToken": "",
+    "diagnosticDefaultTTLSeconds": 180,
+    "diagnosticMaxTTLSeconds": 3600,
+    "reportConsumerDirectExec": false,
+    "protection": {
+      "enabled": true,
+      "observeOnly": false,
+      "sampleIntervalSeconds": 5,
+      "normalRateLogIntervalSeconds": 180,
+      "defaultDiagnosticRateLogIntervalSeconds": 5,
+      "recoveryHealthyWindows": 3,
+      "hardEscalationWindows": 3,
+      "softTargetRatePerSecond": 1000,
+      "softMinHoldSeconds": 60,
+      "hardMinHoldSeconds": 120,
+      "maxAdaptiveHoldSeconds": 600,
+      "softThresholds": {
+        "orderedCommitPendingCount": 20000,
+        "gateInFlightMessages": 20000,
+        "gateWaitingTasks": 40000,
+        "workerQueueUsagePermille": 500,
+        "workerBusyPermille": 900,
+        "heapAllocBytes": 1073741824,
+        "goroutines": 2000,
+        "slowReportHandlerSamples": 50,
+        "persistenceErrors": 3,
+        "dbConsecutiveFailures": 3
+      },
+      "hardThresholds": {
+        "orderedCommitPendingCount": 100000,
+        "gateInFlightMessages": 100000,
+        "gateWaitingTasks": 200000,
+        "workerQueueUsagePermille": 800,
+        "workerBusyPermille": 900,
+        "heapAllocBytes": 2147483648,
+        "goroutines": 4000,
+        "slowReportHandlerSamples": 50,
+        "persistenceErrors": 10,
+        "dbConsecutiveFailures": 3
+      },
+      "mock": {
+        "preset": "",
+        "enabled": false,
+        "reportLag": 2500000,
+        "reportSpeedPerSecond": 0,
+        "realTimeLag": 500000,
+        "realTimeSpeedPerSecond": 0,
+        "pipelinePending": 120000,
+        "gateInFlight": 110000,
+        "gateWaitingTasks": 220000,
+        "reportConsumerQueueUsagePermille": 850,
+        "reportConsumerBusyPermille": 950,
+        "reportPersistQueueUsagePermille": 700,
+        "reportPersistBusyPermille": 900,
+        "heapAllocBytes": 2147483648,
+        "goroutines": 4500,
+        "persistenceErrorCount": 12,
+        "mysqlStatus": "degraded",
+        "mysqlConsecutiveFailures": 5
+      }
+    },
+    "pprofHttpPort": 8093
+  },
+  "comm": {
+    "log": {
+      "storageDays":4,
+      "logDir":"logs",
+      "level":"debug"
+    },
+    "mysql": {
+      "username":"root",
+      "pwd":"123456",
+      "ip":"192.168.1.236",
+      "port":"3306",
+      "dbName":"lyn_bi",
+      "maxOpenConns":10,
+      "maxIdleConns":10,
+      "healthCheck": {
+        "enabled": true,
+        "pingIntervalSeconds": 10,
+        "failuresBeforeDegraded": 3
+      }
+    },
+    "clickhouse": {
+      "username":"default",
+      "pwd":"EtHnvllx",
+      "ip":"192.168.1.236",
+      "port":"9000",
+      "dbName":"default",
+      "clusterName":"perftest_3shards_1replicas",
+      "macrosShardKeyName":"share",
+      "macrosReplicaKeyName":"replica",
+      "maxQuerySize":1048576,
+      "maxOpenConns":100,
+      "maxIdleConns":1000
+    },
+    "kafka": {
+      "addresses":["192.168.1.236:9092"],
+      "username":"",
+      "password":"",
+      "numPartitions":300,
+      "debugDataTopicName": "debugDataTopicName",
+      "debugDataGroup": "debugDataGroup",
+      "reportTopicName": "test005",
+      "reportData2CKGroup": "reportData2CKGroup2",
+      "realTimeDataGroup": "realTimeDataGroup2"
+    },
+    "redis": {
+      "addr":"192.168.1.236:6379",
+      "passwd":"",
+      "db": 7,
+      "maxIdle": 300,
+      "maxActive": 0
+    }
+  }
+}
