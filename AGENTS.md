@@ -56,6 +56,10 @@
 
 ## GitHub SSH 仓库权限
 
+- 如果新机器或新环境缺少 `id_ed25519_simpletrack`，先生成专用 key、把公钥添加到 GitHub 对应账号或组织授权，再验证 `github-simpletrack`：
+  - `ssh-keygen -t ed25519 -C "simpletrack" -f "$env:USERPROFILE\.ssh\id_ed25519_simpletrack"`
+  - `Get-Content "$env:USERPROFILE\.ssh\id_ed25519_simpletrack.pub"`
+  - `ssh -T git@github-simpletrack`
 - `src/analytics-core` 和 `src/simpletrack-saas` 是独立子仓库，推送到 `simpletrack` GitHub 组织时必须使用专用 SSH 配置：
   - `git -C "C:\Users\admin\Documents\src\uba\src\analytics-core" config core.sshCommand "ssh -F C:/Users/admin/.ssh/config_simpletrack"`
   - `git -C "C:\Users\admin\Documents\src\uba\src\simpletrack-saas" config core.sshCommand "ssh -F C:/Users/admin/.ssh/config_simpletrack"`

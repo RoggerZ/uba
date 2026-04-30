@@ -13,6 +13,57 @@ Bad owner or permissions on C:\Users\admin/.ssh/config
 
 这说明默认 SSH 配置文件被 `CodexSandboxUsers` 或其他宽泛用户组授予了权限，OpenSSH 认为这个文件可能被其他用户修改，所以拒绝使用。
 
+## Q：第一次配置 `simpletrack` 专用 SSH key 应该怎么做？
+
+A：先生成一个只给 SimpleTrack / `simpletrack` GitHub 组织使用的 SSH key：
+
+```powershell
+ssh-keygen -t ed25519 -C "simpletrack" -f "$env:USERPROFILE\.ssh\id_ed25519_simpletrack"
+```
+
+然后读取公钥：
+
+```powershell
+Get-Content "$env:USERPROFILE\.ssh\id_ed25519_simpletrack.pub"
+```
+
+把输出的整行 `ssh-ed25519 ... simpletrack` 添加到 GitHub：
+
+- 如果使用个人账号 `RoggerZ` 推送：添加到 GitHub 个人账号的 `Settings -> SSH and GPG keys`。
+- 如果后续使用专门的组织/机器身份：添加到对应账号的 `Settings -> SSH and GPG keys`，或者按 GitHub 仓库策略配置 deploy key。
+
+注意只提交公钥，不要提交或复制私钥 `id_ed25519_simpletrack`。
+
+## Q：专用 SSH Host 应该怎么写？
+
+A：在 `C:\Users\admin\.ssh\config_simpletrack` 中维护 Host 别名：
+
+```sshconfig
+Host github-simpletrack
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519_simpletrack
+  IdentitiesOnly yes
+```
+
+写好后先验证：
+
+```powershell
+ssh -T git@github-simpletrack
+```
+
+如果默认 `C:\Users\admin\.ssh\config` 权限异常导致这个命令仍然读取失败，可以直接指定配置文件验证：
+
+```powershell
+ssh -F C:/Users/admin/.ssh/config_simpletrack -T git@github-simpletrack
+```
+
+成功时会看到类似：
+
+```text
+Hi RoggerZ! You've successfully authenticated, but GitHub does not provide shell access.
+```
+
 ## Q：当前 SimpleTrack 仓库实际用哪套 SSH 配置？
 
 A：当前推荐继续使用独立配置文件：
