@@ -32,7 +32,7 @@
 - `analytics-core` 的实施方案维护在 `simpletrack/docs/实施决策/analytics-core实施方案.md`；每次修改其模块边界、EventBus、命名映射、存储模型或验收标准时，必须同步更新实施决策 README 的修订记录和实施计划完成列表。
 - `analytics-core` 和 SimpleTrack 分析产品参考采用“双参考”：Umami 用于分析对象体系、事件语义、Realtime/Events/Funnels/Journeys/Retention/Segments 边界；Litlyx 用于短接入链路、Raw Events 验收、Product 空态/示例态/真实态和 Show test data 教育方式。
 - `analytics-core` 的 P1-001 EventBus 抽象已完成：Redis Stream 采用 pending 优先重试，写入成功后 ack，超过 `MaxAttempts` 进入死信队列；下一步主线是 P1-002 的 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环。
-- `analytics-core` 的 P1-002 已启动：collect 请求标准化、`collect.Handler`、fasthttp `POST /collect`、storage `EventWriter` 接口、ClickHouse `TableRouter` 和 native batch `BatchWriter` 已落地；下一步不要绕开这些契约，真实 `EventWriteGuard` status/checkpoint 存储和 Realtime/Events 查询都必须复用它们。
+- `analytics-core` 的 P1-002 已启动：collect 请求标准化、`collect.Handler`、fasthttp `POST /collect`、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter` 和 GORM/MySQL `IngestionStatusGuard` 已落地；下一步不要绕开这些契约，Realtime/Events 查询和后续 worker 装配都必须复用它们。
 - `src/simpletrack-saas` 在 Windows 下验证 Supastarter 时使用 Node 24.1.0 或其他满足 Prisma 要求的版本（Node 20.19+、22.12+、24.0+）；Node 22.10.0 会导致 Prisma preinstall 失败。
 - `src/simpletrack-saas` 如果 npm/pnpm 网络失败，优先设置 `HTTP_PROXY`、`HTTPS_PROXY`、`npm_config_proxy`、`npm_config_https_proxy` 为 `http://localhost:7897`，并设置 `npm_config_registry=https://registry.npmjs.org/`，避免落到不稳定镜像源。
 - `src/simpletrack-saas` 的 `saas` type-check 如果报 `packages/database/prisma/generated/client` 缺失，先运行 `pnpm --filter @repo/database run generate`，再重跑 type-check。
@@ -55,6 +55,10 @@
 - 同一结构体内连续字段默认不留空行；只有需要表达明确语义分组时才允许空行，并在分组起始处添加英文分组注释，例如 `// Group: ingestion metadata`。
 - 非导出标识符只要业务含义、边界条件、副作用或性能特征无法让同类 Go 开发者在 3 秒内看懂，就必须补英文注释；简单常量或自解释局部变量可豁免。
 - 复杂路径必须在关键行上方或行尾补英文注释，解释为什么这样做，而不是复述代码做了什么；范围包括阶段切换、状态机、关键依赖装配、option pattern、plugin load、多层条件分支、早期 return、降级、熔断、重试、缓存回源、并发原语、goroutine、init、background task、metric 注册、反射、unsafe、cgo 和性能优化 trick。
+- 函数体内部注释是强制项：凡是函数体超过约 10 行、包含外部副作用、状态变更、数据库/队列/网络调用、事务/幂等/重试/回滚/ack/死信、动态 SQL/动态表、并发或多分支错误处理，必须在每个关键阶段前写英文注释，说明该阶段的意图、边界和失败语义；简单 getter、纯校验小函数和自解释 one-liner 可豁免。
+- 核心链路函数即使不足 10 行也必须写函数体阶段注释，范围包括 collect、ingestion、EventBus、Redis Stream、Kafka、ClickHouse、MySQL/GORM、TableRouter、query builder、worker、checkpoint、幂等、死信队列和动态分表路由。
+- 函数体注释必须按“阶段”而不是“逐行复述”组织，例如先说明 request normalization / validation，再说明 claim / idempotency，再说明 durable append / batch insert，再说明 commit / rollback / ack / dead-letter；禁止用低价值注释凑数量。
+- 函数体注释验收按逻辑块检查：一个非平凡函数如果同时存在输入整理、依赖调用、状态写入、错误分类、回滚或提交等多个逻辑块，却没有在每个逻辑块前写清意图和失败语义，视为注释不合格，不得提交或宣称完成。
 - 注释强度必须随架构风险提高：HTTP/队列/存储/查询/幂等/重试/ack/死信/批量写入/动态表路由等边界代码，至少要在包注释、核心类型注释和核心函数注释中说明职责、不负责什么、为什么依赖只能停留在当前层。
 - 框架适配层必须写清楚边界：例如 `httpapi` 可以认识 `fasthttp.RequestCtx`，但 `collect.Handler`、`EventBus`、`ingestion`、`storage` 不应接收 HTTP 框架对象；注释中优先使用“framework coupling”“boundary crossing”等明确表述，避免使用容易误解的“pollution”。
 - 核心处理器必须说明输入、输出、副作用和错误分类。例如 collect handler 要写明输入是 `collect.Request`，输出是 `EventEnvelope`，副作用是发布到 `EventBus`，validation error 与 publish error 的语义不同。
@@ -64,7 +68,7 @@
 - 示例密度不得低于每 10 个导出标识符 1 个完整 Example；新增公共 API 时优先随代码一起补示例，而不是事后集中补。
 - 存在并发安全、性能陷阱或资源泄露风险时，godoc 首段必须使用 `NOTE:` 或 `WARNING:` 标注关键风险。
 - 注释整改应随功能修改小步完成；如果需要全库注释整改，先提交独立整改计划，避免一次性机械刷大量低价值注释。
-- 上述注释规范是强制性的，不是建议。凡是新增或修改架构边界、框架适配层、核心处理器、队列、存储、查询、幂等、重试、ack、死信、批量写入、动态表路由等代码，如果缺少对应边界注释、核心类型/函数 godoc、关键路径说明和必要 Example，任务视为未完成，不得提交或宣称完成。
+- 上述注释规范是强制性的，不是建议。凡是新增或修改架构边界、框架适配层、核心处理器、队列、存储、查询、幂等、重试、ack、死信、批量写入、动态表路由等代码，如果缺少对应边界注释、核心类型/函数 godoc、结构体字段注释、接口方法注释、函数体关键阶段注释和必要 Example，任务视为未完成，不得提交或宣称完成。
 - Go 代码整改完成后，按可用工具执行 `go doc -all`、`golint`、`go vet`、`go test -run Example` 和 `go test ./...`；如果仓库启用 `golangci-lint`，CI 必须包含并通过 `godox`、`gomnd`、`exhaustive` 等相关检查，未通过不得合并。
 
 ## Umami 调研资产规范

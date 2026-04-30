@@ -95,7 +95,7 @@ GORM 参考：
 写入策略：
 
 - `EventQueryBuilder`：负责生成 ClickHouse 查询 SQL，底层使用 GORM Raw / SQL Builder / Scopes。
-- `EventWriter`：负责 ClickHouse 事件明细写入，P1 默认使用 `clickhouse-go/v2 PrepareBatch`；当前已落地 native batch `BatchWriter` 和 `EventWriteGuard` 幂等接口边界。
+- `EventWriter`：负责 ClickHouse 事件明细写入，P1 默认使用 `clickhouse-go/v2 PrepareBatch`；当前已落地 native batch `BatchWriter`、`EventWriteGuard` 幂等接口边界和 GORM/MySQL `IngestionStatusGuard`。
 - `EventWriter` 后续必须保留压测口径，对比 GORM `CreateInBatches`、`clickhouse-go/v2 PrepareBatch` 和必要时的 `ch-go`。
 - 不在 handler 或 analysis 模块里直接散落原生 SQL；即使用原生 batch writer，也必须藏在 ClickHouse storage adapter 内。
 
@@ -356,9 +356,10 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 - 建立按 `tenant_id / project_id / source_id` 路由的事件物理表、实时事件表、ingestion status 表。
 - 当前已落地 ClickHouse `TableRouter`，按 tenant / project / source 生成稳定 hash 物理表名，对上层仍暴露统一 `events` 逻辑模型。
 - 当前已落地 storage `EventWriter` 接口和 ClickHouse native batch `BatchWriter`，真实写入统一复用该边界。
+- 当前已落地 GORM/MySQL `IngestionStatusGuard` 和 `ingestion_status` 表，按 `(tenant_id, project_id, source_id, event_id)` 做 `processing / inserted / failed` 状态占用、重复跳过、失败回滚和重试再占用。
 - worker 消费队列并通过 `EventWriter` 写入 ClickHouse。
 - `EventWriter` 默认使用 `clickhouse-go/v2 PrepareBatch` 原生批量写入，GORM batch insert 只作为压测对照或低频管理写入选项。
-- 当前已预留 `EventWriteGuard` / `EventWriteClaim` 幂等接口，后续真实实现必须基于 `(tenant_id, project_id, source_id, event_id)` 做状态占用、提交和失败回滚，避免重复事件在数据库存两份。
+- worker 后续必须把 `EventWriteGuard` claim、ClickHouse `EventWriter` append、guard commit/rollback 和 Redis/Kafka ack 串成同一条可恢复链路，避免重复事件在数据库存两份。
 - 提供 Realtime 和 Raw Events 查询。
 
 验收：
@@ -441,7 +442,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | Redis Stream 消费 | pending 优先重试，写入成功才 ack，超过 `MaxAttempts` 后进入死信队列 |
 | 表策略 | P1 采用按 project/source 物理分表的方案 B，但上层仍只面对统一 `events` 逻辑模型 |
 | ClickHouse 写入 | 事件明细高吞吐写入默认使用原生 batch writer；当前已落地 `clickhouse-go/v2 PrepareBatch` 的 `BatchWriter`，后续建立与 GORM `CreateInBatches` 的压测对照 |
-| 幂等入库 | 重复消费同一 `event_id` 不会在数据库产生两份事件明细；当前已落地 `EventWriteGuard` 边界，真实 status/checkpoint 存储仍需实现 |
+| 幂等入库 | 重复消费同一 `event_id` 不会在数据库产生两份事件明细；当前已落地 `EventWriteGuard` 边界和 GORM/MySQL `IngestionStatusGuard` 真实状态守卫 |
 | Realtime | 最近事件能快速出现 |
 | Events / Raw Events | 明细事件可查，能用于接入排障 |
 | 元数据 | 事件名、事件属性、用户属性能被捕获 |
