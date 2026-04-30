@@ -437,6 +437,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | --- | --- |
 | 仓库边界 | `analytics-core` 独立存在，不带 SimpleTrack 或 xwl 命名 |
 | P1 运行依赖 | Redis Stream + MySQL + ClickHouse 可跑通；Kafka 非必选 |
+| 本地依赖 | 当前已提供 `src/analytics-core/docker-compose.yml`，包含 Redis Stack、MySQL 8.4、ClickHouse 25.3 |
 | Kafka 保留 | `KafkaBus` 接口和 adapter 边界存在，不删除高吞吐路线 |
 | 事件协议 | 标准字段清楚，不提供 xwl_bi legacy 字段兼容 |
 | HTTP collect API | 使用 fasthttp 作为事件上报热路径 HTTP 库，fasthttp 只做协议适配，核心校验和发布逻辑仍由 `collect.Handler` 承接 |
