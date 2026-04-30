@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleTrack Prototype - Create Site</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="auth-shell">
+    <section class="auth-panel">
+      <div class="wizard-card">
+        <div class="step-track">
+          <span class="step-pill">Log in</span>
+          <span class="step-pill is-active">Create site</span>
+          <span class="step-pill">Install</span>
+          <span class="step-pill">First data</span>
+        </div>
+        <p class="eyebrow">Onboarding step 1</p>
+        <h1>Create your first site</h1>
+        <p class="auth-copy">This page should stay tiny. The review goal is to verify whether SimpleTrack needs only the minimum setup fields to get customers to their first event.</p>
+        <div class="form-stack">
+          <div class="field">
+            <label for="site-name">Site name</label>
+            <input id="site-name" type="text" value="Acme marketing site" />
+          </div>
+          <div class="field">
+            <label for="domain">Primary domain</label>
+            <input id="domain" type="text" value="acme.io" />
+          </div>
+          <div class="field">
+            <label for="framework">Framework</label>
+            <select id="framework">
+              <option selected>Next.js</option>
+              <option>Nuxt</option>
+              <option>Static HTML</option>
+              <option>Custom app</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <a class="ghost-button" href="./login.html">Back</a>
+          <a class="primary-button" href="./install.html">Create site</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-preview">
+      <div class="preview-stack">
+        <div class="preview-card">
+          <h3>Review question</h3>
+          <p>Do we ask for domain and framework here, or only domain? Fewer fields mean faster activation, but weaker install guidance later.</p>
+        </div>
+        <div class="preview-card">
+          <h3>Working assumption</h3>
+          <p>Framework is worth capturing because it lets the install page show the right snippet and examples immediately.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="./script.js"></script>
+</body>
+</html>

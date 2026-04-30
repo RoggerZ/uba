@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleTrack Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <p class="brand-name">SimpleTrack</p>
+          <p class="brand-caption">Prototype review build</p>
+        </div>
+      </div>
+
+      <div class="sidebar-group">
+        <p class="sidebar-label">Traffic</p>
+        <a class="nav-item is-active" href="./index.html">Overview</a>
+        <a class="nav-item" href="./events.html">Events</a>
+        <a class="nav-item" href="./funnels.html">Funnels</a>
+      </div>
+
+      <div class="sidebar-group">
+        <p class="sidebar-label">Action</p>
+        <a class="nav-item" href="./insights.html">Insights</a>
+        <a class="nav-item" href="./team.html">Team</a>
+        <a class="nav-item" href="./settings.html">Site Settings</a>
+      </div>
+
+      <div class="sidebar-footer">
+        <p class="footer-site">acme.io</p>
+        <p class="footer-meta">weekly insight enabled</p>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="workspace-pill">
+            <span class="pill-dot"></span>
+            <span>Acme Workspace</span>
+          </div>
+          <button class="ghost-button">Switch site</button>
+        </div>
+        <div class="topbar-right">
+          <button class="ghost-button">Export</button>
+          <button class="ghost-button">Invite</button>
+          <button class="primary-button">Install snippet</button>
+        </div>
+      </header>
+
+      <section class="page-head">
+        <div>
+          <p class="eyebrow">Website analytics</p>
+          <h1>acme.io</h1>
+          <p class="page-copy">An Umami-inspired review prototype for SimpleTrack. The page stays light, but keeps enough depth to support product review before backend work begins.</p>
+        </div>
+        <div class="toolbar">
+          <button class="toolbar-button">Filter</button>
+          <div class="range-switcher">
+            <button class="range-button" data-range="24h">24h</button>
+            <button class="range-button is-active" data-range="7d">7d</button>
+            <button class="range-button" data-range="30d">30d</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel is-active">
+        <div class="metric-grid">
+          <article class="metric-card">
+            <p class="metric-label">Visitors</p>
+            <div class="metric-value-row">
+              <strong class="metric-value" data-metric="visitors">12,842</strong>
+              <span class="metric-delta is-up" data-delta="visitors">+8.4%</span>
+            </div>
+          </article>
+          <article class="metric-card">
+            <p class="metric-label">Visits</p>
+            <div class="metric-value-row">
+              <strong class="metric-value" data-metric="visits">19,511</strong>
+              <span class="metric-delta is-up" data-delta="visits">+6.1%</span>
+            </div>
+          </article>
+          <article class="metric-card">
+            <p class="metric-label">Views</p>
+            <div class="metric-value-row">
+              <strong class="metric-value" data-metric="views">51,024</strong>
+              <span class="metric-delta is-up" data-delta="views">+12.7%</span>
+            </div>
+          </article>
+          <article class="metric-card">
+            <p class="metric-label">Bounce rate</p>
+            <div class="metric-value-row">
+              <strong class="metric-value" data-metric="bounce">31%</strong>
+              <span class="metric-delta is-down" data-delta="bounce">-3.2%</span>
+            </div>
+          </article>
+          <article class="metric-card">
+            <p class="metric-label">Visit duration</p>
+            <div class="metric-value-row">
+              <strong class="metric-value" data-metric="duration">2m 42s</strong>
+              <span class="metric-delta is-up" data-delta="duration">+9.5%</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="canvas-grid">
+          <article class="canvas-card chart-card">
+            <div class="card-head">
+              <div>
+                <p class="card-kicker">Primary signal</p>
+                <h2>Traffic trend</h2>
+              </div>
+              <p class="card-note">Visitors vs. views over time</p>
+            </div>
+            <div class="chart-wrap">
+              <svg class="traffic-chart" viewBox="0 0 760 260" role="img" aria-label="Traffic chart">
+                <defs>
+                  <linearGradient id="viewsGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#0f7c5c" stop-opacity="0.28"></stop>
+                    <stop offset="100%" stop-color="#0f7c5c" stop-opacity="0"></stop>
+                  </linearGradient>
+                </defs>
+                <g class="grid-lines">
+                  <line x1="44" y1="26" x2="734" y2="26"></line>
+                  <line x1="44" y1="72" x2="734" y2="72"></line>
+                  <line x1="44" y1="118" x2="734" y2="118"></line>
+                  <line x1="44" y1="164" x2="734" y2="164"></line>
+                  <line x1="44" y1="210" x2="734" y2="210"></line>
+                </g>
+                <path class="views-area" d="M44 194 C92 176, 136 142, 182 146 S274 190, 320 172 S412 118, 458 132 S550 188, 596 166 S688 92, 734 106 L734 226 L44 226 Z"></path>
+                <path class="views-line" d="M44 194 C92 176, 136 142, 182 146 S274 190, 320 172 S412 118, 458 132 S550 188, 596 166 S688 92, 734 106"></path>
+                <path class="visitors-line" d="M44 208 C92 196, 136 164, 182 166 S274 210, 320 194 S412 146, 458 156 S550 202, 596 186 S688 122, 734 132"></path>
+                <g class="chart-labels">
+                  <text x="44" y="248">Mon</text>
+                  <text x="142" y="248">Tue</text>
+                  <text x="240" y="248">Wed</text>
+                  <text x="338" y="248">Thu</text>
+                  <text x="436" y="248">Fri</text>
+                  <text x="534" y="248">Sat</text>
+                  <text x="632" y="248">Sun</text>
+                </g>
+              </svg>
+              <div class="chart-legend">
+                <span><i class="legend-dot is-solid"></i> Views</span>
+                <span><i class="legend-dot is-outline"></i> Visitors</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="canvas-card">
+            <div class="card-head">
+              <div>
+                <p class="card-kicker">Immediate read</p>
+                <h2>Weekly insight</h2>
+              </div>
+              <p class="card-note">This is the SimpleTrack-specific value layer.</p>
+            </div>
+            <div class="insight-stack">
+              <div class="insight-badge">Auto insight</div>
+              <p class="insight-title">Trial signup traffic improved, but onboarding completion still leaks too hard.</p>
+              <ul class="insight-list">
+                <li>Paid search traffic to `/pricing` increased 18% this week.</li>
+                <li>The biggest drop remains `signup -> install snippet` at 46% loss.</li>
+                <li>Recommended next move: shorten the install step and add product-specific examples by framework.</li>
+              </ul>
+            </div>
+          </article>
+        </div>
+
+        <div class="detail-grid">
+          <article class="canvas-card">
+            <div class="card-head">
+              <h2>Pages</h2>
+              <p class="card-note">Where traffic actually lands</p>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Path</th>
+                  <th>Views</th>
+                  <th>Visitors</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>/pricing</td>
+                  <td>12,420</td>
+                  <td>7,184</td>
+                </tr>
+                <tr>
+                  <td>/docs/install</td>
+                  <td>8,910</td>
+                  <td>5,231</td>
+                </tr>
+                <tr>
+                  <td>/blog/why-simpletrack</td>
+                  <td>6,109</td>
+                  <td>4,814</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="canvas-card">
+            <div class="card-head">
+              <h2>Sources</h2>
+              <p class="card-note">Channels you can act on</p>
+            </div>
+            <div class="rank-list">
+              <div class="rank-row"><span>Direct</span><strong>31%</strong></div>
+              <div class="rank-row"><span>Google Search</span><strong>26%</strong></div>
+              <div class="rank-row"><span>X / Twitter</span><strong>18%</strong></div>
+              <div class="rank-row"><span>Product Hunt</span><strong>11%</strong></div>
+              <div class="rank-row"><span>Newsletter</span><strong>8%</strong></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>

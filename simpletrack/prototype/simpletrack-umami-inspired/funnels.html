@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleTrack Prototype - Funnels</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <p class="brand-name">SimpleTrack</p>
+          <p class="brand-caption">Prototype review build</p>
+        </div>
+      </div>
+      <div class="sidebar-group">
+        <p class="sidebar-label">Traffic</p>
+        <a class="nav-item" href="./index.html">Overview</a>
+        <a class="nav-item" href="./events.html">Events</a>
+        <a class="nav-item is-active" href="./funnels.html">Funnels</a>
+      </div>
+      <div class="sidebar-group">
+        <p class="sidebar-label">Action</p>
+        <a class="nav-item" href="./insights.html">Insights</a>
+        <a class="nav-item" href="./team.html">Team</a>
+        <a class="nav-item" href="./settings.html">Site Settings</a>
+      </div>
+      <div class="sidebar-footer">
+        <p class="footer-site">acme.io</p>
+        <p class="footer-meta">weekly insight enabled</p>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="workspace-pill">
+            <span class="pill-dot"></span>
+            <span>Acme Workspace</span>
+          </div>
+          <button class="ghost-button">Switch site</button>
+        </div>
+        <div class="topbar-right">
+          <button class="ghost-button">Compare</button>
+          <button class="primary-button">Save funnel</button>
+        </div>
+      </header>
+
+      <section class="page-head">
+        <div>
+          <p class="eyebrow">Conversion analytics</p>
+          <h1>Install activation funnel</h1>
+          <p class="page-copy">This is the page that should convince people SimpleTrack is more than a pageview tool. Keep the interaction narrow and the message obvious.</p>
+        </div>
+        <div class="toolbar">
+          <button class="toolbar-button">Filter</button>
+          <div class="range-switcher">
+            <button class="range-button" data-range="24h">24h</button>
+            <button class="range-button is-active" data-range="7d">7d</button>
+            <button class="range-button" data-range="30d">30d</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-stack">
+        <article class="canvas-card">
+          <div class="card-head">
+            <div>
+              <p class="card-kicker">Main conversion story</p>
+              <h2>Visited pricing → first event received</h2>
+            </div>
+            <p class="card-note">One canonical funnel is enough for MVP review.</p>
+          </div>
+          <div class="funnel-card">
+            <div class="funnel-step">
+              <span class="step-label">Visited pricing</span>
+              <div class="step-bar"><span style="width: 100%"></span></div>
+              <strong>12,420</strong>
+            </div>
+            <div class="funnel-step">
+              <span class="step-label">Started signup</span>
+              <div class="step-bar"><span style="width: 41%"></span></div>
+              <strong>5,121</strong>
+            </div>
+            <div class="funnel-step">
+              <span class="step-label">Created site</span>
+              <div class="step-bar"><span style="width: 28%"></span></div>
+              <strong>3,493</strong>
+            </div>
+            <div class="funnel-step">
+              <span class="step-label">Copied snippet</span>
+              <div class="step-bar"><span style="width: 22%"></span></div>
+              <strong>2,735</strong>
+            </div>
+            <div class="funnel-step">
+              <span class="step-label">First event received</span>
+              <div class="step-bar"><span style="width: 13%"></span></div>
+              <strong>1,615</strong>
+            </div>
+          </div>
+        </article>
+
+        <div class="split-grid">
+          <article class="canvas-card">
+            <div class="card-head">
+              <h2>Largest drop</h2>
+              <p class="card-note">The review conversation should happen here.</p>
+            </div>
+            <div class="list-card">
+              <div class="event-row">
+                <div>
+                  <strong>Signup → site created</strong>
+                  <p>32% of users do not finish setup after signup starts.</p>
+                </div>
+                <span class="event-chip">-32%</span>
+              </div>
+              <div class="event-row">
+                <div>
+                  <strong>Snippet copied → first event</strong>
+                  <p>41% still fail to get real data flowing after copying install code.</p>
+                </div>
+                <span class="event-chip">-41%</span>
+              </div>
+            </div>
+          </article>
+
+          <aside class="insight-callout">
+            <h3>Prototype decision</h3>
+            <p>The first funnel page should answer one question: where does activation break?</p>
+            <ul>
+              <li>No complex cohort builder in MVP</li>
+              <li>No giant multi-funnel workspace</li>
+              <li>Comparison mode can come later</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="./script.js"></script>
+</body>
+</html>

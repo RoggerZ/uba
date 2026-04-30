@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleTrack Prototype - Team</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <p class="brand-name">SimpleTrack</p>
+          <p class="brand-caption">Prototype review build</p>
+        </div>
+      </div>
+      <div class="sidebar-group">
+        <p class="sidebar-label">Traffic</p>
+        <a class="nav-item" href="./index.html">Overview</a>
+        <a class="nav-item" href="./events.html">Events</a>
+        <a class="nav-item" href="./funnels.html">Funnels</a>
+      </div>
+      <div class="sidebar-group">
+        <p class="sidebar-label">Action</p>
+        <a class="nav-item" href="./insights.html">Insights</a>
+        <a class="nav-item is-active" href="./team.html">Team</a>
+        <a class="nav-item" href="./settings.html">Site Settings</a>
+      </div>
+      <div class="sidebar-footer">
+        <p class="footer-site">acme.io</p>
+        <p class="footer-meta">weekly insight enabled</p>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="workspace-pill">
+            <span class="pill-dot"></span>
+            <span>Acme Workspace</span>
+          </div>
+          <button class="ghost-button">Switch site</button>
+        </div>
+        <div class="topbar-right">
+          <button class="primary-button">Invite member</button>
+        </div>
+      </header>
+
+      <section class="page-head">
+        <div>
+          <p class="eyebrow">Collaboration</p>
+          <h1>Team access</h1>
+          <p class="page-copy">Enough structure for product review: workspace owner, analyst, viewer. No enterprise admin maze in the first version.</p>
+        </div>
+      </section>
+
+      <section class="section-stack">
+        <article class="canvas-card">
+          <div class="card-head">
+            <h2>Members</h2>
+            <p class="card-note">Keep roles plain and legible.</p>
+          </div>
+          <div class="list-card">
+            <div class="event-row">
+              <div>
+                <strong>Rongjie Zhang</strong>
+                <p>Owner • receives billing and weekly summaries</p>
+              </div>
+              <span class="event-chip">Full access</span>
+            </div>
+            <div class="event-row">
+              <div>
+                <strong>Growth Analyst</strong>
+                <p>Can view traffic, funnels, and insights</p>
+              </div>
+              <span class="mini-chip">Read + comment</span>
+            </div>
+            <div class="event-row">
+              <div>
+                <strong>Product Manager</strong>
+                <p>Invite pending</p>
+              </div>
+              <span class="mini-chip">Pending</span>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

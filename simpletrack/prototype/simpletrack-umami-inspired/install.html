@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleTrack Prototype - Install</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="auth-shell">
+    <section class="auth-panel">
+      <div class="wizard-card">
+        <div class="step-track">
+          <span class="step-pill">Log in</span>
+          <span class="step-pill">Create site</span>
+          <span class="step-pill is-active">Install</span>
+          <span class="step-pill">First data</span>
+        </div>
+        <p class="eyebrow">Onboarding step 2</p>
+        <h1>Install SimpleTrack on acme.io</h1>
+        <p class="auth-copy">This page is the critical activation moment. It should feel practical, framework-aware, and impossible to misunderstand.</p>
+        <div class="field">
+          <label>Install snippet</label>
+          <code class="snippet-block" id="snippet-value">&lt;script async src="https://cdn.simpletrack.io/st.js" data-site="site_01HZX" data-framework="nextjs"&gt;&lt;/script&gt;</code>
+        </div>
+        <div class="inline-actions">
+          <button class="primary-button" data-copy-target="#snippet-value">Copy snippet</button>
+          <a class="ghost-button" href="./first-data.html">I've installed it</a>
+        </div>
+        <div class="preview-card" style="margin-top:16px;">
+          <h3>What the docs block should say</h3>
+          <p>Paste this into your root layout or document head. Once the first page view is received, the dashboard will unlock automatically.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-preview">
+      <div class="preview-stack">
+        <div class="preview-card">
+          <h3>Activation risk</h3>
+          <p>If this page is too generic, users copy the script but never produce real data. That is the leak the funnel page keeps surfacing.</p>
+        </div>
+        <div class="preview-card">
+          <h3>Prototype decision</h3>
+          <ul>
+            <li>One primary action: copy snippet</li>
+            <li>One secondary action: continue after install</li>
+            <li>No giant docs wall inside the product</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="./script.js"></script>
+</body>
+</html>

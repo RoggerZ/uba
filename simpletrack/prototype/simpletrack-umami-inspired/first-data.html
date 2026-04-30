@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleTrack Prototype - First Data</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="auth-shell">
+    <section class="auth-panel">
+      <div class="wizard-card">
+        <div class="step-track">
+          <span class="step-pill">Log in</span>
+          <span class="step-pill">Create site</span>
+          <span class="step-pill">Install</span>
+          <span class="step-pill is-active">First data</span>
+        </div>
+        <p class="eyebrow">Onboarding step 3</p>
+        <h1>Your first data is live</h1>
+        <p class="auth-copy">This page exists to close the loop emotionally. Users should immediately understand that installation worked and that the dashboard is now worth opening.</p>
+        <div class="callout-success">
+          Tracking is active on <strong>acme.io</strong>. Page views and custom events are now flowing into SimpleTrack.
+        </div>
+        <div class="status-grid" style="margin-top:16px;">
+          <div class="status-card">
+            <p>First page view</p>
+            <strong>2 seconds ago</strong>
+          </div>
+          <div class="status-card">
+            <p>Verified domain</p>
+            <strong>acme.io</strong>
+          </div>
+          <div class="status-card">
+            <p>Current plan</p>
+            <strong>Pro trial</strong>
+          </div>
+          <div class="status-card">
+            <p>Next recommended step</p>
+            <strong>Create your first funnel</strong>
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top:18px;">
+          <a class="primary-button" href="./index.html">Open dashboard</a>
+          <a class="ghost-button" href="./funnels.html">Review activation funnel</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-preview">
+      <div class="preview-stack">
+        <div class="preview-card">
+          <h3>Why this step matters</h3>
+          <p>If users do not get a clear “it works” moment, they churn before the dashboard has a chance to prove value.</p>
+        </div>
+        <div class="preview-card">
+          <h3>Prototype decision</h3>
+          <ul>
+            <li>Show success before sending them to a dashboard full of empty states</li>
+            <li>Use this page to bridge setup into product value</li>
+            <li>Make “Open dashboard” the obvious next action</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="./script.js"></script>
+</body>
+</html>

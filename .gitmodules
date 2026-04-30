@@ -1,0 +1,15 @@
+[submodule "template-src/ai-mksaas-template"]
+	path = template-src/ai-mksaas-template
+	url = git@github.com:xueaifu/ai-mksaas-template.git
+[submodule "template-src/ai-ship-fast-template"]
+	path = template-src/ai-ship-fast-template
+	url = git@github.com:xueaifu/ai-ship-fast-template.git
+[submodule "template-src/ai-shipany-template-one"]
+	path = template-src/ai-shipany-template-one
+	url = git@github.com:xueaifu/ai-shipany-template-one.git
+[submodule "template-src/ai-shipany-template-two"]
+	path = template-src/ai-shipany-template-two
+	url = git@github.com:xueaifu/ai-shipany-template-two.git
+[submodule "template-src/ai-supastarter-template"]
+	path = template-src/ai-supastarter-template
+	url = git@github.com:xueaifu/ai-supastarter-template.git

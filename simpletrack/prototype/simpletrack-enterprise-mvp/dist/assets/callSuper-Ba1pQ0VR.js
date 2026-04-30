@@ -1,0 +1,1 @@
+import{Fn as e,Nn as t,Pn as n}from"./index-Ck_FUeOf.js";function r(r,i,a){return i=e(i),t(r,n()?Reflect.construct(i,a||[],e(r).constructor):i.apply(r,a))}export{r as t};

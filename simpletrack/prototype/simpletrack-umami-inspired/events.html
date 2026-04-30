@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleTrack Prototype - Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <p class="brand-name">SimpleTrack</p>
+          <p class="brand-caption">Prototype review build</p>
+        </div>
+      </div>
+      <div class="sidebar-group">
+        <p class="sidebar-label">Traffic</p>
+        <a class="nav-item" href="./index.html">Overview</a>
+        <a class="nav-item is-active" href="./events.html">Events</a>
+        <a class="nav-item" href="./funnels.html">Funnels</a>
+      </div>
+      <div class="sidebar-group">
+        <p class="sidebar-label">Action</p>
+        <a class="nav-item" href="./insights.html">Insights</a>
+        <a class="nav-item" href="./team.html">Team</a>
+        <a class="nav-item" href="./settings.html">Site Settings</a>
+      </div>
+      <div class="sidebar-footer">
+        <p class="footer-site">acme.io</p>
+        <p class="footer-meta">weekly insight enabled</p>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="workspace-pill">
+            <span class="pill-dot"></span>
+            <span>Acme Workspace</span>
+          </div>
+          <button class="ghost-button">Switch site</button>
+        </div>
+        <div class="topbar-right">
+          <button class="ghost-button">Export CSV</button>
+          <button class="ghost-button">Save report</button>
+          <button class="primary-button">Create event</button>
+        </div>
+      </header>
+
+      <section class="page-head">
+        <div>
+          <p class="eyebrow">Event analytics</p>
+          <h1>Top product events</h1>
+          <p class="page-copy">This page is intentionally operational. The goal is to help a SaaS team quickly see what users actually do, without turning event analysis into a BI exercise.</p>
+        </div>
+        <div class="toolbar">
+          <button class="toolbar-button">Filter</button>
+          <div class="range-switcher">
+            <button class="range-button" data-range="24h">24h</button>
+            <button class="range-button is-active" data-range="7d">7d</button>
+            <button class="range-button" data-range="30d">30d</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-stack">
+        <div class="hero-stat-strip">
+          <article class="hero-stat">
+            <p>Total event volume</p>
+            <strong>91,204</strong>
+          </article>
+          <article class="hero-stat">
+            <p>Unique active users</p>
+            <strong>12,842</strong>
+          </article>
+          <article class="hero-stat">
+            <p>Activation events</p>
+            <strong>1,984</strong>
+          </article>
+        </div>
+
+        <article class="canvas-card">
+          <div class="card-head">
+            <div>
+              <p class="card-kicker">Review focus</p>
+              <h2>Event leaderboard</h2>
+            </div>
+            <p class="card-note">The first version only needs event name, count, trend, and a plain-language note.</p>
+          </div>
+          <table class="event-table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Meaning</th>
+                <th>7d volume</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>pageview_pricing</strong></td>
+                <td>Reached pricing intent page</td>
+                <td>12,420</td>
+                <td><span class="event-chip">+18%</span></td>
+              </tr>
+              <tr>
+                <td><strong>signup_started</strong></td>
+                <td>Began new workspace signup</td>
+                <td>2,142</td>
+                <td><span class="event-chip">+11%</span></td>
+              </tr>
+              <tr>
+                <td><strong>snippet_copied</strong></td>
+                <td>Install step confirmation</td>
+                <td>1,157</td>
+                <td><span class="mini-chip">flat</span></td>
+              </tr>
+              <tr>
+                <td><strong>first_event_received</strong></td>
+                <td>Site confirmed tracking works</td>
+                <td>644</td>
+                <td><span class="event-chip">+7%</span></td>
+              </tr>
+              <tr>
+                <td><strong>weekly_insight_opened</strong></td>
+                <td>User opened AI summary</td>
+                <td>219</td>
+                <td><span class="event-chip">+23%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <div class="split-grid">
+          <article class="canvas-card">
+            <div class="card-head">
+              <h2>Event notes</h2>
+              <p class="card-note">Useful for product review and future empty states.</p>
+            </div>
+            <div class="list-card">
+              <div class="event-row">
+                <div>
+                  <strong>Best sign of fit</strong>
+                  <p>`first_event_received` is the moment trial users feel the product actually works.</p>
+                </div>
+              </div>
+              <div class="event-row">
+                <div>
+                  <strong>Potential confusion</strong>
+                  <p>`snippet_copied` still does not guarantee installation. That is why this page should sit next to a funnel, not replace it.</p>
+                </div>
+              </div>
+            </div>
+          </article>
+          <aside class="insight-callout">
+            <h3>Prototype decision</h3>
+            <p>Do not make this page filter-heavy in MVP.</p>
+            <ul>
+              <li>One date range</li>
+              <li>Optional source filter later</li>
+              <li>Deep breakdowns should come from a drill-down path, not the main page</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="./script.js"></script>
+</body>
+</html>

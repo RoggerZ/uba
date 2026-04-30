@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleTrack Prototype - Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="auth-shell">
+    <section class="auth-panel">
+      <div>
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <p class="brand-name">SimpleTrack</p>
+            <p class="brand-caption">Prototype review build</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-card">
+        <p class="eyebrow">Start review flow</p>
+        <h1>Log in</h1>
+        <p class="auth-copy">Use this page to review whether SimpleTrack should feel closer to a modern SaaS onboarding surface than a traditional admin login.</p>
+        <div class="form-stack">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" type="email" value="founder@acme.io" />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" type="password" value="••••••••••" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <a class="primary-button" href="./create-site.html">Log in</a>
+          <a class="text-link" href="./index.html">Jump to dashboard</a>
+        </div>
+      </div>
+
+      <p class="micro-note">Review point: do we need SSO here in MVP, or is email login enough for the first release?</p>
+    </section>
+
+    <section class="auth-preview">
+      <div class="preview-stack">
+        <div class="preview-card">
+          <p class="eyebrow">Prototype thesis</p>
+          <h3>Log in should feel calm and product-first.</h3>
+          <p>It should not feel like a dense admin system. The login page is the first trust signal for a paid analytics product.</p>
+        </div>
+        <div class="preview-card">
+          <h3>What this step should communicate</h3>
+          <ul>
+            <li>The tool is lightweight and clear.</li>
+            <li>The user is close to seeing useful data.</li>
+            <li>Setup will be short, not enterprise-heavy.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="./script.js"></script>
+</body>
+</html>
