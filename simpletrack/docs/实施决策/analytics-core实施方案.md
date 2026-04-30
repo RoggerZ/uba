@@ -316,6 +316,7 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 - 定义 `tenant_id`、`project_id`、`source_id`、`source_type`、`event_name`、`event_time`、`distinct_id`、`session_id`、`properties`、`user_properties` 等字段。
 - 定义 event name、source id、timestamp、distinct id、properties 校验规则。
 - 不提供 xwl_bi legacy 字段兼容。xwl_bi 后续迁移时应改为写入新协议。
+- 当前已落地 `collect.Normalize`，负责把 collect 请求标准化为 `EventEnvelope`，并校验事件 ID、租户、项目、数据源、事件名、用户标识和时间戳。
 
 验收：
 
@@ -348,6 +349,8 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 交付：
 
 - 建立按 `tenant_id / project_id / source_id` 路由的事件物理表、实时事件表、ingestion status 表。
+- 当前已落地 ClickHouse `TableRouter`，按 tenant / project / source 生成稳定 hash 物理表名，对上层仍暴露统一 `events` 逻辑模型。
+- 当前已落地 storage `EventWriter` 接口，真实 ClickHouse batch writer 必须复用该边界。
 - worker 消费队列并通过 `EventWriter` 写入 ClickHouse。
 - `EventWriter` 默认使用 `clickhouse-go/v2 PrepareBatch` 原生批量写入，GORM batch insert 只作为压测对照或低频管理写入选项。
 - 写入前基于 `(tenant_id, project_id, source_id, event_id)` 做幂等判断，避免重复事件在数据库存两份。
