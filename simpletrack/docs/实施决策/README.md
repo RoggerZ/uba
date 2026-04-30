@@ -26,6 +26,7 @@
 | 2026-04-29 | 新增 `analytics-core` 实施方案，纳入 xwl_bi analyze/code-review 证据，并补充 Umami、Litlyx 参考边界 | 分析数据面、P1 实施 |
 | 2026-04-29 | 支付路线改为先按 Supastarter 支持的 provider 接入，KYC/KYB、发票税务、退款拒付等放到上线前后置检查 | 支付与商业化 |
 | 2026-04-30 | 补齐 analytics-core 评审 Q&A：GitHub 组织、tenant/project/source、ack/重试/死信、consumer offset、acceptance status、GORM query builder 和 UI 策略 | 分析数据面、协作规范、Q&A |
+| 2026-04-30 | 确认 ClickHouse 表策略直接采用方案 B，事件写入热路径使用原生 batch writer，入库必须按 event_id 幂等去重 | analytics-core、ClickHouse、数据入库 |
 
 ## 实施计划完成列表
 
@@ -42,9 +43,9 @@
 | P0-003 | 企业分析控制台 UI 可改造性评审 | 进行中 | 本地 Supastarter 已有 SaaS app、admin、organizations、payments、settings；MakerKit 作为 B2B 对照 | 做截图级评审和 1 天 UI spike |
 | P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位和本地 spike |
 | P0-005 | xwl_bi 分析数据面抽核方案 | 已完成 | 已确认 P1 新建独立业务无关仓库 `analytics-core`，不复用旧 Vue2 后台，不整仓改名 | 进入 P1-000 实施设计 |
-| P1-000A | 输出 `analytics-core` 实施方案 | 已完成 | 已新增 `analytics-core实施方案.md`，包含模块草案、EventBus 草案、xwl_bi 代码证据、表策略、GORM query builder 和 Umami/Litlyx 参考边界 | 根据评审继续细化接口和表模型 |
+| P1-000A | 输出 `analytics-core` 实施方案 | 已完成 | 已新增 `analytics-core实施方案.md`，并补充方案 B 物理分表、原生 ClickHouse batch writer、入库幂等去重、tenant/project/source 映射 | 根据评审继续细化接口和表模型 |
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 待完成 | 仓库名已确定，不带 `simpletrack` 或 `xwl`；实施方案已输出 | 按实施方案创建仓库骨架 |
-| P1-001 | EventBus 抽象设计 | 进行中 | 已在实施方案中给出 DirectBus / RedisStreamBus / KafkaBus 草案 | 进入代码级接口设计和 Redis Stream spike |
+| P1-001 | EventBus 抽象设计 | 进行中 | 已在实施方案中给出 DirectBus / RedisStreamBus / KafkaBus 草案，并确认 ack/checkpoint 与 ingestion_status 分层 | 进入代码级接口设计和 Redis Stream spike |
 | P1-002 | 数据管道最小闭环 | 待完成 | P1 目标已确定 | 实现 tracker -> collect -> storage -> Realtime/Events |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 待完成 | P1 需要类似 Umami 官网的产品介绍、定价/订阅入口和 docs/quickstart | 设计公开站点信息架构并跟模板 marketing/docs app 对齐 |
 
@@ -96,6 +97,8 @@
 11. 生产 SaaS 模板先选择 Supastarter for Next.js；MakerKit 只保留为 B2B 企业控制面对照和备选。
 12. 支付先按 Supastarter 已支持的 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入；KYC/KYB、退款、拒付、发票、税务和费用结构放到上线前逐项处理。
 13. `analytics-core` 参考 Umami 的分析对象体系和 Litlyx 的首价值、Raw Events、Show test data 经验。
+14. `analytics-core` 的 ClickHouse 表策略直接采用方案 B，按 `tenant_id / project_id / source_id` 路由到物理事件表，上层仍使用统一 `events` 逻辑模型。
+15. ClickHouse 事件写入热路径优先使用原生 batch writer，入库按 `(tenant_id, project_id, source_id, event_id)` 做幂等去重。
 
 ## 当前待评审的总方向
 

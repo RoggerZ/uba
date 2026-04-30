@@ -30,7 +30,7 @@ P1 先落地最小可用链路：
 - **低运维起步**：P1 先用 Redis Stream 替代 Kafka，降低早期部署复杂度。
 - **可替换边界**：MySQL、Redis、Kafka、ClickHouse 都通过接口或 adapter 隔离。
 - **可被多产品引用**：xwl_bi、SimpleTrack、AppTrack 都通过通用 `tenant / project / source` 语义接入，不反向污染核心仓库。
-- **统一查询构建**：从 `sqlx` 迁移到 GORM 最新稳定版本，统一使用 GORM 的 SQL Builder / Raw / Clauses / Scopes 能力承接查询构建。
+- **统一查询构建**：从 `sqlx` 迁移到 GORM 最新稳定版本，统一使用 GORM 的 SQL Builder / Raw / Clauses / Scopes 能力承接查询构建；ClickHouse 高吞吐事件写入不走 ORM 热路径，优先使用原生 batch writer。
 
 ## 非目标
 
@@ -73,6 +73,8 @@ P1 先落地最小可用链路：
 | --- | --- | --- |
 | MySQL ORM / SQL Builder | 使用 GORM v2 体系，替代 `sqlx` | GORM 生态、文档、插件和维护活跃度更好；官方文档已支持 Generics API 和 SQL Builder；`sqlx` 不再作为 `analytics-core` 的默认数据库访问层 |
 | Squirrel | 不引入 | `github.com/Masterminds/squirrel` 更新节奏偏慢；GORM 的 Raw、Named Argument、Clauses、Scopes、Generics API 已能覆盖当前 query builder 需求 |
+| ClickHouse 查询 | 统一走 GORM query builder / Raw / Scopes 出口 | Events、Realtime、Funnels、Retention、Segments 等查询必须共用字段白名单、时间范围、权限边界和属性过滤 |
+| ClickHouse 事件写入 | 高吞吐写入优先用 `clickhouse-go/v2` 原生 batch writer | GORM 支持 `CreateInBatches`，但事件明细是写入热路径；xwl_bi 既有调优经验也指向原生批量插入更适合高频 ClickHouse 写入 |
 | Redis | P1 使用 `redis/redis-stack:latest` 容器镜像 | Redis Stack 方便本地开发和后续扩展，P1 先用 Redis Stream 承接轻量事件队列 |
 | Kafka | 保留 `KafkaBus` | Kafka 仍是高吞吐事件流路线，但不是 P1 必选运行依赖 |
 
@@ -83,6 +85,16 @@ GORM 参考：
 - 老 GORM v1 是 `github.com/jinzhu/gorm`，`analytics-core` 不使用这个旧包。
 - GORM Generics API：`https://gorm.io/docs/the_generics_way.html`
 - GORM SQL Builder：`https://gorm.io/docs/sql_builder.html`
+- GORM Create / CreateInBatches：`https://gorm.io/docs/create.html`
+- GORM ClickHouse driver：`https://github.com/go-gorm/clickhouse`
+- ClickHouse Go driver batch insert：`https://clickhouse.com/docs/integrations/language-clients/go/clickhouse-api`
+
+写入策略：
+
+- `EventQueryBuilder`：负责生成 ClickHouse 查询 SQL，底层使用 GORM Raw / SQL Builder / Scopes。
+- `EventWriter`：负责 ClickHouse 事件明细写入，P1 默认使用 `clickhouse-go/v2 PrepareBatch`。
+- `EventWriter` 后续必须保留压测口径，对比 GORM `CreateInBatches`、`clickhouse-go/v2 PrepareBatch` 和必要时的 `ch-go`。
+- 不在 handler 或 analysis 模块里直接散落原生 SQL；即使用原生 batch writer，也必须藏在 ClickHouse storage adapter 内。
 
 ## 目标模块边界
 
@@ -110,6 +122,8 @@ analytics-core/
       batch/
     storage/
       clickhouse/
+        query/
+        writer/
       mysql/
       redis/
     metadata/
@@ -148,7 +162,7 @@ analytics-core/
 - `internal/collect` 只处理请求解码、字段校验和事件标准化。
 - `internal/eventbus` 屏蔽 Direct、Redis Stream、Kafka 差异。
 - `internal/ingestion` 处理消费、补充字段、入批、ack 和失败状态。
-- `internal/storage` 只封装外部依赖，不放业务分析逻辑。
+- `internal/storage` 只封装外部依赖，不放业务分析逻辑；ClickHouse query 和 writer 分开，避免查询 builder 与高吞吐写入互相污染。
 - `internal/analysis` 只暴露业务无关分析能力。
 - `pkg/contracts` 放 xwl_bi、SimpleTrack、AppTrack 或其他上层产品可依赖的稳定契约。
 
@@ -193,14 +207,21 @@ type EventEnvelope struct {
 | `xwl_part_date` | `event_time` | 客户端事件时间 |
 | `xwl_server_time` | `received_at` | 服务端接收或消费时间 |
 | `xwl_client_date` | `client_date` | 客户端日期派生字段 |
-| `xwl_event{appid}` | `events` 或按 `source_id` 分片表 | 优先统一逻辑表，是否物理分表由 ClickHouse adapter 和压测结果决定 |
+| `xwl_event{appid}` | `events_${tenant/project/source}` 物理表，统一逻辑名仍叫 `events` | 已确定采用方案 B；动态物理表名只允许出现在 ClickHouse adapter 内，对上层隐藏 |
 | `xwl_real_time_warehousing` | `realtime_events` | 实时验收和最近事件 |
 | `xwl_acceptance_status` | `ingestion_status` | 写入验收、失败原因、消费 checkpoint |
 | `xwl_kafka_offset` | 不进入事件协议 | consumer offset / checkpoint 是内部消费进度，不放进业务事件模型 |
 
 ## ClickHouse 表策略
 
-当前需要在两种表策略中做决策。
+当前已确定：**直接采用方案 B，一步到位按 project/source 做物理表策略，但对上层仍暴露统一 `events` 逻辑模型。**
+
+这不是回到 xwl_bi 那种把动态表名散落在业务代码里的做法。核心区别是：
+
+- xwl_bi 主要按 `appid` 一维分表，业务代码容易感知 `xwl_event{appid}`。
+- `analytics-core` 使用 `tenant_id / project_id / source_id` 三层业务无关语义。
+- 物理表名、建表、迁移、路由和跨表查询只允许存在于 ClickHouse adapter / query builder 内。
+- Events、Realtime、Funnels、Retention、Segments 等上层分析模块只面对统一逻辑模型。
 
 ### 方案 A：统一 `events` 表
 
@@ -224,23 +245,27 @@ type EventEnvelope struct {
 - 不同 source 的事件属性差异较大时，需要较好的 metadata 和属性字典治理。
 - 极高吞吐场景可能需要后续拆分或集群分片。
 
-初步建议：
+当前结论：
 
-- P1 采用方案 A，先统一逻辑表。
-- 是否物理分表放到压测后决策，不在 P1 提前复杂化。
+- 不作为 P1 默认方案。
+- 只保留为本地 demo、测试环境或极低流量部署的可选简化模式。
+- 如果使用方案 A，也必须复用同一套 `EventQueryBuilder` 和 `EventWriter` 接口，不能形成第二套查询逻辑。
 
 ### 方案 B：按 project/source 物理分表
 
 做法：
 
-- 类似 xwl_bi 的 `xwl_event{appid}`，为不同 project 或 source 创建独立事件表。
-- 查询时根据 project/source 动态选择表名。
+- 为不同 `tenant_id / project_id / source_id` 或其稳定 hash 创建独立事件表，表名由 ClickHouse adapter 生成。
+- 表内仍固定保留 `tenant_id`、`project_id`、`source_id`、`source_type`、`event_id`、`event_name`、`distinct_id`、`session_id`、`event_time`、`received_at` 等标准字段。
+- `EventQueryBuilder` 根据查询范围解析到一个或多个物理表，再生成 ClickHouse SQL。
+- `EventWriter` 根据事件三元组路由到目标物理表，并使用原生 batch writer 批量写入。
 
 优点：
 
 - 物理隔离更强。
 - 单表规模较小。
 - 某些大客户或超高吞吐 source 可单独调优。
+- 与 xwl_bi 既有 `appid` 分表经验更接近，迁移和性能调优路径更可控。
 
 风险：
 
@@ -249,11 +274,24 @@ type EventEnvelope struct {
 - 多项目、多 source 聚合查询更麻烦。
 - 容易把 xwl_bi 的历史结构问题带进 `analytics-core`。
 
-初步建议：
+已确定约束：
 
-- 不作为 P1 默认方案。
-- 作为后续大客户、超高吞吐或私有化部署的可选物理策略保留。
-- 即使未来采用，也应隐藏在 ClickHouse adapter 后面，对上层仍暴露统一查询接口。
+- P1 直接采用方案 B。
+- 动态物理表名只能由 `TableRouter` 生成，不能在 handler、analysis 或上层产品代码里拼接。
+- 所有查询仍统一走 `EventQueryBuilder`，不允许每个分析模块自己决定表名。
+- 所有写入仍统一走 `EventWriter`，默认使用 `clickhouse-go/v2 PrepareBatch`。
+- 需要为跨 source 查询设计 fan-out + merge 策略，但 P1 产品层先以单 source / 单 project 查询为主。
+- 需要为 DDL 变更建立 migration plan，确保新增标准字段或索引时能批量应用到所有物理表。
+- 表命名不得包含 SimpleTrack、xwl_bi、AppTrack 业务词，只使用通用 `tenant/project/source` 或其 hash。
+
+建议表路由形态：
+
+```text
+logical table: events
+physical table: events_{tenant_hash}_{project_hash}_{source_hash}
+```
+
+如果担心表名过长或暴露业务 ID，可以统一使用短 hash，并在 MySQL metadata 中维护映射。
 
 ## P1 执行步骤
 
@@ -303,8 +341,10 @@ type EventEnvelope struct {
 
 交付：
 
-- 建立事件明细表、实时事件表、ingestion status 表。
-- worker 消费队列并写入 ClickHouse。
+- 建立按 `tenant_id / project_id / source_id` 路由的事件物理表、实时事件表、ingestion status 表。
+- worker 消费队列并通过 `EventWriter` 写入 ClickHouse。
+- `EventWriter` 默认使用 `clickhouse-go/v2 PrepareBatch` 原生批量写入，GORM batch insert 只作为压测对照或低频管理写入选项。
+- 写入前基于 `(tenant_id, project_id, source_id, event_id)` 做幂等判断，避免重复事件在数据库存两份。
 - 提供 Realtime 和 Raw Events 查询。
 
 验收：
@@ -312,6 +352,7 @@ type EventEnvelope struct {
 - 单条 pageview 能进入 Realtime。
 - 自定义事件能在 Events 表查到。
 - 写入失败能记录状态。
+- 重复消费同一 `event_id` 不会生成两条 ClickHouse 明细事件。
 
 ### Step 5：元数据与最小 Goal
 
@@ -382,6 +423,9 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | P1 运行依赖 | Redis Stream + MySQL + ClickHouse 可跑通；Kafka 非必选 |
 | Kafka 保留 | `KafkaBus` 接口和 adapter 边界存在，不删除高吞吐路线 |
 | 事件协议 | 标准字段清楚，不提供 xwl_bi legacy 字段兼容 |
+| 表策略 | P1 采用按 project/source 物理分表的方案 B，但上层仍只面对统一 `events` 逻辑模型 |
+| ClickHouse 写入 | 事件明细高吞吐写入默认使用原生 batch writer，并建立与 GORM `CreateInBatches` 的压测对照 |
+| 幂等入库 | 重复消费同一 `event_id` 不会在数据库产生两份事件明细 |
 | Realtime | 最近事件能快速出现 |
 | Events / Raw Events | 明细事件可查，能用于接入排障 |
 | 元数据 | 事件名、事件属性、用户属性能被捕获 |
@@ -392,8 +436,8 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 
 ## 后续待评审
 
-- ClickHouse P1 是否正式拍板采用统一 `events` 表。
-- `tenant_id`、`project_id`、`source_id` 在 SimpleTrack / AppTrack / xwl_bi 中的映射细节。
+- 方案 B 下物理表名 hash 规则、DDL 迁移策略和跨 source 查询 fan-out / merge 细节。
+- GORM `CreateInBatches` 与 `clickhouse-go/v2 PrepareBatch` 在 `analytics-core` 事件模型上的压测差异。
 - Redis Stream 与 KafkaBus 的 ack、checkpoint、幂等、死信队列具体实现。
 - KafkaBus 迁移时如何复用 xwl_bi 现有 consumer offset 和 acceptance status 思路。
 - Funnel / Retention 查询如何落到统一 GORM query builder。

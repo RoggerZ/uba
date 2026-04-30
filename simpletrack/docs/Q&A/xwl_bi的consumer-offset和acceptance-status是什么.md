@@ -78,3 +78,12 @@ A：有，核心想法是分层：
 - `ingestion_status`：记录事件处理验收和排障状态。
 
 这样既保留 xwl_bi 中有价值的 offset / acceptance status 思路，又不会把 Kafka 专属字段污染到通用事件协议。
+
+## Q：当前确认的结论是什么？
+
+A：确认采用这个分层思路。
+
+- consumer offset / Redis Stream id / ack 仍然需要，但只属于 EventBus adapter 和消费 checkpoint。
+- acceptance status 仍然需要，但在 `analytics-core` 中改名为 `ingestion_status`。
+- `EventEnvelope` 不放 `source_offset`，避免事件协议绑定 Kafka 或 Redis 的内部进度模型。
+- `ingestion_status` 同时承担接入验收、失败排障和幂等入库的职责。
