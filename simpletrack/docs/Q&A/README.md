@@ -28,3 +28,4 @@
 | xwl_bi 的 consumer offset 和 acceptance status 是什么 | [xwl_bi的consumer-offset和acceptance-status是什么.md](xwl_bi的consumer-offset和acceptance-status是什么.md) |
 | GORM Query Builder 和直接 SQL 有什么区别 | [GORM-query-builder和直接SQL有什么区别.md](GORM-query-builder和直接SQL有什么区别.md) |
 | 跟随模板 UI 栈和重做业务控制台有什么区别 | [跟随模板UI栈和重做业务控制台有什么区别.md](跟随模板UI栈和重做业务控制台有什么区别.md) |
+| Windows SSH 仓库权限怎么配置 | [Windows-SSH仓库权限怎么配置.md](Windows-SSH仓库权限怎么配置.md) |

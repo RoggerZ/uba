@@ -54,6 +54,17 @@
 - Umami Cloud 调研资产统一放在 `simpletrack/docs/umami/`
 - 不要把账号、cookie、token 或其他敏感信息写入仓库文件
 
+## GitHub SSH 仓库权限
+
+- `src/analytics-core` 和 `src/simpletrack-saas` 是独立子仓库，推送到 `simpletrack` GitHub 组织时必须使用专用 SSH 配置：
+  - `git -C "C:\Users\admin\Documents\src\uba\src\analytics-core" config core.sshCommand "ssh -F C:/Users/admin/.ssh/config_simpletrack"`
+  - `git -C "C:\Users\admin\Documents\src\uba\src\simpletrack-saas" config core.sshCommand "ssh -F C:/Users/admin/.ssh/config_simpletrack"`
+- 两个子仓库的 `origin` 必须使用 `github-simpletrack` Host 别名：
+  - `git@github-simpletrack:simpletrack/analytics-core.git`
+  - `git@github-simpletrack:simpletrack/simpletrack-saas.git`
+- 不要依赖默认 `C:\Users\admin\.ssh\config` 推送这两个仓库；该文件曾因 Windows ACL 权限异常导致 OpenSSH 报 `Bad owner or permissions`。
+- 相关说明维护在 `simpletrack/docs/Q&A/Windows-SSH仓库权限怎么配置.md`。
+
 ## 截图评审标准
 
 - 优先同时保留页面态和关键交互态
