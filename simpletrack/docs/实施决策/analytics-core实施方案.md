@@ -318,6 +318,7 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 - 定义 event name、source id、timestamp、distinct id、properties 校验规则。
 - 不提供 xwl_bi legacy 字段兼容。xwl_bi 后续迁移时应改为写入新协议。
 - 当前已落地 `collect.Normalize`，负责把 collect 请求标准化为 `EventEnvelope`，并校验事件 ID、租户、项目、数据源、事件名、用户标识和时间戳。
+- 当前已落地 `collect.Handler`，负责调用 `Normalize` 并把标准化后的事件发布到 `EventBus`；真实 HTTP collect API 后续只做协议适配，不重复实现校验和发布逻辑。
 
 验收：
 
