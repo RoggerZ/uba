@@ -359,7 +359,8 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 - 当前已落地 GORM/MySQL `IngestionStatusGuard` 和 `ingestion_status` 表，按 `(tenant_id, project_id, source_id, event_id)` 做 `processing / inserted / failed` 状态占用、重复跳过、失败回滚和重试再占用。
 - worker 消费队列并通过 `EventWriter` 写入 ClickHouse。
 - `EventWriter` 默认使用 `clickhouse-go/v2 PrepareBatch` 原生批量写入，GORM batch insert 只作为压测对照或低频管理写入选项。
-- worker 后续必须把 `EventWriteGuard` claim、ClickHouse `EventWriter` append、guard commit/rollback 和 Redis/Kafka ack 串成同一条可恢复链路，避免重复事件在数据库存两份。
+- 当前已明确 `ingestion.Processor` 是 P1 worker 边界：Redis/Kafka adapter 负责 ack/nack，Processor 负责调用 `storage.EventWriter`，后续真实 worker 入口不得复制一套消费写入逻辑。
+- worker 后续运行时必须把 `EventWriteGuard` claim、ClickHouse `EventWriter` append、guard commit/rollback 和 Redis/Kafka ack 串成同一条可恢复链路，避免重复事件在数据库存两份。
 - 当前已提供 Realtime 和 Raw Events / Events 的 query plan builder，后续补真实 ClickHouse 查询执行器。
 
 验收：
@@ -440,6 +441,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | 事件协议 | 标准字段清楚，不提供 xwl_bi legacy 字段兼容 |
 | HTTP collect API | 使用 fasthttp 作为事件上报热路径 HTTP 库，fasthttp 只做协议适配，核心校验和发布逻辑仍由 `collect.Handler` 承接 |
 | Redis Stream 消费 | pending 优先重试，写入成功才 ack，超过 `MaxAttempts` 后进入死信队列 |
+| ingestion worker | 当前已明确 `ingestion.Processor` 为 P1 worker 边界，真实入口必须复用它 |
 | 表策略 | P1 采用按 project/source 物理分表的方案 B，但上层仍只面对统一 `events` 逻辑模型 |
 | ClickHouse 写入 | 事件明细高吞吐写入默认使用原生 batch writer；当前已落地 `clickhouse-go/v2 PrepareBatch` 的 `BatchWriter`，后续建立与 GORM `CreateInBatches` 的压测对照 |
 | 幂等入库 | 重复消费同一 `event_id` 不会在数据库产生两份事件明细；当前已落地 `EventWriteGuard` 边界和 GORM/MySQL `IngestionStatusGuard` 真实状态守卫 |
