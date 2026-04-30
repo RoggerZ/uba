@@ -17,6 +17,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-01 | 在 `analytics-core` 落地 `EventQueryBuilder` 查询契约和 ClickHouse/GORM Events、Realtime query plan 边界；同步子仓提交到 `7ab7b12` | analytics-core、Realtime、Events、ClickHouse 查询 |
 | 2026-05-01 | 在 `analytics-core` 落地 GORM/MySQL `IngestionStatusGuard` 与 `ingestion_status` 幂等状态表，并强化函数体阶段注释强制规范；同步子仓提交到 `71f5ae3` | analytics-core、MySQL/GORM、代码规范 |
 | 2026-05-01 | 澄清 `collect.Handler` 是事件上报核心处理器而非 HTTP 路由函数，并将“污染”表述改为“框架耦合 / 边界穿透”；同步 `analytics-core` 子仓到 `0c6bf8c` | analytics-core、HTTP collect API、协作规范 |
 | 2026-05-01 | 在 `analytics-core` 落地 ClickHouse native batch `EventWriter`、`EventWriteGuard` 幂等边界和 Go 结构体/接口注释强制规范 | analytics-core、ClickHouse、代码规范 |
@@ -65,7 +66,7 @@
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github-simpletrack:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
 | P1-001 | EventBus 抽象设计 | 已完成 | 已落地 `EventEnvelope`、`EventBus`、`DirectBus`、`RedisStreamBus` 和 `KafkaBus` 包边界；Redis Stream 已支持 pending 优先重试、`MaxAttempts` 死信队列和消费成功后 ack；ingestion processor 已把重复事件写入视为成功处理 | 进入 P1-002，继续实现 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环 |
 | P1-000B | 引入 xwl_bi 后端参考快照 | 已完成 | 已将本地 `xwl_bi` 后端代码和顶层关键文档复制到 `references/xwl_bi-backend/`，并明确为只读架构设计参考快照，不包含 Vue2 前端、日志和二进制 | 仅按需 refresh 快照；主要参考模块边界、启动装配、消费链路、ClickHouse 写入/查询分层和元数据流转，不直接在快照中开发 |
-| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、`collect.Handler`、fasthttp `POST /collect` 入口、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、`EventWriteGuard` 幂等边界和 GORM/MySQL `IngestionStatusGuard`；子仓提交 `71f5ae3` 已推送 | 继续实现 Realtime/Events 最小查询和 worker 消费写入装配 |
+| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、`collect.Handler`、fasthttp `POST /collect` 入口、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、`EventWriteGuard` 幂等边界、GORM/MySQL `IngestionStatusGuard` 和 `EventQueryBuilder` 查询边界；子仓提交 `7ab7b12` 已推送 | 继续装配 Redis Stream worker 到 `EventWriteGuard + EventWriter`，再补查询执行器 |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 已完成 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本；marketing 文案、pricing 语义、docs/quickstart、mail-preview 品牌文案和截图级验证已完成；公开站点首屏已露出下一节内容 | 后续只做轻量文案和视觉微调，不阻塞 P1 数据管道 |
 | INFRA-001 | SimpleTrack GitHub SSH 与子仓库推送配置 | 已完成 | 已生成并记录 `id_ed25519_simpletrack` 专用 key 流程，`src/analytics-core` 和 `src/simpletrack-saas` 固定使用 `config_simpletrack + core.sshCommand`，父仓已提交相关 Q&A 和 AGENTS 规则 | 后续新机器按 Q&A 复现；默认 SSH config ACL 可暂不阻塞主线 |
 
@@ -96,18 +97,19 @@
 - `analytics-core` 已完成 `collect.Handler` 和 fasthttp `POST /collect` 入口，能把 JSON 请求转换为 `EventEnvelope` 并发布到 EventBus。
 - `analytics-core` 已完成 ClickHouse native batch `BatchWriter`，使用 `clickhouse-go/v2 PrepareBatch` 通过 `EventWriter` 接口写入动态物理事件表，并预留 `EventWriteGuard` 幂等边界。
 - `analytics-core` 已完成 GORM/MySQL `IngestionStatusGuard`，通过 `ingestion_status` 表对 `(tenant_id, project_id, source_id, event_id)` 做 `processing / inserted / failed` 状态占用、提交、失败回滚和重复写入跳过。
+- `analytics-core` 已完成 `storage.EventQueryBuilder` 契约和 ClickHouse/GORM query plan builder，Events 与 Realtime 查询共用同一套字段白名单、表路由、时间范围和分页限制。
 
 正在推进：
 
 - Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载、UI-only subscription gate、marketing 文案、pricing 语义、docs/quickstart、mail-preview 和浏览器截图验证。
-- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、表路由契约、ClickHouse native batch writer 和 GORM/MySQL ingestion status guard 已完成，下一步进入 Realtime/Events 查询边界与 worker 消费写入装配。
+- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard 和 Realtime/Events query plan builder 已完成，下一步进入 Redis Stream worker 消费写入装配。
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
 - 企业分析控制台 UI 可改造性确认。
 - 产品官网 / Marketing Site / docs 公开站点的信息架构已按 P1 验收完成，后续只做轻量优化。
 
 下一步：
 
-1. 继续实现 `analytics-core` 的 Realtime/Events 最小查询，并装配 Redis Stream worker 到 `EventWriteGuard + EventWriter` 写入链路。
+1. 继续装配 `analytics-core` 的 Redis Stream worker 到 `EventWriteGuard + EventWriter` 写入链路，并在其后补查询执行器读取真实 ClickHouse 结果。
 2. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
 3. 公开站点继续使用 Supastarter 的 marketing/docs app，后续只做轻量文案和视觉微调。
 4. 每次子仓库提交推送后，先提交子仓，再更新父仓 gitlink 和实施进度文档。
