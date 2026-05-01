@@ -18,6 +18,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-01 | 在 `analytics-core` 为 Events 查询新增类型化排序字段和方向白名单，避免后续 UI 排序参数直接穿透 SQL；同步子仓提交到 `3afaf4c` | analytics-core、P1-002D、Events 查询、ClickHouse 查询安全 |
 | 2026-05-01 | 安装并补跑 `golint ./...`，修正 `analytics-core` e2e helper 的 `context.Context` 参数顺序；同步子仓提交到 `0538a0b` | analytics-core、P1-002E、本地验证、代码规范 |
 | 2026-05-01 | 在 `analytics-core` 新增 opt-in 端到端测试，真实验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader，并将 P1-002E 标记为已完成；同步子仓提交到 `4931f15` | analytics-core、P1-002、Realtime、Events、本地运行依赖 |
 | 2026-05-01 | 将 Umami 源码深解中可被 `analytics-core` 吸收的优化点排入实施计划和评审表，新增事件属性、client enrich、session/visit、查询白名单、Realtime/Events 验收、Web SDK 和 ClickHouse 读侧优化任务 | analytics-core、Umami 参考资产、P1/P1.5/P2 计划、待评审事项 |
@@ -82,7 +83,7 @@
 | P1-002A | 事件属性与用户属性模型优化 | 待完成 | Umami 的 `event_data` / `session_data` 证明动态属性不能只停留在 JSON；`analytics-core` 需要明确事件属性、用户属性、属性类型和 Events 展示口径 | 先在 R3 评审 typed rows、ClickHouse Map/JSON、混合模型和属性字典范围，再补 `EventWriter` 属性展开、`EventQueryBuilder` 属性过滤与测试 |
 | P1-002B | client info enrich 与 bot/IP 过滤 stage | 待完成 | Umami 在 collect 入口补齐 IP、UA、browser、os、device、geo，并做 bot/IP 过滤；`analytics-core` 可吸收为 collect/ingestion stage，不能混进 ClickHouse writer | 在 R3 评审隐私边界、geo provider、DNT/internal traffic 配置后，实现可测试的 enrich/filter stage |
 | P1-002C | session/visit resolver 隐私友好识别 | 待完成 | Umami 用 source、业务 id 或 IP/UA/salt 派生 session，并用 visit 窗口聚合短期访问；`analytics-core` 需要可替换 resolver，兼容 cookie、header、匿名 hash 和 server identity | 在 R3 评审 salt 轮换、IP 处理、cookie/no-cookie、retention 后落地纯函数与端到端用例 |
-| P1-002D | 查询白名单与过滤构建硬化 | 待完成 | 已有 `EventQueryBuilder` 边界，但需按 Umami `FILTER_COLUMNS` 思路补齐字段白名单、排序白名单、operator enum、属性白名单、分页上限和错误返回 | 为 Realtime、Events、属性过滤、非法字段、非法排序、超大分页补查询构建测试 |
+| P1-002D | 查询白名单与过滤构建硬化 | 进行中 | 已有 `EventQueryBuilder` 边界；当前已新增 Events 类型化排序字段与方向白名单，并补非法排序测试；仍需继续补 operator enum、属性白名单、属性过滤和错误返回口径 | 继续为 Realtime、Events、属性过滤、非法字段、非法排序、超大分页补查询构建测试 |
 | P1-002E | Realtime/Events 最小端到端验收 | 已完成 | 已新增 `internal/e2e` opt-in 测试，使用本地 Redis/MySQL/ClickHouse 验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader；测试覆盖 pageview、自定义事件属性和 user properties | 后续保持该 e2e 作为回归入口，并在 P1-002A/D 扩展属性过滤和查询白名单场景 |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 已完成 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本；marketing 文案、pricing 语义、docs/quickstart、mail-preview 品牌文案和截图级验证已完成；公开站点首屏已露出下一节内容 | 后续只做轻量文案和视觉微调，不阻塞 P1 数据管道 |
 | P1-004 | Web tracker SDK 最短链路 | 待完成 | Umami tracker 的 auto pageview、SPA route、custom event、可选 identify 和 performance 采集可作为 SimpleTrack Web SDK 设计参考；P1 先做浏览器 SDK，不展开多语言 SDK | 先实现安装 snippet、自动 pageview、manual track、可选 identify、关闭自动采集和 debug；React/Next/Node/mobile SDK 放后续阶段 |
