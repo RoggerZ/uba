@@ -420,7 +420,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 | client info enrich | collect 入口补 IP、UA、browser、os、device、geo | collect/ingestion enrichment stage | P1-002B，禁止放入 ClickHouse writer |
 | bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | collect 前置或 ingestion filter stage | P1-002B，先做配置级过滤和标记策略 |
 | session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | 可替换 `SessionResolver`，输出 `session_id` / `visit_id` | P1-002C，评审隐私、salt、cookie/no-cookie |
-| 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、operator enum、分页上限 | P1-002D，补非法输入测试 |
+| 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限；当前已落地 Events 排序/过滤 typed 白名单和 `ErrInvalidEventQuery`，属性白名单等待 P1-002A 属性模型 | P1-002D，继续补属性过滤与非法属性字段测试 |
 | Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果 | P1-002E 已完成，后续作为回归入口 |
 | Web tracker SDK | auto pageview、custom event、identify、performance | SimpleTrack Web SDK -> `collect.Request` -> `EventEnvelope` | P1-004，核心协议稳定，SDK 后续可多语言扩展 |
 | ClickHouse 读侧优化 | materialized view、小时聚合表、projection、typed 属性 | ClickHouse adapter 的聚合表、projection、高频属性索引和迁移策略 | P1.5-001，P1 闭环后压测评审 |
@@ -429,7 +429,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 实现顺序：
 
 1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询。
-2. 下一步补 P1-002D 查询安全测试，确保任何 filter、sort、pagination 都经过 query builder 白名单。
+2. 下一步在 P1-002A 属性模型确定后继续补 P1-002D 属性过滤安全测试，确保任何属性 filter、sort、pagination 都经过 query builder 白名单。
 3. 再落 P1-002A 到 P1-002C，补齐属性模型、client enrich 和 session/visit resolver。
 4. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
 
@@ -475,7 +475,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | 用户属性 | identify 语义进入 `DistinctID` + `UserProps`，用户属性和事件属性分开处理，不混成一类 JSON |
 | session/visit | P1-002C 需要可替换 resolver，支持匿名 hash、业务 id、cookie/no-cookie 和 salt 轮换策略 |
 | client enrich / bot 过滤 | P1-002B 需要以 stage 形式实现 IP/UA/geo/utm/click id 补齐和 bot/IP/internal traffic 过滤，不进入 writer |
-| 查询安全 | P1-002D 需要字段白名单、排序白名单、operator enum、属性白名单、分页上限和非法输入测试 |
+| 查询安全 | P1-002D 已落地 Events 排序/过滤字段白名单、operator enum、filter 数量上限和非法输入测试；仍需在属性模型确定后补属性白名单、属性过滤和超大分页验收 |
 | 元数据 | 事件名、事件属性、用户属性能被捕获 |
 | Goal | 能定义关键事件并返回基础结果 |
 | 业务无关 | 不出现订阅、账单、套餐、团队、Admin UI 逻辑 |
