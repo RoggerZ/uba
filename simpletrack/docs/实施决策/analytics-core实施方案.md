@@ -416,7 +416,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 
 | 优化项 | Umami 证据 | `analytics-core` 落点 | 当前处理 |
 | --- | --- | --- | --- |
-| 事件属性与用户属性 | `event_data`、`session_data`、typed value | collect 阶段已落地属性 key、数量、标量类型、字符串长度和有限数字入口约束；storage 层已提供 `EventPropertyRecord` / `FlattenEventProperties` typed row 逻辑展开；后续接入 `EventWriter` 物理写入、属性字典、`EventQueryBuilder` 属性过滤 | P1-002A 进行中，继续评审 ClickHouse typed rows / Map / JSON / 混合模型 |
+| 事件属性与用户属性 | `event_data`、`session_data`、typed value | collect 阶段已落地属性 key、数量、标量类型、字符串长度和有限数字入口约束；storage 层已提供 `EventPropertyRecord` / `FlattenEventProperties` typed row 逻辑展开；ClickHouse 已提供独立 `PropertyBatchWriter` 写入同源路由 `_properties` 表；后续补属性字典、`EventQueryBuilder` 属性过滤，并评审是否并入 ingestion 热路径 | P1-002A 进行中，继续评审跨表重试/幂等语义 |
 | client info enrich | collect 入口补 IP、UA、browser、os、device、geo | collect/ingestion enrichment stage | P1-002B，禁止放入 ClickHouse writer |
 | bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | collect 前置或 ingestion filter stage | P1-002B，先做配置级过滤和标记策略 |
 | session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | 可替换 `SessionResolver`，输出 `session_id` / `visit_id` | P1-002C，评审隐私、salt、cookie/no-cookie |
@@ -429,8 +429,8 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 实现顺序：
 
 1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询。
-2. 下一步在 P1-002A 属性模型确定后继续补 P1-002D 属性过滤安全测试，确保任何属性 filter、sort、pagination 都经过 query builder 白名单。
-3. 再补 P1-002A 的属性物理写入和属性字典，然后落 P1-002B/C 的 client enrich 和 session/visit resolver。
+2. 下一步补 P1-002A 的属性字典和跨表重试/幂等语义评审，再决定是否把 `PropertyBatchWriter` 组合进 ingestion worker。
+3. 再补 P1-002D 属性过滤安全测试，确保任何属性 filter、sort、pagination 都经过 query builder 白名单，然后落 P1-002B/C 的 client enrich 和 session/visit resolver。
 4. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
 
 ## 与上层产品的集成边界
@@ -471,8 +471,8 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | 幂等入库 | 重复消费同一 `event_id` 不会在数据库产生两份事件明细；当前已落地 `EventWriteGuard` 边界和 GORM/MySQL `IngestionStatusGuard` 真实状态守卫 |
 | Realtime | 当前已落地 query plan builder 和 ClickHouse query reader，并通过 opt-in e2e 验证最近事件能被读出 |
 | Events / Raw Events | 当前已落地 query plan builder 和 ClickHouse query reader，并通过 opt-in e2e 验证明细事件可查且属性可确认 |
-| 事件属性 | P1-002A 已先约束属性入口并提供 typed row 逻辑展开；仍需明确属性物理存储模型，至少保证 custom event 属性能入库、能在 Events 或排障查询中确认，后续支持属性过滤 |
-| 用户属性 | identify 语义进入 `DistinctID` + `UserProps`，用户属性和事件属性分开处理，不混成一类 JSON；当前已先共用 collect 属性入口约束和 typed row 展开模型 |
+| 事件属性 | P1-002A 已先约束属性入口、提供 typed row 逻辑展开，并新增独立 ClickHouse property writer；仍需明确属性字典和写入组合语义，至少保证 custom event 属性能入库、能在 Events 或排障查询中确认，后续支持属性过滤 |
+| 用户属性 | identify 语义进入 `DistinctID` + `UserProps`，用户属性和事件属性分开处理，不混成一类 JSON；当前已先共用 collect 属性入口约束、typed row 展开模型和独立 property writer |
 | session/visit | P1-002C 需要可替换 resolver，支持匿名 hash、业务 id、cookie/no-cookie 和 salt 轮换策略 |
 | client enrich / bot 过滤 | P1-002B 需要以 stage 形式实现 IP/UA/geo/utm/click id 补齐和 bot/IP/internal traffic 过滤，不进入 writer |
 | 查询安全 | P1-002D 已落地 Events 排序/过滤字段白名单、operator enum、filter 数量上限和非法输入测试；仍需在属性模型确定后补属性白名单、属性过滤和超大分页验收 |
