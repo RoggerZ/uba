@@ -361,7 +361,7 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 - `EventWriter` 默认使用 `clickhouse-go/v2 PrepareBatch` 原生批量写入，GORM batch insert 只作为压测对照或低频管理写入选项。
 - 当前已明确 `ingestion.Processor` 是 P1 worker 边界：Redis/Kafka adapter 负责 ack/nack，Processor 负责调用 `storage.EventWriter`，后续真实 worker 入口不得复制一套消费写入逻辑。
 - worker 后续运行时必须把 `EventWriteGuard` claim、ClickHouse `EventWriter` append、guard commit/rollback 和 Redis/Kafka ack 串成同一条可恢复链路，避免重复事件在数据库存两份。
-- 当前已提供 Realtime 和 Raw Events / Events 的 query plan builder 与 ClickHouse/GORM query reader，后续接本地运行依赖做端到端验证。
+- 当前已提供 Realtime 和 Raw Events / Events 的 query plan builder 与 ClickHouse/GORM query reader，并已通过 opt-in e2e 验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader。
 
 验收：
 
@@ -410,6 +410,29 @@ SimpleTrack 已经有两个参考产品资产，`analytics-core` 需要吸收它
 - Product / Overview 可以借 Litlyx 的空态、示例态、真实态思路。
 - Funnels、Journeys、Retention、Segments 的模型边界参考 Umami，但产品页放到 P2 以后。
 
+## Umami 源码启发的优化落点
+
+Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/visit、事件写入、属性展开、ClickHouse schema、Realtime/Events 查询和过滤构建。`analytics-core` 吸收这些内容时不改变既有 Go 边界，只把实现经验落到可测试的 stage、adapter 和 query plan。
+
+| 优化项 | Umami 证据 | `analytics-core` 落点 | 当前处理 |
+| --- | --- | --- | --- |
+| 事件属性与用户属性 | `event_data`、`session_data`、typed value | `EventWriter` 属性展开、属性字典、`EventQueryBuilder` 属性过滤 | P1-002A，先评审 typed rows / Map / JSON / 混合模型 |
+| client info enrich | collect 入口补 IP、UA、browser、os、device、geo | collect/ingestion enrichment stage | P1-002B，禁止放入 ClickHouse writer |
+| bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | collect 前置或 ingestion filter stage | P1-002B，先做配置级过滤和标记策略 |
+| session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | 可替换 `SessionResolver`，输出 `session_id` / `visit_id` | P1-002C，评审隐私、salt、cookie/no-cookie |
+| 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、operator enum、分页上限 | P1-002D，补非法输入测试 |
+| Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果 | P1-002E 已完成，后续作为回归入口 |
+| Web tracker SDK | auto pageview、custom event、identify、performance | SimpleTrack Web SDK -> `collect.Request` -> `EventEnvelope` | P1-004，核心协议稳定，SDK 后续可多语言扩展 |
+| ClickHouse 读侧优化 | materialized view、小时聚合表、projection、typed 属性 | ClickHouse adapter 的聚合表、projection、高频属性索引和迁移策略 | P1.5-001，P1 闭环后压测评审 |
+| Performance metrics | LCP、INP、CLS、FCP、TTFB | 可作为事件类型或属性组进入协议扩展 | P2-001，P1 只预留承接能力 |
+
+实现顺序：
+
+1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询。
+2. 下一步补 P1-002D 查询安全测试，确保任何 filter、sort、pagination 都经过 query builder 白名单。
+3. 再落 P1-002A 到 P1-002C，补齐属性模型、client enrich 和 session/visit resolver。
+4. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
+
 ## 与上层产品的集成边界
 
 SimpleTrack / AppTrack / xwl_bi 产品层负责：
@@ -446,8 +469,13 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | 表策略 | P1 采用按 project/source 物理分表的方案 B，但上层仍只面对统一 `events` 逻辑模型 |
 | ClickHouse 写入 | 事件明细高吞吐写入默认使用原生 batch writer；当前已落地 `clickhouse-go/v2 PrepareBatch` 的 `BatchWriter`，后续建立与 GORM `CreateInBatches` 的压测对照 |
 | 幂等入库 | 重复消费同一 `event_id` 不会在数据库产生两份事件明细；当前已落地 `EventWriteGuard` 边界和 GORM/MySQL `IngestionStatusGuard` 真实状态守卫 |
-| Realtime | 当前已落地 query plan builder 和 ClickHouse query reader；下一步通过端到端运行验证最近事件能快速出现 |
-| Events / Raw Events | 当前已落地 query plan builder 和 ClickHouse query reader；下一步通过端到端运行验证明细事件可查并用于接入排障 |
+| Realtime | 当前已落地 query plan builder 和 ClickHouse query reader，并通过 opt-in e2e 验证最近事件能被读出 |
+| Events / Raw Events | 当前已落地 query plan builder 和 ClickHouse query reader，并通过 opt-in e2e 验证明细事件可查且属性可确认 |
+| 事件属性 | P1-002A 需要明确属性存储模型；至少保证 custom event 属性能入库、能在 Events 或排障查询中确认，后续支持属性过滤 |
+| 用户属性 | identify 语义进入 `DistinctID` + `UserProps`，用户属性和事件属性分开处理，不混成一类 JSON |
+| session/visit | P1-002C 需要可替换 resolver，支持匿名 hash、业务 id、cookie/no-cookie 和 salt 轮换策略 |
+| client enrich / bot 过滤 | P1-002B 需要以 stage 形式实现 IP/UA/geo/utm/click id 补齐和 bot/IP/internal traffic 过滤，不进入 writer |
+| 查询安全 | P1-002D 需要字段白名单、排序白名单、operator enum、属性白名单、分页上限和非法输入测试 |
 | 元数据 | 事件名、事件属性、用户属性能被捕获 |
 | Goal | 能定义关键事件并返回基础结果 |
 | 业务无关 | 不出现订阅、账单、套餐、团队、Admin UI 逻辑 |
@@ -462,3 +490,9 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 - KafkaBus 迁移时如何复用 xwl_bi 现有 consumer offset 和 acceptance status 思路。
 - Funnel / Retention 查询如何落到统一 GORM query builder。
 - `analytics-core` 压测基线指标、数据量级和验收阈值。
+- 事件属性存储选择：typed rows、ClickHouse Map/JSON、原始 JSON + 高频属性展开的混合模型，分别对应哪些查询能力和迁移成本。
+- session/visit 隐私策略：salt 轮换、IP 保留策略、DNT、cookie/no-cookie、server identity 和 retention 的默认值。
+- client info enrich 与 bot/IP 过滤的执行位置、配置面和失败语义。
+- ClickHouse 读侧优化何时引入 materialized view、projection、小时聚合表和高频属性索引，方案 B 多物理表如何批量迁移。
+- Web tracker SDK 与多语言 SDK 的阶段路线：P1 只做浏览器最短链路，React/Next/Node/mobile SDK 后续评审。
+- Performance metrics 是事件属性、独立事件类型还是独立模型，是否进入 P2。

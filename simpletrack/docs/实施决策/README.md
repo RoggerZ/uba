@@ -18,6 +18,10 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-01 | 在 `analytics-core` 新增 opt-in 端到端测试，真实验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader，并将 P1-002E 标记为已完成；同步子仓提交到 `4931f15` | analytics-core、P1-002、Realtime、Events、本地运行依赖 |
+| 2026-05-01 | 将 Umami 源码深解中可被 `analytics-core` 吸收的优化点排入实施计划和评审表，新增事件属性、client enrich、session/visit、查询白名单、Realtime/Events 验收、Web SDK 和 ClickHouse 读侧优化任务 | analytics-core、Umami 参考资产、P1/P1.5/P2 计划、待评审事项 |
+| 2026-05-01 | 为 Umami P1 源码实现参考补充 `Q&A/` 概念解释，覆盖 identify、Prisma schema、字段白名单、Core Web Vitals、SDK 取舍、bot/IP 过滤、Zod、storage dispatch、session 隐私机制和 JSON 属性风险 | Umami 参考资产、analytics-core、SimpleTrack docs/quickstart、文档体系 |
+| 2026-05-01 | 在 `simpletrack/docs/umami/docs/源码实现参考/` 落地 Umami P1 数据管道源码分章节深解，补齐整体架构、tracker、collect、写入、模型、Realtime/Events、过滤查询和 SimpleTrack / `analytics-core` 启发 | Umami 参考资产、analytics-core、Realtime、Events、文档体系 |
 | 2026-05-01 | 将 Umami 官方 GitHub 源码克隆为 `references/umami/` 只读参考快照，新增源码实现审阅和参考映射文档 | Umami 参考资产、analytics-core、Realtime、Events、仓库治理 |
 | 2026-05-01 | 调整 `analytics-core` 本地 compose 默认端口，避开本机 Redis/MySQL 端口冲突，并记录 Docker 卡壳处理；同步子仓提交到 `c7aa2cb` | analytics-core、本地运行依赖、开发环境 |
 | 2026-05-01 | 在 `analytics-core` 新增 Redis Stack、MySQL、ClickHouse 本地 `docker-compose.yml` 和 README 运行说明；同步子仓提交到 `0bd1cc4` | analytics-core、本地运行依赖、端到端验证 |
@@ -72,9 +76,17 @@
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github-simpletrack:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
 | P1-001 | EventBus 抽象设计 | 已完成 | 已落地 `EventEnvelope`、`EventBus`、`DirectBus`、`RedisStreamBus` 和 `KafkaBus` 包边界；Redis Stream 已支持 pending 优先重试、`MaxAttempts` 死信队列和消费成功后 ack；ingestion processor 已把重复事件写入视为成功处理 | 进入 P1-002，继续实现 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环 |
 | P1-000B | 引入 xwl_bi 后端参考快照 | 已完成 | 已将本地 `xwl_bi` 后端代码和顶层关键文档复制到 `references/xwl_bi-backend/`，并明确为只读架构设计参考快照，不包含 Vue2 前端、日志和二进制 | 仅按需 refresh 快照；主要参考模块边界、启动装配、消费链路、ClickHouse 写入/查询分层和元数据流转，不直接在快照中开发 |
-| P1-000C | 引入 Umami 官方源码参考快照 | 已完成 | 已将 Umami 官方 GitHub 源码克隆到 `references/umami/`，删除上游 `.git` 元数据并记录 commit；已新增源码审阅和实施映射文档 | 仅按需 refresh 快照；主要参考 tracker、collect、事件/会话模型、Realtime/Events 查询、ClickHouse schema，不直接复制代码 |
-| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、`collect.Handler`、fasthttp `POST /collect` 入口、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、`EventWriteGuard` 幂等边界、GORM/MySQL `IngestionStatusGuard`、`EventQueryBuilder` 查询边界、`storage.EventReader` 查询执行器、`ingestion.Processor` worker 边界和本地 Redis/MySQL/ClickHouse compose；子仓提交 `c7aa2cb` 已推送，Redis Stream 集成测试已在 Docker Redis 上通过 | 继续做最小端到端验证脚本 / 命令，打通 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader |
+| P1-000C | 引入 Umami 官方源码参考快照 | 已完成 | 已将 Umami 官方 GitHub 源码克隆到 `references/umami/`，删除上游 `.git` 元数据并记录 commit；已新增源码审阅、实施映射、`simpletrack/docs/umami/docs/源码实现参考/` 分章节深解文档和 Q&A 概念解释 | 仅按需 refresh 快照；主要参考 tracker、collect、事件/会话模型、Realtime/Events 查询、ClickHouse schema，并用分章节文档和 Q&A 对照 SimpleTrack 与 `analytics-core`，不直接复制代码 |
+| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、`collect.Handler`、fasthttp `POST /collect` 入口、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、`EventWriteGuard` 幂等边界、GORM/MySQL `IngestionStatusGuard`、`EventQueryBuilder` 查询边界、`storage.EventReader` 查询执行器、`ingestion.Processor` worker 边界、本地 Redis/MySQL/ClickHouse compose 和 opt-in e2e 验收测试；子仓提交 `4931f15` 已推送，e2e 已真实验证 pageview + custom event + user properties 能经 Redis Stream 入 ClickHouse，并被 Realtime/Events reader 读出 | 继续推进 P1-002A 事件属性模型、P1-002D 查询白名单硬化、P1-002B/C client enrich 与 session/visit resolver 评审落地 |
+| P1-002A | 事件属性与用户属性模型优化 | 待完成 | Umami 的 `event_data` / `session_data` 证明动态属性不能只停留在 JSON；`analytics-core` 需要明确事件属性、用户属性、属性类型和 Events 展示口径 | 先在 R3 评审 typed rows、ClickHouse Map/JSON、混合模型和属性字典范围，再补 `EventWriter` 属性展开、`EventQueryBuilder` 属性过滤与测试 |
+| P1-002B | client info enrich 与 bot/IP 过滤 stage | 待完成 | Umami 在 collect 入口补齐 IP、UA、browser、os、device、geo，并做 bot/IP 过滤；`analytics-core` 可吸收为 collect/ingestion stage，不能混进 ClickHouse writer | 在 R3 评审隐私边界、geo provider、DNT/internal traffic 配置后，实现可测试的 enrich/filter stage |
+| P1-002C | session/visit resolver 隐私友好识别 | 待完成 | Umami 用 source、业务 id 或 IP/UA/salt 派生 session，并用 visit 窗口聚合短期访问；`analytics-core` 需要可替换 resolver，兼容 cookie、header、匿名 hash 和 server identity | 在 R3 评审 salt 轮换、IP 处理、cookie/no-cookie、retention 后落地纯函数与端到端用例 |
+| P1-002D | 查询白名单与过滤构建硬化 | 待完成 | 已有 `EventQueryBuilder` 边界，但需按 Umami `FILTER_COLUMNS` 思路补齐字段白名单、排序白名单、operator enum、属性白名单、分页上限和错误返回 | 为 Realtime、Events、属性过滤、非法字段、非法排序、超大分页补查询构建测试 |
+| P1-002E | Realtime/Events 最小端到端验收 | 已完成 | 已新增 `internal/e2e` opt-in 测试，使用本地 Redis/MySQL/ClickHouse 验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader；测试覆盖 pageview、自定义事件属性和 user properties | 后续保持该 e2e 作为回归入口，并在 P1-002A/D 扩展属性过滤和查询白名单场景 |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 已完成 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本；marketing 文案、pricing 语义、docs/quickstart、mail-preview 品牌文案和截图级验证已完成；公开站点首屏已露出下一节内容 | 后续只做轻量文案和视觉微调，不阻塞 P1 数据管道 |
+| P1-004 | Web tracker SDK 最短链路 | 待完成 | Umami tracker 的 auto pageview、SPA route、custom event、可选 identify 和 performance 采集可作为 SimpleTrack Web SDK 设计参考；P1 先做浏览器 SDK，不展开多语言 SDK | 先实现安装 snippet、自动 pageview、manual track、可选 identify、关闭自动采集和 debug；React/Next/Node/mobile SDK 放后续阶段 |
+| P1.5-001 | ClickHouse 读侧优化与属性治理预研 | 暂缓 | Umami ClickHouse schema 使用 materialized view、聚合表和 typed 属性优化读侧；`analytics-core` 可在 P1 闭环稳定后借鉴，形成高性能查询组件基础 | P1-002E 通过后评审 projection/materialized view/hourly aggregate、高频属性索引和跨物理表迁移策略 |
+| P2-001 | Performance metrics 采集与查询 | 暂缓 | Umami tracker 可采集 LCP、INP、CLS、FCP、TTFB；SimpleTrack P1 不以性能诊断为阻塞项 | P2 评审是否作为事件类型、属性组或独立 performance 模型进入 `analytics-core` |
 | INFRA-001 | SimpleTrack GitHub SSH 与子仓库推送配置 | 已完成 | 已生成并记录 `id_ed25519_simpletrack` 专用 key 流程，`src/analytics-core` 和 `src/simpletrack-saas` 固定使用 `config_simpletrack + core.sshCommand`，父仓已提交相关 Q&A 和 AGENTS 规则 | 后续新机器按 Q&A 复现；默认 SSH config ACL 可暂不阻塞主线 |
 
 ### 状态重置规则
@@ -109,22 +121,27 @@
 - `analytics-core` 已完成 `storage.EventReader` 契约和 ClickHouse/GORM 查询执行器，执行 query plan 后返回 storage-neutral `EventRecord`。
 - `analytics-core` 已明确 `ingestion.Processor` 是 P1 worker 边界，EventBus adapter 负责 ack/nack，Processor 只把消息写入 `storage.EventWriter` 并把错误交回队列重试/死信策略。
 - `analytics-core` 已新增本地 `docker-compose.yml`，包含 Redis Stack、MySQL 8.4、ClickHouse 25.3，并在 README 记录启动、避开冲突的高位端口和 Redis Stream 集成测试入口。
+- `analytics-core` 已新增 opt-in e2e 测试，真实跑通 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader；验证 pageview、自定义事件属性和 user properties 可被读侧查出。
+- Umami 源码深解已经转化为 `analytics-core` 优化计划：事件属性与用户属性模型、client info enrich、bot/IP 过滤、session/visit resolver、查询白名单、Realtime/Events 验收、Web tracker SDK、ClickHouse 读侧优化和 performance metrics 均已进入计划表或评审表。
 
 正在推进：
 
 - Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载、UI-only subscription gate、marketing 文案、pricing 语义、docs/quickstart、mail-preview 和浏览器截图验证。
-- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、ClickHouse query reader、worker 边界和本地运行依赖已完成，下一步进入最小端到端验证。
+- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、ClickHouse query reader、worker 边界、本地运行依赖和最小端到端验证已完成；下一步进入事件属性模型、查询白名单硬化、client enrich 和 session/visit resolver。
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
-- Umami 官方源码只读快照已就位，主要用于参考分析对象体系、tracker 采集、事件属性、Realtime/Events 读侧、ClickHouse 明细与聚合模型。
+- Umami 官方源码只读快照已就位，主要用于参考分析对象体系、tracker 采集、事件属性、Realtime/Events 读侧、ClickHouse 明细与聚合模型；P1 数据管道源码分章节深解和 Q&A 概念解释已落地到 `simpletrack/docs/umami/docs/源码实现参考/`。
+- Umami 源码启发的 `analytics-core` 优化项已排期：P1 优先补属性入库/查询、session/visit、client enrich、查询安全和端到端验收；P1.5/P2 再评审 ClickHouse 聚合优化、多语言 SDK 与 performance metrics。
 - 企业分析控制台 UI 可改造性确认。
 - 产品官网 / Marketing Site / docs 公开站点的信息架构已按 P1 验收完成，后续只做轻量优化。
 
 下一步：
 
-1. 启动 `analytics-core` 本地 Redis/MySQL/ClickHouse 依赖，用最小端到端链路验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader，并对照 Umami 源码里的 `event_data`、Realtime 和 Events 查询口径补齐验收点。
-2. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
-3. 公开站点继续使用 Supastarter 的 marketing/docs app，后续只做轻量文案和视觉微调。
-4. 每次子仓库提交推送后，先提交子仓，再更新父仓 gitlink 和实施进度文档。
+1. 围绕 R3-U1 / R3-U2 拍板事件属性存储、属性字典、属性白名单和字段白名单范围，并进入 P1-002A / P1-002D 实现。
+2. 围绕 R3-U3 到 R3-U5 拍板 session/visit 隐私策略、client enrich 边界、bot/IP 过滤和 internal traffic 配置面，再进入 P1-002B / P1-002C 实现。
+3. 设计 SimpleTrack Web tracker SDK 的 P1 最短链路：auto pageview、manual track、可选 identify、关闭自动采集和 debug；React/Next/Node/mobile SDK 后置。
+4. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
+5. 公开站点继续使用 Supastarter 的 marketing/docs app，后续只做轻量文案和视觉微调。
+6. 每次子仓库提交推送后，先提交子仓，再更新父仓 gitlink 和实施进度文档。
 
 ## 当前已确定的总方向
 
@@ -144,6 +161,7 @@
 14. Umami 官方源码只作为只读实现参考：可参考 tracker、collect、事件/会话模型、Realtime/Events 查询和 ClickHouse schema，不直接复制 Umami 源码或采用其 Next.js API route 热路径架构。
 15. `analytics-core` 的 ClickHouse 表策略直接采用方案 B，按 `tenant_id / project_id / source_id` 路由到物理事件表，上层仍使用统一 `events` 逻辑模型。
 16. ClickHouse 事件写入热路径优先使用原生 batch writer，入库按 `(tenant_id, project_id, source_id, event_id)` 做幂等去重。
+17. Umami 源码启发进入 `analytics-core` 的方式是“落到既有边界”：属性模型进入 `EventWriter` / `EventQueryBuilder`，session/visit 与 client enrich 进入 collect/ingestion stage，Realtime/Events 验收进入 `EventReader`，ClickHouse 聚合优化进入 P1.5/P2 评审。
 
 ## 当前待评审的总方向
 
@@ -152,6 +170,7 @@
 3. `analytics-core` 的表模型、接口分层、存储模型和从 xwl_bi 抽取的具体代码步骤。
 4. 企业级控制台 UI 是否直接跟随 Supastarter UI 栈，还是在模板 shell 内重做业务控制台。
 5. Supastarter 的 marketing/docs app 是否满足产品官网和 docs 需要；若不满足再轻量定制。
+6. Umami 源码启发的 `analytics-core` 优化项如何取舍：事件属性 typed storage、session/visit 隐私策略、client enrich、bot/IP 过滤、ClickHouse 聚合优化、SDK 分阶段路线和 performance metrics 是否进入 P1、P1.5 或 P2。
 
 ## 维护规则
 
