@@ -18,6 +18,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-01 | 安装并补跑 `golint ./...`，修正 `analytics-core` e2e helper 的 `context.Context` 参数顺序；同步子仓提交到 `0538a0b` | analytics-core、P1-002E、本地验证、代码规范 |
 | 2026-05-01 | 在 `analytics-core` 新增 opt-in 端到端测试，真实验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader，并将 P1-002E 标记为已完成；同步子仓提交到 `4931f15` | analytics-core、P1-002、Realtime、Events、本地运行依赖 |
 | 2026-05-01 | 将 Umami 源码深解中可被 `analytics-core` 吸收的优化点排入实施计划和评审表，新增事件属性、client enrich、session/visit、查询白名单、Realtime/Events 验收、Web SDK 和 ClickHouse 读侧优化任务 | analytics-core、Umami 参考资产、P1/P1.5/P2 计划、待评审事项 |
 | 2026-05-01 | 为 Umami P1 源码实现参考补充 `Q&A/` 概念解释，覆盖 identify、Prisma schema、字段白名单、Core Web Vitals、SDK 取舍、bot/IP 过滤、Zod、storage dispatch、session 隐私机制和 JSON 属性风险 | Umami 参考资产、analytics-core、SimpleTrack docs/quickstart、文档体系 |
