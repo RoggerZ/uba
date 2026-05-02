@@ -40,6 +40,14 @@
 - `references/xwl_bi-backend/` 是从本地 `xwl_bi` 复制进来的只读临时参考快照，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分；不要把它当作活跃模块开发，不要直接照搬旧业务代码或旧命名。
 - 如需刷新 `references/xwl_bi-backend/`，必须按“重新快照”的方式整体替换，并在 `references/xwl_bi-backend/README.md` 与实施决策文档中记录新的来源 commit。
 
+## Git 提交规范
+
+- 提交和推送默认遵循 `$git-commit-cn` 的流程：先核对 `git status --short --branch`、`git diff --stat`、`git diff --name-status`，只 stage 本次任务相关文件，禁止用 `git add .` 混入 IDE 配置、日志、缓存、临时目录或无关未跟踪文件。
+- 提交信息使用英文，不使用中文提交正文；但正文结构沿用 `$git-commit-cn` 的分路径说明方式，按文件路径分组列出每个文件的具体修改点。
+- 如果仓库或上层 AGENTS 要求 Lore Commit Protocol，英文提交信息仍需保留有价值的 `Constraint:`、`Rejected:`、`Confidence:`、`Scope-risk:`、`Directive:`、`Tested:`、`Not-tested:` 等 trailer。
+- 用户调用 `$git-commit-cn` 或明确要求提交时，默认在提交后继续 push；只有需要 force push、rebase、merge、解决冲突、远端不明确或会推送明显无关历史提交时，才停下来说明风险并等待确认。
+- 涉及 `src/analytics-core` 或 `src/simpletrack-saas` 的改动，必须先在子仓库按上述英文提交规范 commit/push，再回到父仓更新 submodule gitlink、实施决策文档和父仓提交。
+
 ## Go 代码注释与 godoc 规范
 
 - Go HTTP 服务入口优先使用成熟第三方框架或活跃第三方 HTTP 库；只有没有合适成熟方案时才考虑标准库 `net/http` 直接作为服务入口。`analytics-core` 的事件上报热路径已确定使用活跃维护的 `github.com/valyala/fasthttp`，不使用标准库 router，也不沿用 xwl_bi 中低活跃的 `buaazp/fasthttprouter` 路由层。
