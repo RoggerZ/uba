@@ -417,12 +417,12 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 | 优化项 | Umami 证据 | `analytics-core` 落点 | 当前处理 |
 | --- | --- | --- | --- |
 | 事件属性与用户属性 | `event_data`、`session_data`、typed value | collect 阶段已落地属性 key、数量、标量类型、字符串长度和有限数字入口约束；storage 层已提供 `EventPropertyRecord` / `FlattenEventProperties` typed row 逻辑展开；ClickHouse `PropertyBatchWriter` 写入同源路由 `_properties` 表；`PropertyIndexingEventWriter` 已把属性索引组合进 ingestion 热路径；MySQL `property_indexing_status` 单独处理属性 checkpoint，failed 可原子 reclaim，processing ambiguous 不自动重试；真实 e2e 已验证写入、读取和属性过滤 | P1-002A 已完成；属性字典、ambiguous 恢复和 ClickHouse 去重/聚合优化放 P1.5/P2 |
-| client info enrich | collect 入口补 IP、UA、browser、os、device、geo | P1-002B 第一版已落地 collect `Stage`：UA/referrer 可进入 bounded properties，IP 只允许盐化为 `client.ip_hash`；HTTP 默认不信任 forwarded IP，可信代理需显式 `WithTrustedProxyHeaders()` | 继续评审 geo、browser/os/device、UTM/click id 和 DNT，禁止放入 ClickHouse writer |
-| bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | P1-002B 第一版已落地 `TrafficFilterStage`：按 bot UA token、internal CIDR/IP 在 EventBus publish 前返回 `FilteredError`，HTTP 返回 accepted filtered 响应，不写入分析明细 | 后续评审 allow/deny 配置来源、产品 UI、DNT 和审计/采样策略 |
-| session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | P1-002C 第一版已落地可替换 `SessionResolverStage`，在缺失 `session_id` 时用 salt + 时间窗口 + tenant/project/source/distinct_id 派生匿名 session；IP/UA 只能作为 transient hash 输入 | `visit_id` 尚未进入事件契约，后续评审 schema、salt 轮换、cookie/no-cookie、DNT 和 retention |
+| client info enrich | collect 入口补 IP、UA、browser、os、device、geo | P1-002B 第一版已落地 collect `Stage`：UA/referrer 可进入 bounded properties，IP 只允许盐化为 `client.ip_hash`；HTTP 默认不信任 forwarded IP，可信代理需显式 `WithTrustedProxyHeaders()`；浏览器 SDK 已支持 opt-in DNT | 继续评审 geo、browser/os/device、UTM/click id，禁止放入 ClickHouse writer |
+| bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | P1-002B 第一版已落地 `TrafficFilterStage`：按 bot UA token、internal CIDR/IP 在 EventBus publish 前返回 `FilteredError`，HTTP 返回 accepted filtered 响应，不写入分析明细；DNT active 时浏览器 SDK 不发送也不持久化 identity | 后续评审 allow/deny 配置来源、产品 UI、internal traffic 和审计/采样策略 |
+| session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | P1-002C 第一版已落地可替换 `SessionResolverStage`，在缺失 `session_id` 时用 salt + 时间窗口 + tenant/project/source/distinct_id 派生匿名 session；IP/UA 只能作为 transient hash 输入；浏览器 DNT opt-in 避免持久本地 identity | `visit_id` 尚未进入事件契约，后续评审 schema、salt 轮换、cookie/no-cookie 和 retention |
 | 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限和 typed property filter allowlist；属性过滤使用 ClickHouse tuple `IN` 半连接查询属性表，避免 correlated `EXISTS` 外层 alias 兼容问题 | P1-002D 已完成，后续复杂查询继续复用 allowlist + 真实 ClickHouse e2e |
 | Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果；e2e 入口已增加 Redis/MySQL/ClickHouse 冷启动 readiness 重试，避免 compose 刚启动时 native handshake EOF 误伤验收 | P1-002E 已完成，后续作为回归入口 |
-| Web tracker SDK | auto pageview、custom event、identify、performance | P1 已落地 SimpleTrack 浏览器 SDK -> `collect.Request` -> `EventEnvelope`：支持 auto pageview、SPA route、manual track、identify、debug、队列回放、storage fallback 和非法 event name 拦截；docs/quickstart 已同步 | P1-004 已完成；React/Next/Node/mobile SDK、CDN 版本化和 performance metrics 后续评审 |
+| Web tracker SDK | auto pageview、custom event、identify、performance | P1 已落地 SimpleTrack 浏览器 SDK -> `collect.Request` -> `EventEnvelope`：支持 auto pageview、SPA route、manual track、identify、debug、队列回放、storage fallback、非法 event name 拦截和 opt-in DNT；docs/quickstart 已同步 | P1-004 已完成；React/Next/Node/mobile SDK、CDN 版本化和 performance metrics 后续评审 |
 | ClickHouse 读侧优化 | materialized view、小时聚合表、projection、typed 属性 | ClickHouse adapter 的聚合表、projection、高频属性索引和迁移策略 | P1.5-001，P1 闭环后压测评审 |
 | Performance metrics | LCP、INP、CLS、FCP、TTFB | 可作为事件类型或属性组进入协议扩展 | P2-001，P1 只预留承接能力 |
 
@@ -430,7 +430,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 
 1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询；冷启动 e2e readiness 已复验稳定。
 2. P1-002A 已完成：`PropertyBatchWriter` 已通过 `PropertyIndexingEventWriter` 组合进 ingestion worker，属性跨表幂等使用 `property_indexing_status` guard；processing ambiguous 不自动恢复，后续作为 P1.5/P2 运维和 ClickHouse 去重策略评审项。
-3. P1-004 已完成：浏览器 SDK 最短链路和 docs/quickstart 已对齐 collect 协议；后续继续评审 visit/geo/DNT、SDK 发布策略和多语言 SDK。
+3. P1-004 已完成：浏览器 SDK 最短链路和 docs/quickstart 已对齐 collect 协议，DNT opt-in 已补齐；后续继续评审 visit/geo、SDK 发布策略和多语言 SDK。
 4. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
 
 ## 与上层产品的集成边界
@@ -491,7 +491,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 - Funnel / Retention 查询如何落到统一 GORM query builder。
 - `analytics-core` 压测基线指标、数据量级和验收阈值。
 - 事件属性存储选择：typed rows、ClickHouse Map/JSON、原始 JSON + 高频属性展开的混合模型，分别对应哪些查询能力和迁移成本。
-- session/visit 隐私策略：salt 轮换、IP 保留策略、DNT、cookie/no-cookie、server identity 和 retention 的默认值。
+- session/visit 隐私策略：salt 轮换、IP 保留策略、cookie/no-cookie、server identity 和 retention 的默认值；DNT 浏览器侧 opt-in 已落地，后续只评审产品配置和 audit。
 - client info enrich 与 bot/IP 过滤的执行位置、配置面和失败语义。
 - ClickHouse 读侧优化何时引入 materialized view、projection、小时聚合表和高频属性索引，方案 B 多物理表如何批量迁移。
 - Web tracker SDK 与多语言 SDK 的阶段路线：P1 只做浏览器最短链路，React/Next/Node/mobile SDK 后续评审。
