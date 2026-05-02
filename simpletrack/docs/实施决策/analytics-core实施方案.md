@@ -1,7 +1,7 @@
 # analytics-core 实施方案
 
 > 状态：已确定 P1 执行，模块设计持续评审  
-> 最近更新：2026-05-01
+> 最近更新：2026-05-02
 > 来源：基于 xwl_bi 本地代码的 analyze + code-review 梳理，并结合 Umami、Litlyx 两个参考产品的调研资产。`references/xwl_bi-backend/` 主要作为后端架构设计参考，不作为代码搬运来源。
 
 ## 结论
@@ -420,7 +420,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 | client info enrich | collect 入口补 IP、UA、browser、os、device、geo | collect/ingestion enrichment stage | P1-002B，禁止放入 ClickHouse writer |
 | bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | collect 前置或 ingestion filter stage | P1-002B，先做配置级过滤和标记策略 |
 | session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | 可替换 `SessionResolver`，输出 `session_id` / `visit_id` | P1-002C，评审隐私、salt、cookie/no-cookie |
-| 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限；当前已落地 Events 排序/过滤 typed 白名单和 `ErrInvalidEventQuery`，属性白名单等待 P1-002A 属性模型 | P1-002D，继续补属性过滤与非法属性字段测试 |
+| 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限和 typed property filter allowlist；属性过滤使用 ClickHouse tuple `IN` 半连接查询属性表，避免 correlated `EXISTS` 外层 alias 兼容问题 | P1-002D 已完成，后续复杂查询继续复用 allowlist + 真实 ClickHouse e2e |
 | Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果；e2e 入口已增加 Redis/MySQL/ClickHouse 冷启动 readiness 重试，避免 compose 刚启动时 native handshake EOF 误伤验收 | P1-002E 已完成，后续作为回归入口 |
 | Web tracker SDK | auto pageview、custom event、identify、performance | SimpleTrack Web SDK -> `collect.Request` -> `EventEnvelope` | P1-004，核心协议稳定，SDK 后续可多语言扩展 |
 | ClickHouse 读侧优化 | materialized view、小时聚合表、projection、typed 属性 | ClickHouse adapter 的聚合表、projection、高频属性索引和迁移策略 | P1.5-001，P1 闭环后压测评审 |
@@ -430,7 +430,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 
 1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询；冷启动 e2e readiness 已复验稳定。
 2. 下一步补 P1-002A 的属性字典和跨表重试/幂等语义评审，再决定是否把 `PropertyBatchWriter` 组合进 ingestion worker。
-3. 再补 P1-002D 属性过滤安全测试，确保任何属性 filter、sort、pagination 都经过 query builder 白名单，然后落 P1-002B/C 的 client enrich 和 session/visit resolver。
+3. P1-002D 已完成：标准字段 filter/sort、属性 filter 和 pagination 均经过 query builder 白名单；后续先落 P1-002B/C 的 client enrich 和 session/visit resolver。
 4. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
 
 ## 与上层产品的集成边界
@@ -475,7 +475,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | 用户属性 | identify 语义进入 `DistinctID` + `UserProps`，用户属性和事件属性分开处理，不混成一类 JSON；当前已先共用 collect 属性入口约束、typed row 展开模型和独立 property writer |
 | session/visit | P1-002C 需要可替换 resolver，支持匿名 hash、业务 id、cookie/no-cookie 和 salt 轮换策略 |
 | client enrich / bot 过滤 | P1-002B 需要以 stage 形式实现 IP/UA/geo/utm/click id 补齐和 bot/IP/internal traffic 过滤，不进入 writer |
-| 查询安全 | P1-002D 已落地 Events 排序/过滤字段白名单、operator enum、filter 数量上限和非法输入测试；仍需在属性模型确定后补属性白名单、属性过滤和超大分页验收 |
+| 查询安全 | P1-002D 已落地 Events 排序/过滤字段白名单、operator enum、filter 数量上限、typed property filter allowlist、非法输入测试和真实 ClickHouse e2e；后续复杂查询必须补真实执行验证 |
 | 元数据 | 事件名、事件属性、用户属性能被捕获 |
 | Goal | 能定义关键事件并返回基础结果 |
 | 业务无关 | 不出现订阅、账单、套餐、团队、Admin UI 逻辑 |
