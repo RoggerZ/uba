@@ -422,7 +422,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 | session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | P1-002C 第一版已落地可替换 `SessionResolverStage`，在缺失 `session_id` 时用 salt + 时间窗口 + tenant/project/source/distinct_id 派生匿名 session；IP/UA 只能作为 transient hash 输入 | `visit_id` 尚未进入事件契约，后续评审 schema、salt 轮换、cookie/no-cookie、DNT 和 retention |
 | 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限和 typed property filter allowlist；属性过滤使用 ClickHouse tuple `IN` 半连接查询属性表，避免 correlated `EXISTS` 外层 alias 兼容问题 | P1-002D 已完成，后续复杂查询继续复用 allowlist + 真实 ClickHouse e2e |
 | Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果；e2e 入口已增加 Redis/MySQL/ClickHouse 冷启动 readiness 重试，避免 compose 刚启动时 native handshake EOF 误伤验收 | P1-002E 已完成，后续作为回归入口 |
-| Web tracker SDK | auto pageview、custom event、identify、performance | SimpleTrack Web SDK -> `collect.Request` -> `EventEnvelope` | P1-004，核心协议稳定，SDK 后续可多语言扩展 |
+| Web tracker SDK | auto pageview、custom event、identify、performance | P1 已落地 SimpleTrack 浏览器 SDK -> `collect.Request` -> `EventEnvelope`：支持 auto pageview、SPA route、manual track、identify、debug、队列回放、storage fallback 和非法 event name 拦截；docs/quickstart 已同步 | P1-004 已完成；React/Next/Node/mobile SDK、CDN 版本化和 performance metrics 后续评审 |
 | ClickHouse 读侧优化 | materialized view、小时聚合表、projection、typed 属性 | ClickHouse adapter 的聚合表、projection、高频属性索引和迁移策略 | P1.5-001，P1 闭环后压测评审 |
 | Performance metrics | LCP、INP、CLS、FCP、TTFB | 可作为事件类型或属性组进入协议扩展 | P2-001，P1 只预留承接能力 |
 
@@ -430,7 +430,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 
 1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询；冷启动 e2e readiness 已复验稳定。
 2. P1-002A 已完成：`PropertyBatchWriter` 已通过 `PropertyIndexingEventWriter` 组合进 ingestion worker，属性跨表幂等使用 `property_indexing_status` guard；processing ambiguous 不自动恢复，后续作为 P1.5/P2 运维和 ClickHouse 去重策略评审项。
-3. P1-002B/C 第一版已完成：collect pre-queue stage 已承接 session 派生、client 派生属性和 bot/internal traffic 过滤；后续进入 Web tracker SDK，同时继续评审 visit/geo/DNT 等剩余项。
+3. P1-004 已完成：浏览器 SDK 最短链路和 docs/quickstart 已对齐 collect 协议；后续继续评审 visit/geo/DNT、SDK 发布策略和多语言 SDK。
 4. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
 
 ## 与上层产品的集成边界

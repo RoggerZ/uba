@@ -6,6 +6,7 @@
 
 | 文档 | 用途 | 状态 |
 | --- | --- | --- |
+| 2026-05-03 | 完成 P1-004 Web tracker SDK 最短链路：`analytics-core` 新增无依赖浏览器 SDK，覆盖自动 pageview、SPA route pageview、manual track、identify、debug 和 snippet queue；`simpletrack-saas` docs/quickstart 已对齐 tenant/project/source/collect-url、debug、关闭自动采集、队列和 identify 示例；子仓提交 `86b916a`、`02ce483` 已推送，并通过结对审查、SDK 测试和 docs type-check | P1-004、Web tracker SDK、docs/quickstart、analytics-core、simpletrack-saas |
 | 2026-05-03 | 在 `analytics-core` 落地 P1-002B/C 第一版：新增 collect pre-queue `Stage` 管道、盐化窗口 `SessionResolver`、client UA/referrer/IP hash 派生属性、bot/internal traffic 过滤；HTTP 层默认不信任 `X-Forwarded-For` / `X-Real-IP`，只有显式 `WithTrustedProxyHeaders()` 才启用可信代理头；子仓提交 `9c06b0d` 已推送，并通过结对审查、全仓 Go 验证和真实 e2e | analytics-core、P1-002B、P1-002C、collect、隐私、bot/internal traffic |
 | [分阶段实施计划.md](分阶段实施计划.md) | 记录 P0/P1/P2/P3 的目标、范围、交付物和验收标准 | 已确定，持续更新 |
 | [待评审事项.md](待评审事项.md) | 记录还没有拍板的技术栈、模板、支付、数据面复用方案 | 待评审，持续更新 |
@@ -96,7 +97,7 @@
 | P1-002D | 查询白名单与过滤构建硬化 | 已完成 | 已有 `EventQueryBuilder` 边界；已新增 Events 类型化排序字段/方向白名单、过滤字段/operator 白名单、filter 数量上限、typed property filter allowlist、非法属性字段测试和 `ErrInvalidEventQuery` 错误分类；属性过滤采用 ClickHouse 可执行的 tuple `IN` 子查询并已通过真实 e2e | 后续新增 Breakdown/Funnel/Retention 查询时复用同一 allowlist 思路，并为复杂 ClickHouse SQL 补真实 e2e |
 | P1-002E | Realtime/Events 最小端到端验收 | 已完成 | 已新增 `internal/e2e` opt-in 测试，使用本地 Redis/MySQL/ClickHouse 验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader；测试覆盖 pageview、自定义事件属性、user properties、ClickHouse property writer、属性索引热路径和 allowlisted property filter 精确排除非匹配事件；冷启动依赖 readiness 已通过重试窗口修复 | 后续保持该 e2e 作为回归入口，并在 P1.5/P2 扩展属性治理、聚合表和复杂查询场景 |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 已完成 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本；marketing 文案、pricing 语义、docs/quickstart、mail-preview 品牌文案和截图级验证已完成；公开站点首屏已露出下一节内容 | 后续只做轻量文案和视觉微调，不阻塞 P1 数据管道 |
-| P1-004 | Web tracker SDK 最短链路 | 待完成 | Umami tracker 的 auto pageview、SPA route、custom event、可选 identify 和 performance 采集可作为 SimpleTrack Web SDK 设计参考；P1 先做浏览器 SDK，不展开多语言 SDK | 先实现安装 snippet、自动 pageview、manual track、可选 identify、关闭自动采集和 debug；React/Next/Node/mobile SDK 放后续阶段 |
+| P1-004 | Web tracker SDK 最短链路 | 已完成 | P1 浏览器 SDK 已在 `analytics-core/sdk/browser/tracker.js` 落地：无依赖、framework-neutral，支持安装 snippet、自动 pageview、SPA route pageview、manual track、identify、debug、snippet queue、`localStorage` blocked fallback 和非法 event name 拦截；`simpletrack-saas` docs/quickstart 已同步新 snippet 和 identify 示例；子仓提交 `86b916a`、`02ce483` 已推送 | React/Next/Node/mobile SDK、多语言 SDK、performance metrics 和 CDN/版本化发布策略放后续阶段评审 |
 | P1.5-001 | ClickHouse 读侧优化与属性治理预研 | 暂缓 | Umami ClickHouse schema 使用 materialized view、聚合表和 typed 属性优化读侧；`analytics-core` 可在 P1 闭环稳定后借鉴，形成高性能查询组件基础 | P1-002E 通过后评审 projection/materialized view/hourly aggregate、高频属性索引和跨物理表迁移策略 |
 | P2-001 | Performance metrics 采集与查询 | 暂缓 | Umami tracker 可采集 LCP、INP、CLS、FCP、TTFB；SimpleTrack P1 不以性能诊断为阻塞项 | P2 评审是否作为事件类型、属性组或独立 performance 模型进入 `analytics-core` |
 | INFRA-001 | SimpleTrack GitHub SSH 与子仓库推送配置 | 已完成 | 已生成并记录 `id_ed25519_simpletrack` 专用 key 流程，`src/analytics-core` 和 `src/simpletrack-saas` 固定使用 `config_simpletrack + core.sshCommand`，父仓已提交相关 Q&A 和 AGENTS 规则 | 后续新机器按 Q&A 复现；默认 SSH config ACL 可暂不阻塞主线 |
@@ -139,17 +140,17 @@
 正在推进：
 
 - Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载、UI-only subscription gate、marketing 文案、pricing 语义、docs/quickstart、mail-preview 和浏览器截图验证。
-- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单，以及 P1-002B/C 第一版 collect pre-queue stage 已完成；property writer、property filter、属性热路径组合、session 派生、client 派生属性和过滤前置都有自动化测试或真实 ClickHouse e2e 证明，相关卡点记录已沉淀；下一步进入 Web tracker SDK 与 visit/geo 等剩余评审。
+- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单、P1-002B/C 第一版 collect pre-queue stage，以及 P1-004 浏览器 SDK 最短链路已完成；property writer、property filter、属性热路径组合、session 派生、client 派生属性、过滤前置和浏览器 SDK 行为都有自动化测试或真实 ClickHouse e2e 证明，相关卡点记录已沉淀；下一步进入 visit/geo/DNT 等剩余评审。
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
 - Umami 官方源码只读快照已就位，主要用于参考分析对象体系、tracker 采集、事件属性、Realtime/Events 读侧、ClickHouse 明细与聚合模型；P1 数据管道源码分章节深解和 Q&A 概念解释已落地到 `simpletrack/docs/umami/docs/源码实现参考/`。
-- Umami 源码启发的 `analytics-core` 优化项已排期并部分落地：P1 已补属性入库/查询、client enrich 第一版、session resolver 第一版、查询安全和端到端验收；P1.5/P2 再评审 ClickHouse 聚合优化、多语言 SDK、visit 扩展与 performance metrics。
+- Umami 源码启发的 `analytics-core` 优化项已排期并部分落地：P1 已补属性入库/查询、client enrich 第一版、session resolver 第一版、查询安全、端到端验收和浏览器 SDK 最短链路；P1.5/P2 再评审 ClickHouse 聚合优化、多语言 SDK、visit 扩展、SDK CDN 发布和 performance metrics。
 - 企业分析控制台 UI 可改造性确认。
 - 产品官网 / Marketing Site / docs 公开站点的信息架构已按 P1 验收完成，后续只做轻量优化。
 
 下一步：
 
-1. 围绕 P1-004 设计 SimpleTrack Web tracker SDK 的 P1 最短链路：auto pageview、manual track、可选 identify、关闭自动采集和 debug；React/Next/Node/mobile SDK 后置。
-2. 继续评审 P1-002B/C 剩余项：`visit_id` 是否扩展事件契约、geo/browser/os/device/UTM/click id 的 enrich 边界、DNT/internal traffic 产品配置和过滤审计策略。
+1. 继续评审 P1-002B/C 剩余项：`visit_id` 是否扩展事件契约、geo/browser/os/device/UTM/click id 的 enrich 边界、DNT/internal traffic 产品配置和过滤审计策略。
+2. 设计 Web tracker SDK 的发布与集成策略：CDN/版本号、静态托管路径、CSP 文档、生产 collect URL 环境配置；React/Next/Node/mobile SDK 后置。
 3. 把 R3-U1/R3-U2 的剩余项降为 P1.5/P2：属性字典治理、ambiguous `property_indexing_status=processing` 恢复策略、ClickHouse projection/materialized view/去重方案。
 4. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
 5. 公开站点继续使用 Supastarter 的 marketing/docs app，后续只做轻量文案和视觉微调。
