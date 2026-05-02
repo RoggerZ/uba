@@ -6,14 +6,15 @@
 
 | 文档 | 用途 | 状态 |
 | --- | --- | --- |
-| 2026-05-03 | 补齐浏览器 SDK 的 DNT opt-in 隐私开关和 UTM/click id 白名单：`data-do-not-track="true"` 且浏览器声明 DNT 时，SDK 同时停止网络发送和本地 `distinct_id` 持久化；页面浏览/事件会自动附加 allowlisted UTM/click 参数，`page.url` 去掉 query/hash；quickstart 已同步用法；子仓提交 `8b5ba58`、`6484126` 已推送，并通过结对审查、SDK 测试和 docs type-check | P1-002B、P1-002C、P1-004、DNT、UTM/click id、Web tracker SDK、docs/quickstart |
-| 2026-05-03 | 完成 P1-004 Web tracker SDK 最短链路：`analytics-core` 新增无依赖浏览器 SDK，覆盖自动 pageview、SPA route pageview、manual track、identify、debug 和 snippet queue；`simpletrack-saas` docs/quickstart 已对齐 tenant/project/source/collect-url、debug、关闭自动采集、队列和 identify 示例；子仓提交 `86b916a`、`02ce483` 已推送，并通过结对审查、SDK 测试和 docs type-check | P1-004、Web tracker SDK、docs/quickstart、analytics-core、simpletrack-saas |
+| 2026-05-03 | 浏览器 SDK 已补齐 DNT opt-in 隐私开关和 UTM/click id 白名单；随后完成边界纠偏：SDK 不再属于 `analytics-core`，改由 `analytics-service` 静态托管，quickstart 改为 `data-write-key` 接入 | P1-002B、P1-002C、P1-004、P1-005、DNT、UTM/click id、Web tracker SDK、docs/quickstart |
+| 2026-05-03 | P1-004 Web tracker SDK 最短链路已完成，后续归属调整为产品运行时层：`analytics-core` 只保留 Go library 能力，`analytics-service` 承接 `/tracker.js` 和 `/collect` | P1-004、P1-005、Web tracker SDK、analytics-core、analytics-service |
 | 2026-05-03 | 在 `analytics-core` 落地 P1-002B/C 第一版：新增 collect pre-queue `Stage` 管道、盐化窗口 `SessionResolver`、client UA/referrer/IP hash 派生属性、bot/internal traffic 过滤；HTTP 层默认不信任 `X-Forwarded-For` / `X-Real-IP`，只有显式 `WithTrustedProxyHeaders()` 才启用可信代理头；子仓提交 `9c06b0d` 已推送，并通过结对审查、全仓 Go 验证和真实 e2e | analytics-core、P1-002B、P1-002C、collect、隐私、bot/internal traffic |
 | [分阶段实施计划.md](分阶段实施计划.md) | 记录 P0/P1/P2/P3 的目标、范围、交付物和验收标准 | 已确定，持续更新 |
 | [待评审事项.md](待评审事项.md) | 记录还没有拍板的技术栈、模板、支付、数据面复用方案 | 待评审，持续更新 |
 | [技术栈底座决策.md](技术栈底座决策.md) | 记录当前已经形成的技术底座方向和边界 | 已确定 + 待评审 |
 | [付费SaaS模板本地对比.md](付费SaaS模板本地对比.md) | 基于 `template-src` 本地源码和 MakerKit 官方资料对比付费模板 | 已确定先选 Supastarter，持续更新 |
 | [analytics-core实施方案.md](analytics-core实施方案.md) | 记录 `analytics-core` 的 P1 抽取边界、模块草案、EventBus 方案和 xwl_bi 代码评审结论 | 已确定，设计细节持续评审 |
+| [SimpleTrack分析服务职责边界.md](SimpleTrack分析服务职责边界.md) | 说明 `simpletrack-saas`、`simpletrack-analytics-service` 与 `analytics-core` Go library 的控制面/数据面边界 | 已确定，持续更新 |
 | [xwl_bi后端架构参考映射.md](xwl_bi后端架构参考映射.md) | 将 `references/xwl_bi-backend/` 的后端架构设计映射到 `analytics-core`，明确只参考架构不搬旧业务代码 | 已确定，持续更新 |
 | [Umami源代码参考映射.md](Umami源代码参考映射.md) | 将 `references/umami/` 的官方源码快照映射到 SimpleTrack P1/P2/P3 实施边界，明确只参考对象体系和实现策略 | 已确定，持续更新 |
 
@@ -21,6 +22,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-03 | 建立 `src/analytics-service` 本地仓库，明确 `analytics-core` 作为 Go 第三方库而非独立业务服务；core 公共 API 调整为根目录包，Browser SDK 从 core 移到 analytics-service 静态交付，docs/quickstart 改为 write key 接入 | P1-005、analytics-service、analytics-core、Web tracker SDK、控制面/数据面边界 |
 | 2026-05-03 | 在根目录 `AGENTS.md` 固化代码结对规则：代码改动必须由主代理实现、Codex native 子代理基于 `AGENTS.md` 复审当前 diff，提交前处理阻塞问题；纯文档更新默认不强制子代理 | 仓库治理、代码审查、协作规范 |
 | 2026-05-03 | 在 `analytics-core` 把 typed property rows 接入 ingestion 热路径：新增 `PropertyIndexingEventWriter`、`PropertyWriteGuard`、MySQL `property_indexing_status`，属性写入只 reclaim 明确 failed checkpoint，processing 视为结果不明以避免重复追加；同步子仓提交到 `0586ee6` | analytics-core、P1-002A、ClickHouse、属性索引、跨表幂等、代码审查规则 |
 | 2026-05-02 | 在 `analytics-core` 为 Events 查询新增 typed property filter：属性 scope/name/type/value 进入 allowlist + 绑定参数，ClickHouse 使用 tuple `IN` 半连接查询属性表；真实 e2e 复验修复 correlated `EXISTS` 外层 alias 卡点；同步子仓提交到 `ae5c21c` | analytics-core、P1-002D、P1-002A、Events 查询、ClickHouse 查询安全 |
@@ -98,7 +100,11 @@
 | P1-002D | 查询白名单与过滤构建硬化 | 已完成 | 已有 `EventQueryBuilder` 边界；已新增 Events 类型化排序字段/方向白名单、过滤字段/operator 白名单、filter 数量上限、typed property filter allowlist、非法属性字段测试和 `ErrInvalidEventQuery` 错误分类；属性过滤采用 ClickHouse 可执行的 tuple `IN` 子查询并已通过真实 e2e | 后续新增 Breakdown/Funnel/Retention 查询时复用同一 allowlist 思路，并为复杂 ClickHouse SQL 补真实 e2e |
 | P1-002E | Realtime/Events 最小端到端验收 | 已完成 | 已新增 `internal/e2e` opt-in 测试，使用本地 Redis/MySQL/ClickHouse 验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader；测试覆盖 pageview、自定义事件属性、user properties、ClickHouse property writer、属性索引热路径和 allowlisted property filter 精确排除非匹配事件；冷启动依赖 readiness 已通过重试窗口修复 | 后续保持该 e2e 作为回归入口，并在 P1.5/P2 扩展属性治理、聚合表和复杂查询场景 |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 已完成 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本；marketing 文案、pricing 语义、docs/quickstart、mail-preview 品牌文案和截图级验证已完成；公开站点首屏已露出下一节内容 | 后续只做轻量文案和视觉微调，不阻塞 P1 数据管道 |
-| P1-004 | Web tracker SDK 最短链路 | 已完成 | P1 浏览器 SDK 已在 `analytics-core/sdk/browser/tracker.js` 落地：无依赖、framework-neutral，支持安装 snippet、自动 pageview、SPA route pageview、manual track、identify、debug、snippet queue、`localStorage` blocked fallback、非法 event name 拦截、opt-in DNT 和 allowlisted UTM/click id；`simpletrack-saas` docs/quickstart 已同步 snippet、identify、DNT 与 attribution 示例；子仓提交 `8b5ba58`、`6484126` 已推送 | React/Next/Node/mobile SDK、多语言 SDK、performance metrics 和 CDN/版本化发布策略放后续阶段评审 |
+| P1-004 | Web tracker SDK 最短链路 | 已完成 | P1 浏览器 SDK 已从 `analytics-core` 迁出，由 `src/analytics-service/public/tracker.js` 作为运行时服务静态资产托管；SDK 继续支持 auto pageview、SPA route pageview、manual track、identify、debug、snippet queue、`localStorage` fallback、非法 event name 拦截、opt-in DNT 和 allowlisted UTM/click id；docs/quickstart 已改为 `data-write-key` 接入，analytics-service 通过 write key 覆盖 tenant/project/source | React/Next/Node/mobile SDK、多语言 SDK、performance metrics 和 CDN/版本化发布策略放后续阶段评审 |
+| P1-005 | SimpleTrack Analytics Service 本地仓库 | 进行中 | 已创建 `src/analytics-service` 本地 Go 仓库，服务名 `simpletrack-analytics-service`；当前提供 `/healthz`、`/tracker.js`、`OPTIONS /collect`、`POST /collect`，并用 `MemoryResolver` 执行本地 runtime source config | 后续替换生产 resolver，补 Events/Realtime 查询 API，并在远端仓库创建后登记父仓 submodule |
+| P1-005A | `analytics-core` root-level Go library API | 已完成 | `analytics-core` 已调整为可被 Go 服务引用的根目录公共包：`contracts`、`collect`、`eventbus`、`ingestion`、`storage` 等；不再把 Browser SDK 放进 core，也不把 core 作为长期业务服务运行 | 后续公共 API 变更需保持外部服务 import 稳定 |
+| P1-005B | collect runtime service | 进行中 | analytics-service 已实现 write key 解析、source enabled、Origin allowlist、CORS preflight、客户端 scope 覆盖、bot/internal traffic 过滤、client enrich、session resolver 和 EventBus publish 测试 | 接入 Redis Stream / ClickHouse 运行配置，补生产部署参数 |
+| P1-005C | SaaS control-plane config runtime enforcement | 待完成 | 当前用 `MemoryResolver` 模拟控制面配置，已明确 CRUD 在 `simpletrack-saas`，runtime enforcement 在 analytics-service | 后续接入 SaaS 控制面数据库/API/缓存，处理 quota、domain allowlist、internal traffic 产品配置 |
 | P1.5-001 | ClickHouse 读侧优化与属性治理预研 | 暂缓 | Umami ClickHouse schema 使用 materialized view、聚合表和 typed 属性优化读侧；`analytics-core` 可在 P1 闭环稳定后借鉴，形成高性能查询组件基础 | P1-002E 通过后评审 projection/materialized view/hourly aggregate、高频属性索引和跨物理表迁移策略 |
 | P2-001 | Performance metrics 采集与查询 | 暂缓 | Umami tracker 可采集 LCP、INP、CLS、FCP、TTFB；SimpleTrack P1 不以性能诊断为阻塞项 | P2 评审是否作为事件类型、属性组或独立 performance 模型进入 `analytics-core` |
 | INFRA-001 | SimpleTrack GitHub SSH 与子仓库推送配置 | 已完成 | 已生成并记录 `id_ed25519_simpletrack` 专用 key 流程，`src/analytics-core` 和 `src/simpletrack-saas` 固定使用 `config_simpletrack + core.sshCommand`，父仓已提交相关 Q&A 和 AGENTS 规则 | 后续新机器按 Q&A 复现；默认 SSH config ACL 可暂不阻塞主线 |
@@ -136,12 +142,15 @@
 - `analytics-core` 已明确 `ingestion.Processor` 是 P1 worker 边界，EventBus adapter 负责 ack/nack，Processor 只把消息写入 `storage.EventWriter` 并把错误交回队列重试/死信策略。
 - `analytics-core` 已新增本地 `docker-compose.yml`，包含 Redis Stack、MySQL 8.4、ClickHouse 25.3，并在 README 记录启动、避开冲突的高位端口和 Redis Stream 集成测试入口。
 - `analytics-core` 已新增 opt-in e2e 测试，真实跑通 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader；验证 pageview、自定义事件属性和 user properties 可被读侧查出，并已补齐 Redis/MySQL/ClickHouse 冷启动 readiness 重试。
+- `analytics-core` 已从“可能自带服务/SDK”的实现形态纠偏为 Go 第三方库：外部服务通过根目录公共包引用 core，Browser SDK 由 `analytics-service` 托管。
+- `src/analytics-service` 已作为本地 Go 仓库创建，负责 SimpleTrack 分析数据面的 runtime enforcement：write key、Origin、CORS、internal traffic、bot 过滤和 collect 调用 core。
 - Umami 源码深解已经转化为 `analytics-core` 优化计划：事件属性与用户属性模型、client info enrich、bot/IP 过滤、session/visit resolver、查询白名单、Realtime/Events 验收、Web tracker SDK、ClickHouse 读侧优化和 performance metrics 均已进入计划表或评审表。
 
 正在推进：
 
 - Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载、UI-only subscription gate、marketing 文案、pricing 语义、docs/quickstart、mail-preview 和浏览器截图验证。
-- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单、P1-002B/C 第一版 collect pre-queue stage，以及 P1-004 浏览器 SDK 最短链路已完成；property writer、property filter、属性热路径组合、session 派生、client 派生属性、过滤前置、浏览器 SDK、DNT opt-in 和 UTM/click id 行为都有自动化测试或真实 ClickHouse e2e 证明，相关卡点记录已沉淀；下一步进入 visit/geo/internal traffic 等剩余评审。
+- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 适配器、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单、P1-002B/C 第一版 collect pre-queue stage 已完成；core 现在以 Go library 方式被 analytics-service 引用，P1-004 Browser SDK 已迁到 analytics-service 静态交付；下一步进入 visit/geo/internal traffic 等剩余评审。
+- `analytics-service` 主线：已完成本地仓库、服务骨架、runtime config resolver、`/collect` 运行时校验、`/tracker.js` 静态托管和 collect 单测；下一步补生产 resolver、Redis/ClickHouse 装配和查询 API。
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
 - Umami 官方源码只读快照已就位，主要用于参考分析对象体系、tracker 采集、事件属性、Realtime/Events 读侧、ClickHouse 明细与聚合模型；P1 数据管道源码分章节深解和 Q&A 概念解释已落地到 `simpletrack/docs/umami/docs/源码实现参考/`。
 - Umami 源码启发的 `analytics-core` 优化项已排期并部分落地：P1 已补属性入库/查询、client enrich 第一版、session resolver 第一版、查询安全、端到端验收、浏览器 SDK 最短链路、DNT opt-in 和 UTM/click id 白名单；P1.5/P2 再评审 ClickHouse 聚合优化、多语言 SDK、visit 扩展、SDK CDN 发布和 performance metrics。
@@ -151,11 +160,11 @@
 下一步：
 
 1. 继续评审 P1-002B/C 剩余项：`visit_id` 是否扩展事件契约、geo/browser/os/device 的 enrich 边界、internal traffic 产品配置和过滤审计策略。
-2. 设计 Web tracker SDK 的发布与集成策略：CDN/版本号、静态托管路径、CSP 文档、生产 collect URL 环境配置；React/Next/Node/mobile SDK 后置。
+2. 继续推进 P1-005：把 `MemoryResolver` 替换为 SaaS 控制面配置读取方案，补 Redis Stream / ClickHouse 运行配置，并设计 Events/Realtime 查询 API。
 3. 把 R3-U1/R3-U2 的剩余项降为 P1.5/P2：属性字典治理、ambiguous `property_indexing_status=processing` 恢复策略、ClickHouse projection/materialized view/去重方案。
 4. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
 5. 公开站点继续使用 Supastarter 的 marketing/docs app，后续只做轻量文案和视觉微调。
-6. 每次子仓库提交推送后，先提交子仓，再更新父仓 gitlink 和实施进度文档。
+6. 每次子仓库提交推送后，先提交子仓，再更新父仓 gitlink 和实施进度文档；`analytics-service` 远端仓库创建前只做本地提交，不登记 `.gitmodules`。
 
 ## 当前已确定的总方向
 
@@ -176,6 +185,7 @@
 15. `analytics-core` 的 ClickHouse 表策略直接采用方案 B，按 `tenant_id / project_id / source_id` 路由到物理事件表，上层仍使用统一 `events` 逻辑模型。
 16. ClickHouse 事件写入热路径优先使用原生 batch writer，入库按 `(tenant_id, project_id, source_id, event_id)` 做幂等去重。
 17. Umami 源码启发进入 `analytics-core` 的方式是“落到既有边界”：属性模型进入 `EventWriter` / `EventQueryBuilder`，session/visit 与 client enrich 进入 collect/ingestion stage，Realtime/Events 验收进入 `EventReader`，ClickHouse 聚合优化进入 P1.5/P2 评审。
+18. `analytics-core` 是 Go 第三方库，不是 SimpleTrack 业务服务；`simpletrack-analytics-service` 才是运行时数据面服务，负责 write key、domain/CORS、internal traffic、quota 等 runtime enforcement；配置 CRUD 仍在 `simpletrack-saas`。
 
 ## 当前待评审的总方向
 
