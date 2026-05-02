@@ -1,7 +1,7 @@
 # analytics-core 实施方案
 
 > 状态：已确定 P1 执行，模块设计持续评审  
-> 最近更新：2026-05-02
+> 最近更新：2026-05-03
 > 来源：基于 xwl_bi 本地代码的 analyze + code-review 梳理，并结合 Umami、Litlyx 两个参考产品的调研资产。`references/xwl_bi-backend/` 主要作为后端架构设计参考，不作为代码搬运来源。
 
 ## 结论
@@ -417,9 +417,9 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 | 优化项 | Umami 证据 | `analytics-core` 落点 | 当前处理 |
 | --- | --- | --- | --- |
 | 事件属性与用户属性 | `event_data`、`session_data`、typed value | collect 阶段已落地属性 key、数量、标量类型、字符串长度和有限数字入口约束；storage 层已提供 `EventPropertyRecord` / `FlattenEventProperties` typed row 逻辑展开；ClickHouse `PropertyBatchWriter` 写入同源路由 `_properties` 表；`PropertyIndexingEventWriter` 已把属性索引组合进 ingestion 热路径；MySQL `property_indexing_status` 单独处理属性 checkpoint，failed 可原子 reclaim，processing ambiguous 不自动重试；真实 e2e 已验证写入、读取和属性过滤 | P1-002A 已完成；属性字典、ambiguous 恢复和 ClickHouse 去重/聚合优化放 P1.5/P2 |
-| client info enrich | collect 入口补 IP、UA、browser、os、device、geo | collect/ingestion enrichment stage | P1-002B，禁止放入 ClickHouse writer |
-| bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | collect 前置或 ingestion filter stage | P1-002B，先做配置级过滤和标记策略 |
-| session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | 可替换 `SessionResolver`，输出 `session_id` / `visit_id` | P1-002C，评审隐私、salt、cookie/no-cookie |
+| client info enrich | collect 入口补 IP、UA、browser、os、device、geo | P1-002B 第一版已落地 collect `Stage`：UA/referrer 可进入 bounded properties，IP 只允许盐化为 `client.ip_hash`；HTTP 默认不信任 forwarded IP，可信代理需显式 `WithTrustedProxyHeaders()` | 继续评审 geo、browser/os/device、UTM/click id 和 DNT，禁止放入 ClickHouse writer |
+| bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | P1-002B 第一版已落地 `TrafficFilterStage`：按 bot UA token、internal CIDR/IP 在 EventBus publish 前返回 `FilteredError`，HTTP 返回 accepted filtered 响应，不写入分析明细 | 后续评审 allow/deny 配置来源、产品 UI、DNT 和审计/采样策略 |
+| session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | P1-002C 第一版已落地可替换 `SessionResolverStage`，在缺失 `session_id` 时用 salt + 时间窗口 + tenant/project/source/distinct_id 派生匿名 session；IP/UA 只能作为 transient hash 输入 | `visit_id` 尚未进入事件契约，后续评审 schema、salt 轮换、cookie/no-cookie、DNT 和 retention |
 | 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限和 typed property filter allowlist；属性过滤使用 ClickHouse tuple `IN` 半连接查询属性表，避免 correlated `EXISTS` 外层 alias 兼容问题 | P1-002D 已完成，后续复杂查询继续复用 allowlist + 真实 ClickHouse e2e |
 | Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果；e2e 入口已增加 Redis/MySQL/ClickHouse 冷启动 readiness 重试，避免 compose 刚启动时 native handshake EOF 误伤验收 | P1-002E 已完成，后续作为回归入口 |
 | Web tracker SDK | auto pageview、custom event、identify、performance | SimpleTrack Web SDK -> `collect.Request` -> `EventEnvelope` | P1-004，核心协议稳定，SDK 后续可多语言扩展 |
@@ -430,7 +430,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 
 1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询；冷启动 e2e readiness 已复验稳定。
 2. P1-002A 已完成：`PropertyBatchWriter` 已通过 `PropertyIndexingEventWriter` 组合进 ingestion worker，属性跨表幂等使用 `property_indexing_status` guard；processing ambiguous 不自动恢复，后续作为 P1.5/P2 运维和 ClickHouse 去重策略评审项。
-3. P1-002D 已完成：标准字段 filter/sort、属性 filter 和 pagination 均经过 query builder 白名单；后续先落 P1-002B/C 的 client enrich 和 session/visit resolver。
+3. P1-002B/C 第一版已完成：collect pre-queue stage 已承接 session 派生、client 派生属性和 bot/internal traffic 过滤；后续进入 Web tracker SDK，同时继续评审 visit/geo/DNT 等剩余项。
 4. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
 
 ## 与上层产品的集成边界

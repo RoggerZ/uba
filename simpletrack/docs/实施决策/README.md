@@ -6,6 +6,7 @@
 
 | 文档 | 用途 | 状态 |
 | --- | --- | --- |
+| 2026-05-03 | 在 `analytics-core` 落地 P1-002B/C 第一版：新增 collect pre-queue `Stage` 管道、盐化窗口 `SessionResolver`、client UA/referrer/IP hash 派生属性、bot/internal traffic 过滤；HTTP 层默认不信任 `X-Forwarded-For` / `X-Real-IP`，只有显式 `WithTrustedProxyHeaders()` 才启用可信代理头；子仓提交 `9c06b0d` 已推送，并通过结对审查、全仓 Go 验证和真实 e2e | analytics-core、P1-002B、P1-002C、collect、隐私、bot/internal traffic |
 | [分阶段实施计划.md](分阶段实施计划.md) | 记录 P0/P1/P2/P3 的目标、范围、交付物和验收标准 | 已确定，持续更新 |
 | [待评审事项.md](待评审事项.md) | 记录还没有拍板的技术栈、模板、支付、数据面复用方案 | 待评审，持续更新 |
 | [技术栈底座决策.md](技术栈底座决策.md) | 记录当前已经形成的技术底座方向和边界 | 已确定 + 待评审 |
@@ -88,10 +89,10 @@
 | P1-001 | EventBus 抽象设计 | 已完成 | 已落地 `EventEnvelope`、`EventBus`、`DirectBus`、`RedisStreamBus` 和 `KafkaBus` 包边界；Redis Stream 已支持 pending 优先重试、`MaxAttempts` 死信队列和消费成功后 ack；ingestion processor 已把重复事件写入视为成功处理 | 进入 P1-002，继续实现 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环 |
 | P1-000B | 引入 xwl_bi 后端参考快照 | 已完成 | 已将本地 `xwl_bi` 后端代码和顶层关键文档复制到 `references/xwl_bi-backend/`，并明确为只读架构设计参考快照，不包含 Vue2 前端、日志和二进制 | 仅按需 refresh 快照；主要参考模块边界、启动装配、消费链路、ClickHouse 写入/查询分层和元数据流转，不直接在快照中开发 |
 | P1-000C | 引入 Umami 官方源码参考快照 | 已完成 | 已将 Umami 官方 GitHub 源码克隆到 `references/umami/`，删除上游 `.git` 元数据并记录 commit；已新增源码审阅、实施映射、`simpletrack/docs/umami/docs/源码实现参考/` 分章节深解文档和 Q&A 概念解释 | 仅按需 refresh 快照；主要参考 tracker、collect、事件/会话模型、Realtime/Events 查询、ClickHouse schema，并用分章节文档和 Q&A 对照 SimpleTrack 与 `analytics-core`，不直接复制代码 |
-| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、属性入口约束、typed property row 逻辑展开、`EventPropertyWriter` 契约、ClickHouse `PropertyBatchWriter`、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、`collect.Handler`、fasthttp `POST /collect` 入口、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、`EventWriteGuard` 幂等边界、GORM/MySQL `IngestionStatusGuard`、`EventQueryBuilder` 查询边界、typed 属性过滤、`storage.EventReader` 查询执行器、`ingestion.Processor` worker 边界、本地 Redis/MySQL/ClickHouse compose、opt-in e2e 验收测试，以及 Events 排序/过滤 typed 白名单；子仓提交 `0586ee6` 已推送，e2e 已真实验证 pageview + custom event + user properties 能经 Redis Stream 入 ClickHouse 事件表与属性表、被 Realtime/Events reader 读出，并可按 allowlisted property filter 精确过滤 | 继续 P1-002B/C client enrich 与 session/visit resolver；ambiguous `property_indexing_status=processing` 的自动恢复策略放 P1.5/P2 评审 |
+| P1-002 | 数据管道最小闭环 | 进行中 | 已完成 collect 请求标准化、字段校验、属性入口约束、typed property row 逻辑展开、`EventPropertyWriter` 契约、ClickHouse `PropertyBatchWriter`、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、`collect.Handler`、fasthttp `POST /collect` 入口、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、`EventWriteGuard` 幂等边界、GORM/MySQL `IngestionStatusGuard`、`EventQueryBuilder` 查询边界、typed 属性过滤、`storage.EventReader` 查询执行器、`ingestion.Processor` worker 边界、本地 Redis/MySQL/ClickHouse compose、opt-in e2e 验收测试、Events 排序/过滤 typed 白名单，以及 P1-002B/C 第一版 collect pre-queue stage；子仓提交 `9c06b0d` 已推送，e2e 已真实验证 pageview + custom event + user properties 能经 Redis Stream 入 ClickHouse 事件表与属性表、被 Realtime/Events reader 读出，并可按 allowlisted property filter 精确过滤；新增 stage 已验证 session 派生、client 派生属性和过滤前置不进入 ClickHouse writer | 继续 P1-002B/C 剩余评审：`visit_id` 是否进入事件契约、geo/browser/os/device/UTM/click id 的 enrich 边界、DNT/internal traffic 产品配置；ambiguous `property_indexing_status=processing` 的自动恢复策略放 P1.5/P2 评审 |
 | P1-002A | 事件属性与用户属性模型优化 | 已完成 | P1 范围已完成：collect 只接受有界数量、合法 key、标量值、有限数字和有限长度字符串；storage 提供 `EventPropertyRecord` 与 `FlattenEventProperties`；ClickHouse `PropertyBatchWriter` 写入同源路由 `_properties` 表；`PropertyIndexingEventWriter` 将属性索引接入 ingestion 热路径；MySQL `property_indexing_status` 独立防重复，failed 可原子 reclaim，processing 视为 ambiguous 不自动重试；nested object/array 暂不进入 P1 | 属性字典治理、ambiguous processing 运维恢复、ClickHouse 去重/物化视图/projection 放 P1.5/P2；P1 主线转入 P1-002B/C |
-| P1-002B | client info enrich 与 bot/IP 过滤 stage | 待完成 | Umami 在 collect 入口补齐 IP、UA、browser、os、device、geo，并做 bot/IP 过滤；`analytics-core` 可吸收为 collect/ingestion stage，不能混进 ClickHouse writer | 在 R3 评审隐私边界、geo provider、DNT/internal traffic 配置后，实现可测试的 enrich/filter stage |
-| P1-002C | session/visit resolver 隐私友好识别 | 待完成 | Umami 用 source、业务 id 或 IP/UA/salt 派生 session，并用 visit 窗口聚合短期访问；`analytics-core` 需要可替换 resolver，兼容 cookie、header、匿名 hash 和 server identity | 在 R3 评审 salt 轮换、IP 处理、cookie/no-cookie、retention 后落地纯函数与端到端用例 |
+| P1-002B | client info enrich 与 bot/IP 过滤 stage | 进行中 | 第一版已落地：`collect.Stage` 在 EventBus publish 前执行，`ClientEnrichmentStage` 可补 UA、referrer 和盐化 `client.ip_hash`，`TrafficFilterStage` 可按 bot UA、internal CIDR/IP 过滤；fasthttp adapter 默认只用 `RemoteIP()`，需显式 `WithTrustedProxyHeaders()` 才信任代理头；逻辑不进入 ClickHouse writer | 后续评审 geo provider、browser/os/device 解析、UTM/click id 标准化、DNT/internal traffic 产品配置和过滤审计策略 |
+| P1-002C | session/visit resolver 隐私友好识别 | 进行中 | 第一版已落地：`NewSessionResolverStage` 在缺失 `session_id` 时按 tenant/project/source/distinct_id/时间窗口生成盐化匿名 `ses_` 标识，可选把 transient UA/IP 仅作为 hash 输入；原始 IP/UA 不写入事件契约或存储 | 继续评审 `visit_id` 是否扩展 `EventEnvelope` 与 ClickHouse schema、salt 轮换、cookie/no-cookie、DNT、server identity 和 retention 默认值 |
 | P1-002D | 查询白名单与过滤构建硬化 | 已完成 | 已有 `EventQueryBuilder` 边界；已新增 Events 类型化排序字段/方向白名单、过滤字段/operator 白名单、filter 数量上限、typed property filter allowlist、非法属性字段测试和 `ErrInvalidEventQuery` 错误分类；属性过滤采用 ClickHouse 可执行的 tuple `IN` 子查询并已通过真实 e2e | 后续新增 Breakdown/Funnel/Retention 查询时复用同一 allowlist 思路，并为复杂 ClickHouse SQL 补真实 e2e |
 | P1-002E | Realtime/Events 最小端到端验收 | 已完成 | 已新增 `internal/e2e` opt-in 测试，使用本地 Redis/MySQL/ClickHouse 验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader；测试覆盖 pageview、自定义事件属性、user properties、ClickHouse property writer、属性索引热路径和 allowlisted property filter 精确排除非匹配事件；冷启动依赖 readiness 已通过重试窗口修复 | 后续保持该 e2e 作为回归入口，并在 P1.5/P2 扩展属性治理、聚合表和复杂查询场景 |
 | P1-003 | 产品官网 / Marketing Site / 公开站点 | 已完成 | 已从 `template-src/ai-supastarter-template` 初始化 `src/simpletrack-saas` 工作副本；marketing 文案、pricing 语义、docs/quickstart、mail-preview 品牌文案和截图级验证已完成；公开站点首屏已露出下一节内容 | 后续只做轻量文案和视觉微调，不阻塞 P1 数据管道 |
@@ -138,18 +139,18 @@
 正在推进：
 
 - Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载、UI-only subscription gate、marketing 文案、pricing 语义、docs/quickstart、mail-preview 和浏览器截图验证。
-- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证和 Events 排序/过滤白名单已完成；property writer、property filter 和属性热路径组合都有真实 ClickHouse e2e 证明，相关卡点记录已沉淀；下一步进入 client enrich 和 session/visit resolver。
+- `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 入口、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单，以及 P1-002B/C 第一版 collect pre-queue stage 已完成；property writer、property filter、属性热路径组合、session 派生、client 派生属性和过滤前置都有自动化测试或真实 ClickHouse e2e 证明，相关卡点记录已沉淀；下一步进入 Web tracker SDK 与 visit/geo 等剩余评审。
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
 - Umami 官方源码只读快照已就位，主要用于参考分析对象体系、tracker 采集、事件属性、Realtime/Events 读侧、ClickHouse 明细与聚合模型；P1 数据管道源码分章节深解和 Q&A 概念解释已落地到 `simpletrack/docs/umami/docs/源码实现参考/`。
-- Umami 源码启发的 `analytics-core` 优化项已排期：P1 优先补属性入库/查询、session/visit、client enrich、查询安全和端到端验收；P1.5/P2 再评审 ClickHouse 聚合优化、多语言 SDK 与 performance metrics。
+- Umami 源码启发的 `analytics-core` 优化项已排期并部分落地：P1 已补属性入库/查询、client enrich 第一版、session resolver 第一版、查询安全和端到端验收；P1.5/P2 再评审 ClickHouse 聚合优化、多语言 SDK、visit 扩展与 performance metrics。
 - 企业分析控制台 UI 可改造性确认。
 - 产品官网 / Marketing Site / docs 公开站点的信息架构已按 P1 验收完成，后续只做轻量优化。
 
 下一步：
 
-1. 围绕 R3-U3 到 R3-U5 拍板 session/visit 隐私策略、client enrich 边界、bot/IP 过滤和 internal traffic 配置面，再进入 P1-002B / P1-002C 实现。
-2. 把 R3-U1/R3-U2 的剩余项降为 P1.5/P2：属性字典治理、ambiguous `property_indexing_status=processing` 恢复策略、ClickHouse projection/materialized view/去重方案。
-3. 设计 SimpleTrack Web tracker SDK 的 P1 最短链路：auto pageview、manual track、可选 identify、关闭自动采集和 debug；React/Next/Node/mobile SDK 后置。
+1. 围绕 P1-004 设计 SimpleTrack Web tracker SDK 的 P1 最短链路：auto pageview、manual track、可选 identify、关闭自动采集和 debug；React/Next/Node/mobile SDK 后置。
+2. 继续评审 P1-002B/C 剩余项：`visit_id` 是否扩展事件契约、geo/browser/os/device/UTM/click id 的 enrich 边界、DNT/internal traffic 产品配置和过滤审计策略。
+3. 把 R3-U1/R3-U2 的剩余项降为 P1.5/P2：属性字典治理、ambiguous `property_indexing_status=processing` 恢复策略、ClickHouse projection/materialized view/去重方案。
 4. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
 5. 公开站点继续使用 Supastarter 的 marketing/docs app，后续只做轻量文案和视觉微调。
 6. 每次子仓库提交推送后，先提交子仓，再更新父仓 gitlink 和实施进度文档。
