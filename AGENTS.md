@@ -42,6 +42,9 @@
 
 ## Git 提交规范
 
+- 代码改动必须采用结对编程流程：主代理负责实现，另起一个 Codex native 子代理负责代码审查；子代理必须在本 `AGENTS.md` 约束下审查当前 diff、测试覆盖、godoc 注释、边界风险和是否混入无关改动。
+- 子代理代码审查应在提交前完成；发现必须修复的问题时，主代理先修复并重新验证，再按需追加复审。最终交付说明需要简要写明审查结果或剩余风险。
+- 该规则适用于代码文件和会影响代码行为的配置、脚本、迁移、测试文件；纯文档更新不强制启动子代理，除非用户明确要求审查。
 - 提交和推送默认遵循 `$git-commit-cn` 的流程：先核对 `git status --short --branch`、`git diff --stat`、`git diff --name-status`，只 stage 本次任务相关文件，禁止用 `git add .` 混入 IDE 配置、日志、缓存、临时目录或无关未跟踪文件。
 - 提交信息使用英文，不使用中文提交正文；但正文结构沿用 `$git-commit-cn` 的分路径说明方式，按文件路径分组列出每个文件的具体修改点。
 - 如果仓库或上层 AGENTS 要求 Lore Commit Protocol，英文提交信息仍需保留有价值的 `Constraint:`、`Rejected:`、`Confidence:`、`Scope-risk:`、`Directive:`、`Tested:`、`Not-tested:` 等 trailer。
