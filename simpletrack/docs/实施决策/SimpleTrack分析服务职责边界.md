@@ -104,6 +104,6 @@ import "github.com/simpletrack/analytics-core/storage"
 
 - `src/analytics-core` 已调整为根目录公共 Go 包形态，Browser SDK 已从 core 移出。
 - `src/analytics-service` 已创建本地 Go 仓库，服务展示名为 `simpletrack-anaysitics-service`；当前提供 `/healthz`、`/tracker.js`、`OPTIONS /collect`、`POST /collect`，并可显式开启同进程 ingestion worker。
-- 初版 `MemoryResolver` 只用于本地开发和测试；HTTP resolver 已作为生产接入雏形，可向 SimpleTrack 控制面内部 API 读取 runtime source config，默认 HTTPS 且 fail-closed；同进程 ingestion 下 HTTP 返回 source 仍受启动 `ANALYTICS_SERVICE_SOURCES_JSON` schema surface 约束，后续需要在 `simpletrack-saas` 落地对应 API 和鉴权策略。
+- 初版 `MemoryResolver` 只用于本地开发和测试；HTTP resolver 已接入 `simpletrack-saas` 的内部 runtime-source API，默认 HTTPS 且 fail-closed；同进程 ingestion 下 HTTP 返回 source 仍受启动 `ANALYTICS_SERVICE_SOURCES_JSON` schema surface 约束，后续需要继续完善 quota、domain allowlist、internal traffic 和 salt 轮换策略。
 - ClickHouse per-source event/property table schema 自动创建已提供本地/小部署开关；当前默认仍做启动就绪校验，生产级 schema 管理和回滚进入后续 runtime migration / schema 管理任务。
 - Events / Realtime 查询 HTTP API 暂不在本轮实现，进入后续 `P1-005D`。
