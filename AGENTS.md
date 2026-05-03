@@ -23,7 +23,7 @@
 - 实施计划状态统一使用：`待完成`、`进行中`、`已完成`、`暂缓`、`已否决`。
 - 每次完成任务、确认决策、改变阶段范围或发现实现偏离计划时，必须同步更新实施计划完成列表。
 - 仓库治理变化也算实施进度变化；创建或推送子仓库、修改子模块 gitlink、调整远端地址、SSH key/Host 或 `core.sshCommand` 时，也必须同步更新 `simpletrack/docs/实施决策/README.md` 的修订记录、实施计划完成列表、当前进度和下一步动作。
-- `src/analytics-core` 或 `src/simpletrack-saas` 有变更时，必须先提交并推送子仓库，再更新父仓子模块 gitlink、相关文档和父仓提交。
+- `src/analytics-core`、`src/simpletrack-saas` 或 `src/analytics-service` 有变更时，必须先提交并推送子仓库，再更新父仓子模块 gitlink、相关文档和父仓提交。
 - 已标记 `已完成` 的任务如果进入功能重构、范围重开、验收失败或实现被替换，必须把状态重置为 `待完成`，并在修订记录中说明原因。
 - P1 已确定包含 `analytics-core` 独立核心仓库建设：仓库名只用 `analytics-core`，不得带 `simpletrack` 或 `xwl`；从 xwl_bi 抽取分析数据面核心，保留 KafkaBus，前期优先 Redis Stream，不复用旧 Vue2 后台界面。
 - P1 已确定包含产品官网 / Marketing Site / 公开站点：需要产品介绍、定价/订阅入口、docs/quickstart；不要把它仅理解为单张 landing page。
@@ -49,7 +49,7 @@
 - 提交信息使用英文，不使用中文提交正文；但正文结构沿用 `$git-commit-cn` 的分路径说明方式，按文件路径分组列出每个文件的具体修改点。
 - 如果仓库或上层 AGENTS 要求 Lore Commit Protocol，英文提交信息仍需保留有价值的 `Constraint:`、`Rejected:`、`Confidence:`、`Scope-risk:`、`Directive:`、`Tested:`、`Not-tested:` 等 trailer。
 - 用户调用 `$git-commit-cn` 或明确要求提交时，默认在提交后继续 push；只有需要 force push、rebase、merge、解决冲突、远端不明确或会推送明显无关历史提交时，才停下来说明风险并等待确认。
-- 涉及 `src/analytics-core` 或 `src/simpletrack-saas` 的改动，必须先在子仓库按上述英文提交规范 commit/push，再回到父仓更新 submodule gitlink、实施决策文档和父仓提交。
+- 涉及 `src/analytics-core`、`src/simpletrack-saas` 或 `src/analytics-service` 的改动，必须先在子仓库按上述英文提交规范 commit/push，再回到父仓更新 submodule gitlink、实施决策文档和父仓提交。
 
 ## Go 代码注释与 godoc 规范
 
@@ -112,14 +112,16 @@
   - `ssh-keygen -t ed25519 -C "simpletrack" -f "$env:USERPROFILE\.ssh\id_ed25519_simpletrack"`
   - `Get-Content "$env:USERPROFILE\.ssh\id_ed25519_simpletrack.pub"`
   - `ssh -T git@github-simpletrack`
-- `src/analytics-core` 和 `src/simpletrack-saas` 是独立子仓库，推送到 `simpletrack` GitHub 组织时必须使用专用 SSH 配置：
+- `src/analytics-core`、`src/simpletrack-saas` 和 `src/analytics-service` 是独立子仓库，推送到 `simpletrack` GitHub 组织时必须使用专用 SSH 配置：
   - `$sshConfig = "$($env:USERPROFILE -replace '\\','/')/.ssh/config_simpletrack"`
   - `git -C ".\src\analytics-core" config core.sshCommand "ssh -F $sshConfig"`
   - `git -C ".\src\simpletrack-saas" config core.sshCommand "ssh -F $sshConfig"`
-- 两个子仓库的 `origin` 必须使用 `github-simpletrack` Host 别名：
+  - `git -C ".\src\analytics-service" config core.sshCommand "ssh -F $sshConfig"`
+- 三个子仓库的 `origin` 必须使用 `github-simpletrack` Host 别名：
   - `git@github-simpletrack:simpletrack/analytics-core.git`
   - `git@github-simpletrack:simpletrack/simpletrack-saas.git`
-- 不要依赖默认 `$env:USERPROFILE\.ssh\config` 推送这两个仓库；该文件曾因 Windows ACL 权限异常导致 OpenSSH 报 `Bad owner or permissions`。
+  - `git@github-simpletrack:simpletrack/anaysitics-service.git`
+- 不要依赖默认 `$env:USERPROFILE\.ssh\config` 推送这三个仓库；该文件曾因 Windows ACL 权限异常导致 OpenSSH 报 `Bad owner or permissions`。
 - 相关说明维护在 `simpletrack/docs/Q&A/Windows-SSH仓库权限怎么配置.md`。
 
 ## 截图评审标准

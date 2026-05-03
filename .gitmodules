@@ -19,3 +19,6 @@
 [submodule "src/simpletrack-saas"]
 	path = src/simpletrack-saas
 	url = git@github.com:simpletrack/simpletrack-saas.git
+[submodule "src/analytics-service"]
+	path = src/analytics-service
+	url = git@github.com:simpletrack/anaysitics-service.git
