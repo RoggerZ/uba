@@ -30,7 +30,7 @@ P1 先落地最小可用链路：
 - **低运维起步**：P1 先用 Redis Stream 替代 Kafka，降低早期部署复杂度。
 - **可替换边界**：MySQL、Redis、Kafka、ClickHouse 都通过接口或 adapter 隔离。
 - **可被多产品引用**：xwl_bi、SimpleTrack、AppTrack 都通过通用 `tenant / project / source` 语义接入，不反向污染核心仓库。
-- **Go library 优先**：公共能力放在根目录包，供 `simpletrack-analytics-service` 通过 Go module 引用；`internal` 只保留真正不该外部依赖的实现细节。
+- **Go library 优先**：公共能力放在根目录包，供 `simpletrack-anaysistics-service` 通过 Go module 引用；`internal` 只保留真正不该外部依赖的实现细节。
 - **统一查询构建**：从 `sqlx` 迁移到 GORM 最新稳定版本，统一使用 GORM 的 SQL Builder / Raw / Clauses / Scopes 能力承接查询构建；ClickHouse 高吞吐事件写入不走 ORM 热路径，优先使用原生 batch writer。
 
 ## 非目标
@@ -39,7 +39,7 @@ P1 先落地最小可用链路：
 - 不迁移 xwl_bi 旧菜单、旧权限、旧业务后台叙事。
 - 不在 `analytics-core` 内实现登录、组织、订阅、账单、Admin、邮件。
 - 不在 `analytics-core` 内托管 Browser SDK 或承担 write key、domain allowlist、CORS、quota 的产品运行时配置生命周期。
-- 不把 `analytics-core` 做成长期产品化 `cmd/server`；SimpleTrack 运行时服务由 `simpletrack-analytics-service` 承担。
+- 不把 `analytics-core` 做成长期产品化 `cmd/server`；SimpleTrack 运行时服务由 `simpletrack-anaysistics-service` 承担。
 - 不在 P1 产品层开放全量漏斗、留存、路径、归因页面。
 - 不把 Kafka 作为 P1 必选运行依赖。
 
@@ -387,7 +387,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 | session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | P1-002C 第一版已落地可替换 `SessionResolverStage`，在缺失 `session_id` 时用 salt + 时间窗口 + tenant/project/source/distinct_id 派生匿名 session；IP/UA 只能作为 transient hash 输入；浏览器 DNT opt-in 避免持久本地 identity | `visit_id` 尚未进入事件契约，后续评审 schema、salt 轮换、cookie/no-cookie 和 retention |
 | 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限和 typed property filter allowlist；属性过滤使用 ClickHouse tuple `IN` 半连接查询属性表，避免 correlated `EXISTS` 外层 alias 兼容问题 | P1-002D 已完成，后续复杂查询继续复用 allowlist + 真实 ClickHouse e2e |
 | Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果；e2e 入口已增加 Redis/MySQL/ClickHouse 冷启动 readiness 重试，避免 compose 刚启动时 native handshake EOF 误伤验收 | P1-002E 已完成，后续作为回归入口 |
-| Web tracker SDK | auto pageview、custom event、identify、performance | P1 已落地 SimpleTrack 浏览器 SDK，但已从 `analytics-core` 迁出；当前由 `simpletrack-analytics-service` 的 `/tracker.js` 静态交付，并通过 `data-write-key` 进入运行时 collect 服务 | P1-004 已完成；React/Next/Node/mobile SDK、CDN 版本化和 performance metrics 后续评审 |
+| Web tracker SDK | auto pageview、custom event、identify、performance | P1 已落地 SimpleTrack 浏览器 SDK，但已从 `analytics-core` 迁出；当前由 `simpletrack-anaysistics-service` 的 `/tracker.js` 静态交付，并通过 `data-write-key` 进入运行时 collect 服务 | P1-004 已完成；React/Next/Node/mobile SDK、CDN 版本化和 performance metrics 后续评审 |
 | ClickHouse 读侧优化 | materialized view、小时聚合表、projection、typed 属性 | ClickHouse adapter 的聚合表、projection、高频属性索引和迁移策略 | P1.5-001，P1 闭环后压测评审 |
 | Performance metrics | LCP、INP、CLS、FCP、TTFB | 可作为事件类型或属性组进入协议扩展 | P2-001，P1 只预留承接能力 |
 
@@ -395,7 +395,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 
 1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询；冷启动 e2e readiness 已复验稳定。
 2. P1-002A 已完成：`PropertyBatchWriter` 已通过 `PropertyIndexingEventWriter` 组合进 ingestion worker，属性跨表幂等使用 `property_indexing_status` guard；processing ambiguous 不自动恢复，后续作为 P1.5/P2 运维和 ClickHouse 去重策略评审项。
-3. P1-004 已完成并纠偏：浏览器 SDK 最短链路和 docs/quickstart 已改为 write key 接入，SDK 由 `simpletrack-analytics-service` 托管，不再属于 `analytics-core`；后续继续评审 visit/geo、SDK 发布策略和多语言 SDK。
+3. P1-004 已完成并纠偏：浏览器 SDK 最短链路和 docs/quickstart 已改为 write key 接入，SDK 由 `simpletrack-anaysistics-service` 托管，不再属于 `analytics-core`；后续继续评审 visit/geo、SDK 发布策略和多语言 SDK。
 4. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
 
 ## 与上层产品的集成边界
@@ -408,12 +408,13 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 - 企业分析控制台页面。
 - write key、domain allowlist、internal traffic、quota 等配置的创建、修改和展示。
 
-`simpletrack-analytics-service` 负责：
+`simpletrack-anaysistics-service` 负责：
 
 - `/collect`、`/tracker.js`、CORS preflight 和运行时服务健康检查。
 - 读取 SimpleTrack 控制面的 runtime source config。
-- 执行 write key、Origin/domain allowlist、internal traffic、bot 过滤和后续 quota runtime enforcement。
+- 执行 write key、Origin/domain allowlist、server-only privacy salts、internal traffic、bot 过滤和后续 quota runtime enforcement。
 - 不信任客户端传入的 tenant/project/source/source_type，统一由控制面配置覆盖后调用 `analytics-core`。
+- 显式开启 ingestion 时，装配 Redis Stream consumer、MySQL checkpoint guard、ClickHouse native writer 和 typed property indexing；启动时校验 ClickHouse event/property 表存在，仍不拥有配置生命周期。
 
 `analytics-core` 负责：
 
@@ -424,8 +425,8 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 集成方式优先级：
 
 1. P1 先按 Go library + runtime service 契约设计。
-2. SimpleTrack 浏览器 SDK 通过 write key 调用 `simpletrack-analytics-service` 的 collect API。
-3. 管理面由 Supastarter 承接，运行时数据面由 `simpletrack-analytics-service` 承接，通用分析核心由 `analytics-core` 提供。
+2. SimpleTrack 浏览器 SDK 通过 write key 调用 `simpletrack-anaysistics-service` 的 collect API。
+3. 管理面由 Supastarter 承接，运行时数据面由 `simpletrack-anaysistics-service` 承接，通用分析核心由 `analytics-core` 提供。
 
 ## 验收清单
 
@@ -437,10 +438,11 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | 本地依赖 | 当前已提供 `src/analytics-core/docker-compose.yml`，包含 Redis Stack、MySQL 8.4、ClickHouse 25.3；默认使用高位端口避开本机已有数据库 |
 | Kafka 保留 | `KafkaBus` 接口和 adapter 边界存在，不删除高吞吐路线 |
 | 事件协议 | 标准字段清楚，不提供 xwl_bi legacy 字段兼容 |
-| HTTP collect API | `collect/httpapi` 可作为 fasthttp 协议适配器；SimpleTrack 产品运行时的 write key、domain/CORS、quota 由 `simpletrack-analytics-service` 执行 |
+| HTTP collect API | `collect/httpapi` 可作为 fasthttp 协议适配器；SimpleTrack 产品运行时的 write key、domain/CORS、quota 由 `simpletrack-anaysistics-service` 执行 |
 | Redis Stream 消费 | pending 优先重试，写入成功才 ack，超过 `MaxAttempts` 后进入死信队列 |
-| ingestion worker | 当前已明确 `ingestion.Processor` 为 P1 worker 边界，真实入口必须复用它 |
+| ingestion worker | 当前已明确 `ingestion.Processor` 为 P1 worker 边界，`simpletrack-anaysistics-service` 可显式开启同进程 worker 并复用它 |
 | 表策略 | P1 采用按 project/source 物理分表的方案 B，但上层仍只面对统一 `events` 逻辑模型 |
+| 启动校验 | `simpletrack-anaysistics-service` 开启 ingestion 时必须确认启用 source 的 routed event/property 表存在；自动建表/迁移后续评审 |
 | ClickHouse 写入 | 事件明细高吞吐写入默认使用原生 batch writer；当前已落地 `clickhouse-go/v2 PrepareBatch` 的 `BatchWriter`，后续建立与 GORM `CreateInBatches` 的压测对照 |
 | 幂等入库 | 重复消费同一 `event_id` 不会在数据库产生两份事件明细；当前已落地 `EventWriteGuard` 边界和 GORM/MySQL `IngestionStatusGuard` 真实状态守卫 |
 | Realtime | 当前已落地 query plan builder 和 ClickHouse query reader，并通过 opt-in e2e 验证最近事件能被读出；e2e 已补依赖 readiness retry |
@@ -468,5 +470,5 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 - session/visit 隐私策略：salt 轮换、IP 保留策略、cookie/no-cookie、server identity 和 retention 的默认值；DNT 浏览器侧 opt-in 已落地，后续只评审产品配置和 audit。
 - client info enrich 与 bot/IP 过滤的执行位置、配置面和失败语义。
 - ClickHouse 读侧优化何时引入 materialized view、projection、小时聚合表和高频属性索引，方案 B 多物理表如何批量迁移。
-- Web tracker SDK 与多语言 SDK 的阶段路线：P1 浏览器最短链路由 analytics-service 静态托管；React/Next/Node/mobile SDK 后续评审。
+- Web tracker SDK 与多语言 SDK 的阶段路线：P1 浏览器最短链路由 `simpletrack-anaysistics-service` 静态托管；React/Next/Node/mobile SDK 后续评审。
 - Performance metrics 是事件属性、独立事件类型还是独立模型，是否进入 P2。

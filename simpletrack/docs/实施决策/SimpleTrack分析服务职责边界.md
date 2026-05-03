@@ -2,23 +2,23 @@
 
 > 状态：已确定
 > 最近更新：2026-05-03
-> 作用：明确 `simpletrack-saas`、`simpletrack-analytics-service` 和 `analytics-core` 的职责边界，避免控制面与数据面重复建设。
+> 作用：明确 `simpletrack-saas`、`simpletrack-anaysistics-service` 和 `analytics-core` 的职责边界，避免控制面与数据面重复建设。
 
 ## 结论
 
 SimpleTrack 后端分成三层：
 
 1. `simpletrack-saas` 是商业控制面和产品后台。
-2. `simpletrack-analytics-service` 是分析数据面的运行时服务。
+2. `simpletrack-anaysistics-service` 是分析数据面的运行时服务。
 3. `analytics-core` 是业务无关 Go 第三方库。
 
-`analytics-core` 不作为独立业务服务运行，也不托管 Browser SDK。`simpletrack-analytics-service` 通过 Go module 引用 `analytics-core` 的根目录公共包，并负责把 SimpleTrack 的运行时配置映射到通用分析核心。
+`analytics-core` 不作为独立业务服务运行，也不托管 Browser SDK。`simpletrack-anaysistics-service` 通过 Go module 引用 `analytics-core` 的根目录公共包，并负责把 SimpleTrack 的运行时配置映射到通用分析核心。
 
 ## 架构关系
 
 ```mermaid
 flowchart LR
-  SDK["Browser SDK"] --> AS["simpletrack-analytics-service<br/>运行时采集与查询服务"]
+  SDK["Browser SDK"] --> AS["simpletrack-anaysistics-service<br/>运行时采集与查询服务"]
   SaaS["simpletrack-saas<br/>商业控制面和后台页面"] --> Config["Control-plane DB/API<br/>source/write key/domain/quota"]
   AS --> Config
   AS --> Core["analytics-core<br/>Go library"]
@@ -40,9 +40,9 @@ flowchart LR
 
 它不接收高频事件，不直接写 ClickHouse 明细事件，也不复制 ingestion worker。
 
-## `simpletrack-analytics-service` 负责什么
+## `simpletrack-anaysistics-service` 负责什么
 
-`simpletrack-analytics-service` 是运行时数据面服务，负责执行已经由控制面产生的配置：
+`simpletrack-anaysistics-service` 是运行时数据面服务，负责执行已经由控制面产生的配置：
 
 - `GET /healthz`：进程健康检查。
 - `GET /tracker.js`：托管 P1 Browser SDK 静态资产。
@@ -50,9 +50,11 @@ flowchart LR
 - `POST /collect`：事件上报入口。
 - 根据 `write_key` 读取 runtime source config。
 - 执行 source enabled、Origin/domain allowlist、CORS、internal traffic、bot 过滤。
+- 使用控制面提供的 server-only `session_salt` 和 `client_hash_salt` 做匿名 session / client hash 派生，不允许从公开 write key 派生隐私 salt。
 - 不信任客户端传来的 `tenant_id`、`project_id`、`source_id`、`source_type`，统一由控制面配置覆盖。
 - 把 SimpleTrack 的 workspace/site/source 映射为 `analytics-core` 的 `tenant_id/project_id/source_id`。
 - 调用 `analytics-core` 的 collect pipeline、EventBus、ingestion、storage、query 能力。
+- 显式开启后运行同进程 ingestion worker，消费 Redis Stream，并复用 MySQL checkpoint guard、ClickHouse native writer 和 typed property indexing；启动时校验已启用 source 的 ClickHouse event/property 表存在。
 
 它不创建站点，不邀请成员，不处理购买套餐，不提供 Admin 页面，不拥有配置生命周期。
 
@@ -85,20 +87,22 @@ import "github.com/simpletrack/analytics-core/storage"
 
 ## 配置权责
 
-配置的 CRUD 在 `simpletrack-saas`，配置的 runtime enforcement 在 `simpletrack-analytics-service`。
+配置的 CRUD 在 `simpletrack-saas`，配置的 runtime enforcement 在 `simpletrack-anaysistics-service`。
 
 | 配置项 | 创建/修改方 | 运行时执行方 |
 | --- | --- | --- |
-| Source / Website | `simpletrack-saas` | `simpletrack-analytics-service` |
-| write key | `simpletrack-saas` | `simpletrack-analytics-service` |
-| domain allowlist | `simpletrack-saas` | `simpletrack-analytics-service` |
-| internal traffic rules | `simpletrack-saas` | `simpletrack-analytics-service` |
-| quota / plan limit | `simpletrack-saas` | `simpletrack-analytics-service` |
-| collect validation / queue / storage | `analytics-core` library | `simpletrack-analytics-service` 调用 |
+| Source / Website | `simpletrack-saas` | `simpletrack-anaysistics-service` |
+| write key | `simpletrack-saas` | `simpletrack-anaysistics-service` |
+| domain allowlist | `simpletrack-saas` | `simpletrack-anaysistics-service` |
+| internal traffic rules | `simpletrack-saas` | `simpletrack-anaysistics-service` |
+| server-only privacy salts | `simpletrack-saas` | `simpletrack-anaysistics-service` |
+| quota / plan limit | `simpletrack-saas` | `simpletrack-anaysistics-service` |
+| collect validation / queue / storage | `analytics-core` library | `simpletrack-anaysistics-service` 调用 |
 
 ## 当前落地状态
 
 - `src/analytics-core` 已调整为根目录公共 Go 包形态，Browser SDK 已从 core 移出。
-- `src/analytics-service` 已创建本地 Go 仓库，当前提供 `/healthz`、`/tracker.js`、`OPTIONS /collect`、`POST /collect`。
+- `src/analytics-service` 已创建本地 Go 仓库，服务展示名为 `simpletrack-anaysistics-service`；当前提供 `/healthz`、`/tracker.js`、`OPTIONS /collect`、`POST /collect`，并可显式开启同进程 ingestion worker。
 - 初版 `MemoryResolver` 只用于本地开发和测试；生产后续替换为读取 SimpleTrack 控制面数据库、API 或缓存的 resolver。
+- ClickHouse per-source event/property table schema 自动创建暂不在本轮实现；当前先做启动就绪校验，schema 管理进入后续 runtime migration / schema 管理任务。
 - Events / Realtime 查询 HTTP API 暂不在本轮实现，进入后续 `P1-005D`。
