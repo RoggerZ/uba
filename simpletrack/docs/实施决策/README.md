@@ -22,6 +22,8 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-03 | `simpletrack-saas` 的 Website selector 改为 client-safe DTO：页面只把 `id/name/domain/enabled` 传给浏览器，完整 Website row 仍留在服务端 readback 路径；`website` query 参数切换组织内 enabled source，禁用 source 仍保持 fail-soft | P1-005D、simpletrack-saas、Website selector、server/client boundary |
+| 2026-05-03 | `simpletrack-saas` 的 Realtime / Events 页面补真实 Website 选择器初版：页面读取组织下 Website 列表，通过 `website` query 参数切换 enabled source；服务端 readback helper 只接受组织内启用 source，禁用或无 source 仍保持 fail-soft | P1-005D、simpletrack-saas、Website selector、Realtime、Events |
 | 2026-05-03 | `simpletrack-saas` 的 Realtime / Events 页面接入 `simpletrack-anaysitics-service` 内部读回放初版：页面服务端按组织查启用 Website，使用内部 query token 调 `/v1/realtime` 与 `/v1/events`，未配置服务、无启用 source 或服务异常时保持 fail-soft 空态 | P1-005D、simpletrack-saas、simpletrack-anaysitics-service、Realtime、Events |
 | 2026-05-03 | `simpletrack-anaysitics-service` 的内部 Events / Realtime 读回放开始落地：新增 `/v1/realtime` 与 `/v1/events`，通过内部 bearer token 保护并复用 `analytics-core` 的 `EventReader`，同时补齐浏览器/SaaS 页面调用需要的 query `OPTIONS` preflight | P1-005D、simpletrack-anaysitics-service、Events、Realtime、query API、CORS |
 | 2026-05-03 | `simpletrack-anaysitics-service` 增加 `ANALYTICS_SERVICE_SOURCE_RESOLVER=http` 控制面 HTTP resolver，可用 bearer token 向 SaaS 控制面读取 runtime source config，并用短 TTL 缓存 + `ETag` 条件重验证降低热路径控制面压力且避免 disabled/source salt/origin 变更被陈旧缓存掩盖；控制面 URL 默认必须是 HTTPS，本地 loopback HTTP 需要显式开启 `ANALYTICS_SERVICE_CONTROL_PLANE_ALLOW_INSECURE_LOOPBACK=true`；同进程 ingestion 仍要求 `ANALYTICS_SERVICE_SOURCES_JSON` 作为启动 schema surface，并拒绝 HTTP resolver 返回未在启动阶段校验过的 source | P1-005C、simpletrack-anaysitics-service、SaaS control-plane runtime enforcement |
@@ -111,7 +113,7 @@
 | P1-005A | `analytics-core` root-level Go library API | 已完成 | `analytics-core` 已调整为可被 Go 服务引用的根目录公共包：`contracts`、`collect`、`eventbus`、`ingestion`、`storage` 等；不再把 Browser SDK 放进 core，也不把 core 作为长期业务服务运行 | 后续公共 API 变更需保持外部服务 import 稳定 |
 | P1-005B | collect runtime service | 进行中 | `simpletrack-anaysitics-service` 已实现 write key 解析、source enabled、Origin allowlist、CORS preflight、客户端 scope 覆盖、bot/internal traffic 过滤、client enrich、session resolver、Redis durable enqueue，以及显式开启的同进程 ingestion worker；worker 复用 `analytics-core` 的 Redis Stream subscribe、MySQL guard、ClickHouse native writer 和 typed property indexing；write key 不再作为 privacy salt fallback；ingestion 启动默认校验启用 source 的 ClickHouse event/property 表存在，也可用 `ANALYTICS_SERVICE_CLICKHOUSE_AUTO_MIGRATE=true` 在本地/小部署创建当前 runtime config 内所有启用 source 的 routed tables 后再校验 | 补生产 resolver、部署级 schema migration/rollback 规范和部署参数 |
 | P1-005C | SaaS control-plane config runtime enforcement | 进行中 | 已新增 HTTP source resolver：`simpletrack-anaysitics-service` 可用 `ANALYTICS_SERVICE_SOURCE_RESOLVER=http`、控制面 URL 和 bearer token 按 write key 读取 runtime source config，并用短 TTL 缓存 + `ETag` 条件重验证降低热路径控制面压力且避免 stale auth state；控制面读取默认要求 HTTPS，只有本地 loopback 明确 opt-in 才允许 HTTP；同进程 ingestion 会把 HTTP 返回的 source 绑定到启动 schema surface；CRUD 仍在 `simpletrack-saas`，`simpletrack-saas` 内部 runtime-source API 已落地，runtime source config 必须携带 server-only `session_salt` 和 `client_hash_salt`，不能由公开 write key 派生 | 后续处理 quota、domain allowlist、internal traffic 产品配置和 salt 轮换 |
-| P1-005D | Events / Realtime 查询 API | 进行中 | `simpletrack-anaysitics-service` 已提供内部 `/v1/realtime` 与 `/v1/events` 读接口，使用 bearer token 保护并映射到 `analytics-core` 的 `EventReader`；`simpletrack-saas` Realtime / Events 页面已用 server-side readback helper 初步接入，按组织查启用 Website 后使用 write key 调内部服务，未配置、无启用 source 或服务错误时 fail-soft | 后续补属性白名单来源、query token 轮换、更多筛选参数和真实 Website 选择器 |
+| P1-005D | Events / Realtime 查询 API | 进行中 | `simpletrack-anaysitics-service` 已提供内部 `/v1/realtime` 与 `/v1/events` 读接口，使用 bearer token 保护并映射到 `analytics-core` 的 `EventReader`；`simpletrack-saas` Realtime / Events 页面已用 server-side readback helper 和 client-safe Website selector 接入，按组织查启用 Website 后使用 write key 调内部服务，未配置、无启用 source 或服务错误时 fail-soft | 后续补属性白名单来源、query token 轮换、更多查询筛选参数和分页交互 |
 | P1.5-001 | ClickHouse 读侧优化与属性治理预研 | 暂缓 | Umami ClickHouse schema 使用 materialized view、聚合表和 typed 属性优化读侧；`analytics-core` 可在 P1 闭环稳定后借鉴，形成高性能查询组件基础 | P1-002E 通过后评审 projection/materialized view/hourly aggregate、高频属性索引和跨物理表迁移策略 |
 | P2-001 | Performance metrics 采集与查询 | 暂缓 | Umami tracker 可采集 LCP、INP、CLS、FCP、TTFB；SimpleTrack P1 不以性能诊断为阻塞项 | P2 评审是否作为事件类型、属性组或独立 performance 模型进入 `analytics-core` |
 | INFRA-001 | SimpleTrack GitHub SSH 与子仓库推送配置 | 已完成 | 已生成并记录 `id_ed25519_simpletrack` 专用 key 流程，`src/analytics-core` 和 `src/simpletrack-saas` 固定使用 `config_simpletrack + core.sshCommand`，父仓已提交相关 Q&A 和 AGENTS 规则 | 后续新机器按 Q&A 复现；默认 SSH config ACL 可暂不阻塞主线 |
@@ -152,14 +154,14 @@
 - `analytics-core` 已从“可能自带服务/SDK”的实现形态纠偏为 Go 第三方库：外部服务通过根目录公共包引用 core，Browser SDK 由 `simpletrack-anaysitics-service` 托管。
 - `src/analytics-service` 已作为本地 Go 仓库创建，服务展示名为 `simpletrack-anaysitics-service`，负责 SimpleTrack 分析数据面的 runtime enforcement：write key、Origin、CORS、internal traffic、bot 过滤、collect 调用 core，以及可选同进程 ingestion worker 装配。
 - `src/analytics-service` 已补 `P1-005D` 内部读回放入口：`/v1/realtime` 和 `/v1/events` 复用 `analytics-core` 的 `EventReader`，通过内部 bearer token 保护，并支持 query `OPTIONS` preflight。
-- `src/simpletrack-saas` 已补 Realtime / Events 页面服务端读回放 helper：内部 query token 不下发到浏览器，页面按当前组织启用 Website 的 write key 调 `simpletrack-anaysitics-service`，并覆盖未配置服务、无启用 source 和服务异常空态。
+- `src/simpletrack-saas` 已补 Realtime / Events 页面服务端读回放 helper 和 client-safe Website 选择器初版：内部 query token 不下发到浏览器，页面按当前组织启用 Website 的 write key 调 `simpletrack-anaysitics-service`，并覆盖未配置服务、无启用 source、禁用 source 和服务异常空态。
 - Umami 源码深解已经转化为 `analytics-core` 优化计划：事件属性与用户属性模型、client info enrich、bot/IP 过滤、session/visit resolver、查询白名单、Realtime/Events 验收、Web tracker SDK、ClickHouse 读侧优化和 performance metrics 均已进入计划表或评审表。
 
 正在推进：
 
 - Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载、UI-only subscription gate、marketing 文案、pricing 语义、docs/quickstart、mail-preview 和浏览器截图验证。
 - `analytics-core` P1 数据管道：collect handler、fasthttp `POST /collect` 适配器、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单、P1-002B/C 第一版 collect pre-queue stage 已完成；core 现在以 Go library 方式被 `simpletrack-anaysitics-service` 引用，P1-004 Browser SDK 已迁到 `simpletrack-anaysitics-service` 静态交付；下一步进入 visit/geo/internal traffic 等剩余评审。
-- `simpletrack-anaysitics-service` 主线（本地仓库 `src/analytics-service`）：已完成本地仓库、服务骨架、memory / HTTP runtime config resolver、`/collect` 运行时校验、`/tracker.js` 静态托管、collect 单测、Redis durable enqueue、可选 ingestion worker 装配、本地/小部署 ClickHouse routed table auto migration，以及 `P1-005D` 内部 Events / Realtime 查询入口；`simpletrack-saas` 内部 runtime-source API 与 Realtime/Events 页面读回放初版已落地，下一步转向 quota、domain allowlist、internal traffic 产品配置、salt 轮换、属性白名单来源和 query token 轮换。
+- `simpletrack-anaysitics-service` 主线（本地仓库 `src/analytics-service`）：已完成本地仓库、服务骨架、memory / HTTP runtime config resolver、`/collect` 运行时校验、`/tracker.js` 静态托管、collect 单测、Redis durable enqueue、可选 ingestion worker 装配、本地/小部署 ClickHouse routed table auto migration，以及 `P1-005D` 内部 Events / Realtime 查询入口；`simpletrack-saas` 内部 runtime-source API、Realtime/Events 页面读回放和 client-safe Website selector 初版已落地，下一步转向 quota、domain allowlist、internal traffic 产品配置、salt 轮换、属性白名单来源和 query token 轮换。
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
 - Umami 官方源码只读快照已就位，主要用于参考分析对象体系、tracker 采集、事件属性、Realtime/Events 读侧、ClickHouse 明细与聚合模型；P1 数据管道源码分章节深解和 Q&A 概念解释已落地到 `simpletrack/docs/umami/docs/源码实现参考/`。
 - Umami 源码启发的 `analytics-core` 优化项已排期并部分落地：P1 已补属性入库/查询、client enrich 第一版、session resolver 第一版、查询安全、端到端验收、浏览器 SDK 最短链路、DNT opt-in 和 UTM/click id 白名单；P1.5/P2 再评审 ClickHouse 聚合优化、多语言 SDK、visit 扩展、SDK CDN 发布和 performance metrics。
@@ -169,7 +171,7 @@
 下一步：
 
 1. 继续评审 P1-002B/C 剩余项：`visit_id` 是否扩展事件契约、geo/browser/os/device 的 enrich 边界、internal traffic 产品配置和过滤审计策略。
-2. 继续推进 P1-005：明确属性白名单来源、query token 轮换和真实 Website 选择器，补 ClickHouse auto migrate 与生产迁移/回滚边界，并把 quota、domain allowlist、internal traffic 和 salt 轮换纳入后续控制面任务。
+2. 继续推进 P1-005：明确属性白名单来源、query token 轮换、更多查询筛选和分页交互，补 ClickHouse auto migrate 与生产迁移/回滚边界，并把 quota、domain allowlist、internal traffic 和 salt 轮换纳入后续控制面任务。
 3. 把 R3-U1/R3-U2 的剩余项降为 P1.5/P2：属性字典治理、ambiguous `property_indexing_status=processing` 恢复策略、ClickHouse projection/materialized view/去重方案。
 4. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
 5. 公开站点继续使用 Supastarter 的 marketing/docs app，后续只做轻量文案和视觉微调。
