@@ -386,7 +386,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 | bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | P1-002B 第一版已落地 `TrafficFilterStage`：按 bot UA token、internal CIDR/IP 在 EventBus publish 前返回 `FilteredError`，HTTP 返回 accepted filtered 响应，不写入分析明细；DNT active 时浏览器 SDK 不发送也不持久化 identity | 后续评审 allow/deny 配置来源、产品 UI、internal traffic 和审计/采样策略 |
 | session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | P1-002C 第一版已落地可替换 `SessionResolverStage`，在缺失 `session_id` 时用 salt + 时间窗口 + tenant/project/source/distinct_id 派生匿名 session；IP/UA 只能作为 transient hash 输入；浏览器 DNT opt-in 避免持久本地 identity | `visit_id` 尚未进入事件契约，后续评审 schema、salt 轮换、cookie/no-cookie 和 retention |
 | 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限和 typed property filter allowlist；属性过滤使用 ClickHouse tuple `IN` 半连接查询属性表，避免 correlated `EXISTS` 外层 alias 兼容问题；`simpletrack-saas` Events 页面现在也把 `event_name`、`distinct_id`、`limit`、`offset`、`sort_field`、`sort_direction` 做服务端归一化后再请求内部读回放 | P1-002D 已完成，P1-005D 继续把查询安全落到 SaaS readback 边界，后续复杂查询继续复用 allowlist + 真实 ClickHouse e2e |
-| Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果；e2e 入口已增加 Redis/MySQL/ClickHouse 冷启动 readiness 重试，避免 compose 刚启动时 native handshake EOF 误伤验收；Events 产品页使用额外读取一条的 `hasMore` 模型，不做总数查询 | P1-002E 已完成，P1-005D 已补页面分页交互，后续作为回归入口 |
+| Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果；e2e 入口已增加 Redis/MySQL/ClickHouse 冷启动 readiness 重试，避免 compose 刚启动时 native handshake EOF 误伤验收；Events 产品页使用额外读取一条的 `hasMore` 模型，不做总数查询；内部读回放 token 可用 `ANALYTICS_SERVICE_QUERY_TOKENS_JSON` 做短窗口轮换 | P1-002E 已完成，P1-005D 已补页面分页交互和 query token 轮换 allowlist，后续作为回归入口 |
 | Web tracker SDK | auto pageview、custom event、identify、performance | P1 已落地 SimpleTrack 浏览器 SDK，但已从 `analytics-core` 迁出；当前由 `simpletrack-anaysitics-service` 的 `/tracker.js` 静态交付，并通过 `data-write-key` 进入运行时 collect 服务 | P1-004 已完成；React/Next/Node/mobile SDK、CDN 版本化和 performance metrics 后续评审 |
 | ClickHouse 读侧优化 | materialized view、小时聚合表、projection、typed 属性 | ClickHouse adapter 的聚合表、projection、高频属性索引和迁移策略 | P1.5-001，P1 闭环后压测评审 |
 | Performance metrics | LCP、INP、CLS、FCP、TTFB | 可作为事件类型或属性组进入协议扩展 | P2-001，P1 只预留承接能力 |
@@ -396,7 +396,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询；冷启动 e2e readiness 已复验稳定。
 2. P1-002A 已完成：`PropertyBatchWriter` 已通过 `PropertyIndexingEventWriter` 组合进 ingestion worker，属性跨表幂等使用 `property_indexing_status` guard；processing ambiguous 不自动恢复，后续作为 P1.5/P2 运维和 ClickHouse 去重策略评审项。
 3. P1-004 已完成并纠偏：浏览器 SDK 最短链路和 docs/quickstart 已改为 write key 接入，SDK 由 `simpletrack-anaysitics-service` 托管，不再属于 `analytics-core`；后续继续评审 visit/geo、SDK 发布策略和多语言 SDK。
-4. P1-005D 正在推进：内部 `/v1/realtime`、`/v1/events` 已由 `simpletrack-anaysitics-service` 读回放，SaaS 页面只走 server-side helper；Events 已补白名单筛选、排序和 `hasMore` 分页，内部 query token 不进入浏览器。
+4. P1-005D 正在推进：内部 `/v1/realtime`、`/v1/events` 已由 `simpletrack-anaysitics-service` 读回放，SaaS 页面只走 server-side helper；Events 已补白名单筛选、排序和 `hasMore` 分页，内部 query token 不进入浏览器，并已支持服务端短窗口轮换 allowlist。
 5. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
 
 ## 与上层产品的集成边界
