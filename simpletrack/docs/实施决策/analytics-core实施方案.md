@@ -412,9 +412,10 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 
 - `/collect`、`/tracker.js`、CORS preflight 和运行时服务健康检查。
 - 读取 SimpleTrack 控制面的 runtime source config。
+- 本地可用 memory resolver；生产接入雏形使用 HTTP resolver 通过 bearer token 按 write key 读取 SaaS 控制面的 runtime source config，并用短 TTL 缓存降低热路径依赖；控制面 URL 默认必须是 HTTPS，本地 loopback HTTP 只能显式 opt-in。
 - 执行 write key、Origin/domain allowlist、server-only privacy salts、internal traffic、bot 过滤和后续 quota runtime enforcement。
 - 不信任客户端传入的 tenant/project/source/source_type，统一由控制面配置覆盖后调用 `analytics-core`。
-- 显式开启 ingestion 时，装配 Redis Stream consumer、MySQL checkpoint guard、ClickHouse native writer 和 typed property indexing；默认启动时校验 ClickHouse event/property 表存在，也可在本地/小部署通过显式开关创建当前 runtime config 内所有启用 source 的 routed tables 后再校验，仍不拥有配置生命周期。
+- 显式开启 ingestion 时，装配 Redis Stream consumer、MySQL checkpoint guard、ClickHouse native writer 和 typed property indexing；默认启动时校验 ClickHouse event/property 表存在，HTTP resolver 返回的 source 也必须落在启动 schema surface 内；也可在本地/小部署通过显式开关创建当前 runtime config 内所有启用 source 的 routed tables 后再校验，仍不拥有配置生命周期。
 
 `analytics-core` 负责：
 

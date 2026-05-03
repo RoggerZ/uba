@@ -49,6 +49,7 @@ flowchart LR
 - `OPTIONS /collect`：浏览器 CORS preflight。
 - `POST /collect`：事件上报入口。
 - 根据 `write_key` 读取 runtime source config。
+- 可用本地 `MemoryResolver` 或 SaaS 控制面 HTTP resolver 读取 runtime source config；HTTP resolver 只读、带 bearer token、短 TTL 缓存，不提供配置 CRUD，默认要求 HTTPS，本地 loopback HTTP 必须显式 opt-in。
 - 执行 source enabled、Origin/domain allowlist、CORS、internal traffic、bot 过滤。
 - 使用控制面提供的 server-only `session_salt` 和 `client_hash_salt` 做匿名 session / client hash 派生，不允许从公开 write key 派生隐私 salt。
 - 不信任客户端传来的 `tenant_id`、`project_id`、`source_id`、`source_type`，统一由控制面配置覆盖。
@@ -103,6 +104,6 @@ import "github.com/simpletrack/analytics-core/storage"
 
 - `src/analytics-core` 已调整为根目录公共 Go 包形态，Browser SDK 已从 core 移出。
 - `src/analytics-service` 已创建本地 Go 仓库，服务展示名为 `simpletrack-anaysitics-service`；当前提供 `/healthz`、`/tracker.js`、`OPTIONS /collect`、`POST /collect`，并可显式开启同进程 ingestion worker。
-- 初版 `MemoryResolver` 只用于本地开发和测试；生产后续替换为读取 SimpleTrack 控制面数据库、API 或缓存的 resolver。
+- 初版 `MemoryResolver` 只用于本地开发和测试；HTTP resolver 已作为生产接入雏形，可向 SimpleTrack 控制面内部 API 读取 runtime source config，默认 HTTPS 且 fail-closed；同进程 ingestion 下 HTTP 返回 source 仍受启动 `ANALYTICS_SERVICE_SOURCES_JSON` schema surface 约束，后续需要在 `simpletrack-saas` 落地对应 API 和鉴权策略。
 - ClickHouse per-source event/property table schema 自动创建已提供本地/小部署开关；当前默认仍做启动就绪校验，生产级 schema 管理和回滚进入后续 runtime migration / schema 管理任务。
 - Events / Realtime 查询 HTTP API 暂不在本轮实现，进入后续 `P1-005D`。
