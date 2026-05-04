@@ -23,6 +23,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-05 | `simpletrack-saas` 的 `Websites` 控制面继续前进到最小可维护状态：在真实 source 管理与 enable / disable 基础上，再补 name/domain 编辑入口；编辑路径会保留 secondary `allowedOrigins`，不会因保存表单把多 origin runtime config 压成单 origin，子仓提交 `b049751` 已推送，父仓随后同步 gitlink | P1-005C、simpletrack-saas、Websites、runtime-source、submodule |
 | 2026-05-05 | `simpletrack-saas` 的 Website source limit 实现与文档口径对齐：disabled source 创建不再占用 active source limit，并补 `createWebsiteWithinLimit()` 直达回归；子仓提交 `74248a6` 已推送，父仓随后同步 gitlink | P1-005C、simpletrack-saas、Websites、quota、submodule |
 | 2026-05-05 | `simpletrack-saas` 的 `Websites` 页继续前进到真实 runtime source 管理：在真实组织 Website 数据和最小创建 source 表单基础上，再补 enable / disable 动作，readback 按钮与 enabled 状态保持一致；创建与启用路径都通过 serializable 事务 helper + `P2034` 重试守住 active source limit，子仓提交 `dcc1db8` 已推送，父仓随后同步 gitlink | P1-005C、P1-005D、simpletrack-saas、Websites、runtime-source、submodule |
 | 2026-05-05 | `simpletrack-saas` 的 `Websites` 页已从 mock 列表切到真实组织 Website 数据，并补最小创建 source 表单、write key 展示、Quickstart / Realtime / Events 入口；创建路径通过 serializable 事务 helper + `P2034` 重试守住 active source limit，子仓提交 `5d165c6` 已推送，父仓随后同步 gitlink | P1-005C、P1-005D、simpletrack-saas、Websites、runtime-source、submodule |
