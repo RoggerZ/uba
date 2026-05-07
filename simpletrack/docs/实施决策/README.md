@@ -25,6 +25,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-07 | 用当前模型复审 repeatable `property_filter` 链路后，补齐 `simpletrack-saas` 前端与 URL normalization 的共享 5 条上限：组件禁用第 6 条新增，query-state 也会截断超额直达 URL，避免页面发出会被 `analytics-service` 拒绝的查询 | P1-005D、simpletrack-saas、Events、property filter、query-state |
 | 2026-05-07 | `analytics-service` 的 Events query boundary 补 repeatable `property_filter` 回归：`/v1/events` 现在有服务层测试确认多个 property_filter 参数会按顺序进入 `analytics-core` 查询计划，和 `simpletrack-saas` 的多条件 Events 页面保持同一契约 | P1-005D、analytics-service、query parser、property filter |
 | 2026-05-07 | `simpletrack-saas` 的 Events 页从单条 property filter 升级为 repeatable `property_filter` 多条件查询：page/query-state/readback 统一切到数组模型，支持新增/删除过滤行并输出重复 query 参数，同时保留 legacy 单字段回退兼容 | P1-005D、simpletrack-saas、Events、query builder |
 | 2026-05-07 | `analytics-core` 的 P1-002B enrich 边界继续收口：新增 browser / OS / device 的可插拔 UA 派生，以及基于离线 MaxMind mmdb 的 geo enrichment 接口；`simpletrack-anaysitics-service` 可通过 `ANALYTICS_SERVICE_GEOIP_MMDB_FILE` 提供地理库文件，collect 侧继续保持框架无关 | P1-002B、collect、analytics-core、analytics-service、geo、browser、device |
