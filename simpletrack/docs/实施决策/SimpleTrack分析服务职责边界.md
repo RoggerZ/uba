@@ -1,7 +1,7 @@
 # SimpleTrack 分析服务职责边界
 
 > 状态：已确定
-> 最近更新：2026-05-03
+> 最近更新：2026-05-07
 > 作用：明确 `simpletrack-saas`、`simpletrack-anaysitics-service` 和 `analytics-core` 的职责边界，避免控制面与数据面重复建设。
 
 ## 结论
@@ -51,7 +51,7 @@ flowchart LR
 - 根据 `write_key` 读取 runtime source config。
 - 可用本地 `MemoryResolver` 或 SaaS 控制面 HTTP resolver 读取 runtime source config；HTTP resolver 只读、带 bearer token、短 TTL 缓存并通过 `ETag` / `If-None-Match` 条件重验证可变授权状态，不提供配置 CRUD，默认要求 HTTPS，本地 loopback HTTP 必须显式 opt-in。
 - 执行 source enabled、Origin/domain allowlist、CORS、internal traffic、bot 过滤。
-- 使用控制面提供的 server-only `session_salt` 和 `client_hash_salt` 做匿名 session / client hash 派生，不允许从公开 write key 派生隐私 salt。
+- 使用控制面提供的 server-only `session_salt`、`visit_salt`、`visit_window_seconds` 和 `client_hash_salt` 做匿名 session、canonical visit key 和 client hash 派生，不允许从公开 write key 派生隐私 salt。
 - 不信任客户端传来的 `tenant_id`、`project_id`、`source_id`、`source_type`，统一由控制面配置覆盖。
 - 把 SimpleTrack 的 workspace/site/source 映射为 `analytics-core` 的 `tenant_id/project_id/source_id`。
 - 调用 `analytics-core` 的 collect pipeline、EventBus、ingestion、storage、query 能力。
@@ -72,7 +72,7 @@ import "github.com/simpletrack/analytics-core/storage"
 它负责：
 
 - collect 请求标准化和字段校验。
-- session resolver、client enrichment、bot/internal traffic filter 等可测试 stage。
+- session resolver、visit resolver、client enrichment、bot/internal traffic filter 等可测试 stage。
 - EventBus 抽象与 Redis Stream / Kafka adapter。
 - ingestion processor。
 - ClickHouse writer、table router、query builder、event reader。
@@ -97,6 +97,7 @@ import "github.com/simpletrack/analytics-core/storage"
 | domain allowlist | `simpletrack-saas` | `simpletrack-anaysitics-service` |
 | internal traffic rules | `simpletrack-saas` | `simpletrack-anaysitics-service` |
 | server-only privacy salts | `simpletrack-saas` | `simpletrack-anaysitics-service` |
+| visit window | `simpletrack-saas` | `simpletrack-anaysitics-service` |
 | quota / plan limit | `simpletrack-saas` | `simpletrack-anaysitics-service` |
 | collect validation / queue / storage | `analytics-core` library | `simpletrack-anaysitics-service` 调用 |
 
@@ -104,6 +105,6 @@ import "github.com/simpletrack/analytics-core/storage"
 
 - `src/analytics-core` 已调整为根目录公共 Go 包形态，Browser SDK 已从 core 移出。
 - `src/analytics-service` 已创建本地 Go 仓库，服务展示名为 `simpletrack-anaysitics-service`；当前提供 `/healthz`、`/tracker.js`、`OPTIONS /collect`、`POST /collect`，并可显式开启同进程 ingestion worker。
-- 初版 `MemoryResolver` 只用于本地开发和测试；HTTP resolver 已接入 `simpletrack-saas` 的内部 runtime-source API，默认 HTTPS 且 fail-closed；缓存命中也会用控制面返回的 `ETag` 条件重验证，避免 disabled/source salt/origin 变更被本地 TTL 陈旧态掩盖；同进程 ingestion 下 HTTP 返回 source 仍受启动 `ANALYTICS_SERVICE_SOURCES_JSON` schema surface 约束，后续需要继续完善 quota、domain allowlist、internal traffic 和 salt 轮换策略。
+- 初版 `MemoryResolver` 只用于本地开发和测试；HTTP resolver 已接入 `simpletrack-saas` 的内部 runtime-source API，默认 HTTPS 且 fail-closed；缓存命中也会用控制面返回的 `ETag` 条件重验证，避免 disabled/source salt/origin/visit window 变更被本地 TTL 陈旧态掩盖；同进程 ingestion 下 HTTP 返回 source 仍受启动 `ANALYTICS_SERVICE_SOURCES_JSON` schema surface 约束，后续需要继续完善 quota、domain allowlist、internal traffic 和 salt 轮换策略。
 - ClickHouse per-source event/property table schema 自动创建已提供本地/小部署开关；当前默认仍做启动就绪校验，生产级 schema 管理和回滚进入后续 runtime migration / schema 管理任务。
-- Events / Realtime 查询 HTTP API 已进入 `P1-005D`，当前以 `/v1/realtime` 和 `/v1/events` 的内部 bearer-token 读回放形式落地，并补齐浏览器/SaaS 页面调用需要的 `OPTIONS` preflight；`simpletrack-saas` 页面已通过 server-side readback helper 和 client-safe Website selector 初版接入，内部 query token 不暴露到浏览器，Events 现在还能在服务端补 `event_name`、`distinct_id`、`limit`、`offset`、`sort_field`、`sort_direction` 白名单与分页；`simpletrack-anaysitics-service` 已支持 query token 短窗口轮换 allowlist、结构化 `id/not_before/expires_at` 生命周期元数据，并把 source runtime config 的 `allowed_property_filters` 映射到 typed property filters；运行时会拒绝过期或未生效 token，并对轮换命中和拒绝场景打审计日志；后续继续补更复杂的查询筛选交互。
+- Events / Realtime 查询 HTTP API 已进入 `P1-005D`，当前以 `/v1/realtime` 和 `/v1/events` 的内部 bearer-token 读回放形式落地，并补齐浏览器/SaaS 页面调用需要的 `OPTIONS` preflight；`simpletrack-saas` 页面已通过 server-side readback helper 和 client-safe Website selector 初版接入，内部 query token 不暴露到浏览器，Events 现在还能在服务端补 `event_name`、`distinct_id`、`visit_id`、`limit`、`offset`、`sort_field`、`sort_direction` 白名单与分页；`simpletrack-anaysitics-service` 已支持 query token 短窗口轮换 allowlist、结构化 `id/not_before/expires_at` 生命周期元数据，并把 source runtime config 的 `allowed_property_filters` 映射到 typed property filters；运行时会拒绝过期或未生效 token，并对轮换命中和拒绝场景打审计日志；`visit_id` 现在由写入链路持久化，读侧直接读取存储字段；后续继续补更复杂的查询筛选交互。

@@ -29,16 +29,24 @@
 - P1 已确定包含产品官网 / Marketing Site / 公开站点：需要产品介绍、定价/订阅入口、docs/quickstart；不要把它仅理解为单张 landing page。
 - SimpleTrack 生产 SaaS 模板已确定先选择 Supastarter for Next.js；MakerKit 只作为 B2B 企业控制面对照和备选，除非用户明确重开选型，不要在两者之间反复摇摆。
 - SimpleTrack 支付路线先按 Supastarter 已支持的 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入；KYC/KYB、退款、拒付、发票、税务和费用结构放到上线收费前逐项处理，不作为 P0/P1 早期阻塞。
+- SimpleTrack 当前仍处于新建项目阶段，尚未进入已部署系统的历史迁移周期；`src/analytics-core`、`src/simpletrack-saas` 和 `src/analytics-service` 的 schema 调整只允许走初始化/建表/同步路径，不要提前引入迁移 SQL、backfill、兼容分支或完整迁移框架。只有在真实上线并出现历史数据升级需求后，再单独评估迁移逻辑。
 - `analytics-core` 的实施方案维护在 `simpletrack/docs/实施决策/analytics-core实施方案.md`；每次修改其模块边界、EventBus、命名映射、存储模型或验收标准时，必须同步更新实施决策 README 的修订记录和实施计划完成列表。
 - `analytics-core` 和 SimpleTrack 分析产品参考采用“双参考”：Umami 用于分析对象体系、事件语义、Realtime/Events/Funnels/Journeys/Retention/Segments 边界；Litlyx 用于短接入链路、Raw Events 验收、Product 空态/示例态/真实态和 Show test data 教育方式。
 - `analytics-core` 的 P1-001 EventBus 抽象已完成：Redis Stream 采用 pending 优先重试，写入成功后 ack，超过 `MaxAttempts` 进入死信队列；下一步主线是 P1-002 的 collect、ClickHouse `EventWriter`、`TableRouter` 和 Realtime/Events 最小闭环。
-- `analytics-core` 的 P1-002 已启动：collect 请求标准化、`collect.Handler`、fasthttp `POST /collect`、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、GORM/MySQL `IngestionStatusGuard`、`EventQueryBuilder` query plan、`storage.EventReader` 查询执行器、`ingestion.Processor` worker 边界和本地 Redis/MySQL/ClickHouse compose 已落地；默认使用高位端口，Redis 集成测试使用 `127.0.0.1:26379`；下一步不要绕开这些契约，端到端运行入口必须复用它们。
+- `analytics-core` 的 P1-002 已启动：collect 请求标准化、`collect.Handler`、Fiber `POST /collect`、storage `EventWriter` 接口、ClickHouse `TableRouter`、native batch `BatchWriter`、GORM/MySQL `IngestionStatusGuard`、`EventQueryBuilder` query plan、`storage.EventReader` 查询执行器、`ingestion.Processor` worker 边界和本地 Redis/MySQL/ClickHouse compose 已落地；默认使用高位端口，Redis 集成测试使用 `127.0.0.1:26379`；下一步不要绕开这些契约，端到端运行入口必须复用它们。
 - `src/simpletrack-saas` 在 Windows 下验证 Supastarter 时使用 Node 24.1.0 或其他满足 Prisma 要求的版本（Node 20.19+、22.12+、24.0+）；Node 22.10.0 会导致 Prisma preinstall 失败。
-- `src/simpletrack-saas` 如果 npm/pnpm 网络失败，优先设置 `HTTP_PROXY`、`HTTPS_PROXY`、`npm_config_proxy`、`npm_config_https_proxy` 为 `http://localhost:7897`，并设置 `npm_config_registry=https://registry.npmjs.org/`，避免落到不稳定镜像源。
+- `src/simpletrack-saas` 如果 npm/pnpm 网络失败，优先设置 `HTTP_PROXY`、`HTTPS_PROXY`、`npm_config_proxy`、`npm_config_https_proxy` 为 `http://localhost:64320`；如果仍失败，再切到 `http://localhost:7897`，并设置 `npm_config_registry=https://registry.npmjs.org/`，避免落到不稳定镜像源。
 - `src/simpletrack-saas` 的 `saas` type-check 如果报 `packages/database/prisma/generated/client` 缺失，先运行 `pnpm --filter @repo/database run generate`，再重跑 type-check。
 - 后续遇到依赖安装、网络代理、SSH 权限、子仓库推送、构建验证、数据库连接等卡壳问题时，不要把排障细节继续写进 README；统一记录到 `docs/开发环境卡壳问题记录.md`，README 只保留初始化和常用命令入口。
 - `references/xwl_bi-backend/` 是从本地 `xwl_bi` 复制进来的只读临时参考快照，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分；不要把它当作活跃模块开发，不要直接照搬旧业务代码或旧命名。
 - 如需刷新 `references/xwl_bi-backend/`，必须按“重新快照”的方式整体替换，并在 `references/xwl_bi-backend/README.md` 与实施决策文档中记录新的来源 commit。
+
+## 源码分析引用规范
+
+- 进行源码分析、源码解读、数据流分析、架构拆解或审查说明时，引用具体代码必须同时标注对应仓库的 `commit id` 和行号；只写文件路径或只写行号不算完整证据。
+- 分析 `src/analytics-core`、`src/analytics-service`、`src/simpletrack-saas` 等子仓库代码时，必须使用子仓库自己的 `HEAD` commit id；不要用父仓 commit id 代替子仓代码版本。
+- 如果被分析仓库存在未提交改动，必须在分析文档或回复中明确标注“基于 `HEAD <commit id>` + 工作区未提交改动”，并说明行号来自当前工作区文件。
+- Markdown 文档中的推荐引用格式为：`仓库: <repo>, commit: <short-or-full-sha>, file: <path>:<line>`；跨多行代码可写成 `<path>:<start>-<end>`。
 
 ## Git 提交规范
 
@@ -53,7 +61,7 @@
 
 ## Go 代码注释与 godoc 规范
 
-- Go HTTP 服务入口优先使用成熟第三方框架或活跃第三方 HTTP 库；只有没有合适成熟方案时才考虑标准库 `net/http` 直接作为服务入口。`analytics-core` 的事件上报热路径已确定使用活跃维护的 `github.com/valyala/fasthttp`，不使用标准库 router，也不沿用 xwl_bi 中低活跃的 `buaazp/fasthttprouter` 路由层。
+- Go HTTP 服务入口优先使用成熟第三方框架或活跃第三方 HTTP 库；只有没有合适成熟方案时才考虑标准库 `net/http` 直接作为服务入口。`analytics-core` 的 HTTP 适配层和 `simpletrack-anaysitics-service` 运行时入口当前使用 Fiber v3；不使用标准库 router，也不沿用 xwl_bi 中低活跃的 `buaazp/fasthttprouter` 路由层。
 - 修改 Go 代码时必须按 Go 标准库 `$GOROOT/src` 的 godoc 质量作为唯一参照，尤其适用于 `src/analytics-core`。
 - 所有导出的函数、类型、接口、常量、变量和结构体字段必须有英文 godoc 注释，100% 覆盖；注释必须以被声明对象名称开头，例如 `// EventBus publishes validated events ...`。
 - 结构体字段和接口方法/字段注释是强制项：新增或修改任何 struct/interface 时，每个字段、方法、嵌入成员都必须说明职责、输入输出语义或边界约束；即使是非导出类型，只要属于核心链路、adapter、测试假对象或容易误用的配置，也必须补英文注释。
@@ -71,7 +79,7 @@
 - 函数体注释必须按“阶段”而不是“逐行复述”组织，例如先说明 request normalization / validation，再说明 claim / idempotency，再说明 durable append / batch insert，再说明 commit / rollback / ack / dead-letter；禁止用低价值注释凑数量。
 - 函数体注释验收按逻辑块检查：一个非平凡函数如果同时存在输入整理、依赖调用、状态写入、错误分类、回滚或提交等多个逻辑块，却没有在每个逻辑块前写清意图和失败语义，视为注释不合格，不得提交或宣称完成。
 - 注释强度必须随架构风险提高：HTTP/队列/存储/查询/幂等/重试/ack/死信/批量写入/动态表路由等边界代码，至少要在包注释、核心类型注释和核心函数注释中说明职责、不负责什么、为什么依赖只能停留在当前层。
-- 框架适配层必须写清楚边界：例如 `httpapi` 可以认识 `fasthttp.RequestCtx`，但 `collect.Handler`、`EventBus`、`ingestion`、`storage` 不应接收 HTTP 框架对象；注释中优先使用“framework coupling”“boundary crossing”等明确表述，避免使用容易误解的“pollution”。
+- 框架适配层必须写清楚边界：例如 `httpapi` 可以认识 `fiber.Ctx`，但 `collect.Handler`、`EventBus`、`ingestion`、`storage` 不应接收 HTTP 框架对象；注释中优先使用“framework coupling”“boundary crossing”等明确表述，避免使用容易误解的“pollution”。
 - 核心处理器必须说明输入、输出、副作用和错误分类。例如 collect handler 要写明输入是 `collect.Request`，输出是 `EventEnvelope`，副作用是发布到 `EventBus`，validation error 与 publish error 的语义不同。
 - 新增 HTTP/队列/存储入口时，必须同时补齐：包级边界注释、核心构造函数注释、主处理函数注释、至少一个可编译 Example，以及覆盖正常路径和关键错误路径的测试。
 - 禁止为了满足注释数量写低价值注释，例如“set status code”“return error”这类复述代码的注释；注释应解释命名无法承载的边界、原因、约束、风险和长期维护意图。

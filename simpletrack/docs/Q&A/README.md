@@ -24,6 +24,7 @@
 | analytics-core 实施方案在哪里 | [../实施决策/analytics-core实施方案.md](../实施决策/analytics-core实施方案.md) |
 | GitHub 账号和仓库组织应该怎么规划 | [GitHub账号和仓库组织应该怎么规划.md](GitHub账号和仓库组织应该怎么规划.md) |
 | tenant、project、source 三者是什么关系 | [tenant-project-source三者是什么关系.md](tenant-project-source三者是什么关系.md) |
+| session_id、visit_id、distinct_id 三者是什么关系 | [session_id-visit_id-distinct_id三者是什么关系.md](session_id-visit_id-distinct_id三者是什么关系.md) |
 | 消费失败、重试、死信队列和幂等是什么 | [消费失败重试死信队列和幂等是什么.md](消费失败重试死信队列和幂等是什么.md) |
 | xwl_bi 的 consumer offset 和 acceptance status 是什么 | [xwl_bi的consumer-offset和acceptance-status是什么.md](xwl_bi的consumer-offset和acceptance-status是什么.md) |
 | GORM Query Builder 和直接 SQL 有什么区别 | [GORM-query-builder和直接SQL有什么区别.md](GORM-query-builder和直接SQL有什么区别.md) |

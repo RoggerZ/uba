@@ -1,7 +1,7 @@
 # analytics-core 实施方案
 
 > 状态：已确定 P1 执行，模块设计持续评审  
-> 最近更新：2026-05-03
+> 最近更新：2026-05-07
 > 来源：基于 xwl_bi 本地代码的 analyze + code-review 梳理，并结合 Umami、Litlyx 两个参考产品的调研资产。`references/xwl_bi-backend/` 主要作为后端架构设计参考，不作为代码搬运来源。
 
 ## 结论
@@ -21,6 +21,8 @@ P1 先落地最小可用链路：
 5. ClickHouse 写入事件和实时表。
 6. 提供 Realtime、Raw Events / Events、Goal 最小查询能力。
 7. 预留漏斗、留存、路径、LTV、归因、分群、会话、事件属性、用户属性的模块边界。
+
+P1 的 `visit_id` 已改为长期方案：在 collect 写入前确定、入库存储、查询直接读取。旧的 readback 临时派生只作为历史过渡，不再作为后续实现口径。
 
 ## 设计目标
 
@@ -58,7 +60,7 @@ P1 先落地最小可用链路：
 | sinker 已有完整 ETL 链路 | `cmd/sinker/internal/runner/report_handler.go:139` 描述 context extraction、geo enrich、metric parse、ensure columns、metadata、status、metric batch | 可作为 ingestion pipeline 参考，但要拆小接口 |
 | realtime 链路轻量 | `cmd/sinker/internal/runner/realtime_handler.go:12` 说明不做动态补列和复杂校验，只快速入批并 ack | 可作为 P1 Realtime 写入路径参考 |
 | ClickHouse 初始化仍有旧表语义 | `cmd/init_app/ck/init.go:30`、`70` 创建 acceptance status 和 realtime warehousing 表，包含 `xwl_kafka_offset` | P1 可保留 status/realtime 思路，但表名字段要重命名 |
-| HTTP 入口分裂且上报路由依赖偏旧 | `router/index.go` 使用 Fiber 做后台控制面；`cmd/report_server/runtime.go` 使用 fasthttp + `buaazp/fasthttprouter` 做上报入口；`go.mod` 中 `fasthttprouter` 为 v0.1.1 | 参考 xwl_bi 的 fasthttp collect 启动装配和中间件编排；`analytics-core` P1 采用 fasthttp，但不复用低活跃的 `fasthttprouter` |
+| HTTP 入口分裂且上报路由依赖偏旧 | `router/index.go` 使用 Fiber 做后台控制面；`cmd/report_server/runtime.go` 使用 fasthttp + `buaazp/fasthttprouter` 做上报入口；`go.mod` 中 `fasthttprouter` 为 v0.1.1 | 只参考 xwl_bi 的 collect 启动装配和中间件编排；`analytics-core` / `simpletrack-anaysitics-service` 当前采用 Fiber v3，不复用低活跃的 `fasthttprouter` |
 
 ## code-review 风险结论
 
@@ -82,7 +84,7 @@ P1 先落地最小可用链路：
 | ClickHouse 事件写入 | 高吞吐写入优先用 `clickhouse-go/v2` 原生 batch writer | GORM 支持 `CreateInBatches`，但事件明细是写入热路径；xwl_bi 既有调优经验也指向原生批量插入更适合高频 ClickHouse 写入 |
 | Redis | P1 使用 `redis/redis-stack:latest` 容器镜像 | Redis Stack 方便本地开发和后续扩展，P1 先用 Redis Stream 承接轻量事件队列 |
 | Kafka | 保留 `KafkaBus` | Kafka 仍是高吞吐事件流路线，但不是 P1 必选运行依赖 |
-| HTTP API | 使用活跃维护的 fasthttp，不沿用 xwl_bi 的 `buaazp/fasthttprouter` 路由层 | fasthttp 本体更新活跃，适合事件上报热路径；xwl_bi 的 `fasthttprouter` 依赖活跃度低。fasthttp 只放在 HTTP 适配层，避免对 `collect.Handler` 形成框架耦合 |
+| HTTP API | 使用 Fiber v3，不沿用 xwl_bi 的 `buaazp/fasthttprouter` 路由层 | Fiber v3 当前已作为 collect HTTP 适配层和运行时服务入口；`collect.Handler`、EventBus、ingestion、storage 仍保持框架无关 |
 
 GORM 参考：
 
@@ -127,7 +129,7 @@ analytics-core/
 
 目录原则：
 
-- `collect` 只处理请求字段校验、事件标准化和可替换 pre-queue stage；`collect/httpapi` 是可选 fasthttp 适配器，不处理 SimpleTrack 业务鉴权。
+- `collect` 只处理请求字段校验、事件标准化和可替换 pre-queue stage；`collect/httpapi` 是可选 Fiber 适配器，不处理 SimpleTrack 业务鉴权。
 - `eventbus` 屏蔽 Direct、Redis Stream、Kafka 差异。
 - `ingestion` 处理消费、入库和 ack/nack 语义，不拥有 HTTP 或 SaaS 配置。
 - `storage` 只封装外部依赖，不放业务分析逻辑；ClickHouse query 和 writer 分开，避免查询 builder 与高吞吐写入互相污染。
@@ -151,6 +153,7 @@ type EventEnvelope struct {
     EventName   string
     DistinctID  string
     SessionID   string
+    VisitID     string
     EventTime   time.Time
     ReceivedAt  time.Time
     Properties  map[string]any
@@ -171,6 +174,7 @@ type EventEnvelope struct {
 | --- | --- | --- |
 | `appid` / `table_id` | `source_id`，必要时映射到 `project_id` | 核心库不关心是网站、App、后台服务还是旧 xwl_bi 应用；统一称为数据源 |
 | `xwl_distinct_id` | `distinct_id` | 访客或用户的稳定标识 |
+| 旧会话或访问派生字段 | `session_id` / `visit_id` | `session_id` 保留 SDK/服务端会话来源语义，`visit_id` 是分析口径里的 canonical visit key |
 | `xwl_part_event` | `event_name` | 事件名称 |
 | `xwl_part_date` | `event_time` | 客户端事件时间 |
 | `xwl_server_time` | `received_at` | 服务端接收或消费时间 |
@@ -281,12 +285,13 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 交付：
 
 - 定义标准 `EventEnvelope`。
-- 定义 `tenant_id`、`project_id`、`source_id`、`source_type`、`event_name`、`event_time`、`distinct_id`、`session_id`、`properties`、`user_properties` 等字段。
+- 定义 `tenant_id`、`project_id`、`source_id`、`source_type`、`event_name`、`event_time`、`distinct_id`、`session_id`、`visit_id`、`properties`、`user_properties` 等字段。
 - 定义 event name、source id、timestamp、distinct id、properties 校验规则。
 - 不提供 xwl_bi legacy 字段兼容。xwl_bi 后续迁移时应改为写入新协议。
 - 当前已落地 `collect.Normalize`，负责把 collect 请求标准化为 `EventEnvelope`，并校验事件 ID、租户、项目、数据源、事件名、用户标识和时间戳。
 - 当前已落地 `collect.Handler`，这里的 Handler 指 `collect/handler.go` 中的事件上报核心处理器，不是 HTTP 路由 handler；它负责调用 `Normalize` 并把标准化后的事件发布到 `EventBus`。HTTP collect API 只做协议适配，不重复实现校验和发布逻辑。
-- 当前已落地 fasthttp `POST /collect` 入口，负责 JSON 解码、HTTP 状态码和响应格式；`collect.Handler` 继续保持框架无关。
+- 当前已落地 `VisitResolverStage`，负责在 SDK 未传 `visit_id` 时，使用 server-only visit salt、30 分钟默认窗口和最终 `session_id` 派生 canonical analytics visit key；如果 SDK 已传合法 `visit_id`，则保留原值。
+- 当前已落地 Fiber `POST /collect` 入口，负责 JSON 解码、HTTP 状态码和响应格式；`collect.Handler` 继续保持框架无关。
 
 验收：
 
@@ -319,6 +324,7 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 交付：
 
 - 建立按 `tenant_id / project_id / source_id` 路由的事件物理表、实时事件表、ingestion status 表。
+- ClickHouse 事件表和 `_properties` 表都包含 `visit_id`，并在写入前由 collect 阶段确定，不在读回放阶段临时补算。
 - 当前已落地 ClickHouse `TableRouter`，按 tenant / project / source 生成稳定 hash 物理表名，对上层仍暴露统一 `events` 逻辑模型。
 - 当前已落地 storage `EventWriter` 接口和 ClickHouse native batch `BatchWriter`，真实写入统一复用该边界。
 - 当前已落地 GORM/MySQL `IngestionStatusGuard` 和 `ingestion_status` 表，按 `(tenant_id, project_id, source_id, event_id)` 做 `processing / inserted / failed` 状态占用、重复跳过、失败回滚和重试再占用。
@@ -326,7 +332,7 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 - `EventWriter` 默认使用 `clickhouse-go/v2 PrepareBatch` 原生批量写入，GORM batch insert 只作为压测对照或低频管理写入选项。
 - 当前已明确 `ingestion.Processor` 是 P1 worker 边界：Redis/Kafka adapter 负责 ack/nack，Processor 负责调用 `storage.EventWriter`，后续真实 worker 入口不得复制一套消费写入逻辑。
 - worker 后续运行时必须把 `EventWriteGuard` claim、ClickHouse `EventWriter` append、guard commit/rollback 和 Redis/Kafka ack 串成同一条可恢复链路，避免重复事件在数据库存两份。
-- 当前已提供 Realtime 和 Raw Events / Events 的 query plan builder 与 ClickHouse/GORM query reader，并已通过 opt-in e2e 验证 collect -> Redis Stream -> ingestion -> ClickHouse -> Realtime/Events reader。
+- 当前已提供 Realtime 和 Raw Events / Events 的 query plan builder 与 ClickHouse/GORM query reader；`EventQueryBuilder` 支持 `visit_id` 白名单过滤，`EventReader` 读取存储中的真实 `visit_id`，不再依赖 readback 派生。
 
 验收：
 
@@ -384,7 +390,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 | 事件属性与用户属性 | `event_data`、`session_data`、typed value | collect 阶段已落地属性 key、数量、标量类型、字符串长度和有限数字入口约束；storage 层已提供 `EventPropertyRecord` / `FlattenEventProperties` typed row 逻辑展开；ClickHouse `PropertyBatchWriter` 写入同源路由 `_properties` 表；`PropertyIndexingEventWriter` 已把属性索引组合进 ingestion 热路径；MySQL `property_indexing_status` 单独处理属性 checkpoint，failed 可原子 reclaim，processing ambiguous 不自动重试；真实 e2e 已验证写入、读取和属性过滤 | P1-002A 已完成；属性字典、ambiguous 恢复和 ClickHouse 去重/聚合优化放 P1.5/P2 |
 | client info enrich | collect 入口补 IP、UA、browser、os、device、geo | P1-002B 第一版已落地 collect `Stage`：UA/referrer 可进入 bounded properties，IP 只允许盐化为 `client.ip_hash`；HTTP 默认不信任 forwarded IP，可信代理需显式 `WithTrustedProxyHeaders()`；浏览器 SDK 已支持 opt-in DNT，并自动补 allowlisted UTM/click id | 继续评审 geo、browser/os/device，禁止放入 ClickHouse writer |
 | bot/IP/internal traffic 过滤 | collect 入口做 bot/IP 判断 | P1-002B 第一版已落地 `TrafficFilterStage`：按 bot UA token、internal CIDR/IP 在 EventBus publish 前返回 `FilteredError`，HTTP 返回 accepted filtered 响应，不写入分析明细；DNT active 时浏览器 SDK 不发送也不持久化 identity | 后续评审 allow/deny 配置来源、产品 UI、internal traffic 和审计/采样策略 |
-| session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | P1-002C 第一版已落地可替换 `SessionResolverStage`，在缺失 `session_id` 时用 salt + 时间窗口 + tenant/project/source/distinct_id 派生匿名 session；IP/UA 只能作为 transient hash 输入；浏览器 DNT opt-in 避免持久本地 identity | `visit_id` 尚未进入事件契约，后续评审 schema、salt 轮换、cookie/no-cookie 和 retention |
+| session/visit resolver | source + id 或 IP/UA/salt 派生 session，visit 使用短窗口 | P1-002C 已从 readback 临时派生升级为写入前 resolver：`SessionResolverStage` 先补 `session_id`，`VisitResolverStage` 再按 server-only visit salt、30 分钟默认窗口和最终 session 派生缺失的 canonical `visit_id`；`visit_id` 已进入 `EventEnvelope`、ClickHouse event 表和 `_properties` 表；IP/UA 只能作为 transient hash 输入；浏览器 DNT opt-in 避免持久本地 identity | P1 已定稿 `visit_id` 持久化；salt 轮换、cookie/no-cookie、Sessions 专页和 retention 产品化放 P1.5/P2 |
 | 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限和 typed property filter allowlist；属性过滤使用 ClickHouse tuple `IN` 半连接查询属性表，避免 correlated `EXISTS` 外层 alias 兼容问题；`simpletrack-saas` Events 页面现在也把 `event_name`、`distinct_id`、`limit`、`offset`、`sort_field`、`sort_direction` 做服务端归一化后再请求内部读回放；`simpletrack-anaysitics-service` 已把 runtime source config 的 `allowed_property_filters` 映射为 URL 编码 JSON `property_filter` 的服务层白名单，并把启动 source surface 下发给 ClickHouse query builder 兜底 | P1-002D 已完成，P1-005D 已补属性过滤入口，后续复杂查询继续复用 allowlist + 真实 ClickHouse e2e |
 | Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果；e2e 入口已增加 Redis/MySQL/ClickHouse 冷启动 readiness 重试，避免 compose 刚启动时 native handshake EOF 误伤验收；Events 产品页使用额外读取一条的 `hasMore` 模型，不做总数查询；内部读回放 token 可用 `ANALYTICS_SERVICE_QUERY_TOKENS_JSON` 做短窗口轮换，并可附带 `id`、`not_before`、`expires_at` 供运行时拒绝过期/未来 token 和记录审计日志 | P1-002E 已完成，P1-005D 已补页面分页交互、query token 轮换和生命周期校验，后续作为回归入口 |
 | Web tracker SDK | auto pageview、custom event、identify、performance | P1 已落地 SimpleTrack 浏览器 SDK，但已从 `analytics-core` 迁出；当前由 `simpletrack-anaysitics-service` 的 `/tracker.js` 静态交付，并通过 `data-write-key` 进入运行时 collect 服务 | P1-004 已完成；React/Next/Node/mobile SDK、CDN 版本化和 performance metrics 后续评审 |
@@ -395,9 +401,10 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 
 1. P1-002E 已完成：pageview、自定义事件属性和 user properties 已能从 collect 进入 ClickHouse 并被 Realtime/Events 查询；冷启动 e2e readiness 已复验稳定。
 2. P1-002A 已完成：`PropertyBatchWriter` 已通过 `PropertyIndexingEventWriter` 组合进 ingestion worker，属性跨表幂等使用 `property_indexing_status` guard；processing ambiguous 不自动恢复，后续作为 P1.5/P2 运维和 ClickHouse 去重策略评审项。
-3. P1-004 已完成并纠偏：浏览器 SDK 最短链路和 docs/quickstart 已改为 write key 接入，SDK 由 `simpletrack-anaysitics-service` 托管，不再属于 `analytics-core`；后续继续评审 visit/geo、SDK 发布策略和多语言 SDK。
-4. P1-005D 正在推进：内部 `/v1/realtime`、`/v1/events` 已由 `simpletrack-anaysitics-service` 读回放，SaaS 页面只走 server-side helper；Events 已补白名单筛选、排序、属性过滤和 `hasMore` 分页，内部 query token 不进入浏览器，并已支持服务端短窗口轮换 allowlist、结构化生命周期和轮换命中/拒绝审计日志。
-5. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
+3. P1-002C 正在按长期方案收口：`visit_id` 已进入 collect 契约、ClickHouse schema、event/property writer、reader 和 query builder；`simpletrack-anaysitics-service` 负责装配 visit resolver，`simpletrack-saas` runtime source 输出 server-only `visit_salt` / `visit_window_seconds`。
+4. P1-004 已完成并纠偏：浏览器 SDK 最短链路和 docs/quickstart 已改为 write key 接入，SDK 由 `simpletrack-anaysitics-service` 托管，不再属于 `analytics-core`；后续继续评审 geo、SDK 发布策略和多语言 SDK。
+5. P1-005D 正在推进：内部 `/v1/realtime`、`/v1/events` 已由 `simpletrack-anaysitics-service` 读回放，SaaS 页面只走 server-side helper；Events 已补白名单筛选、排序、属性过滤和 `hasMore` 分页，内部 query token 不进入浏览器，并已支持服务端短窗口轮换 allowlist、结构化生命周期和轮换命中/拒绝审计日志。
+6. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
 
 ## 与上层产品的集成边界
 
@@ -416,6 +423,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 - 本地可用 memory resolver；生产接入雏形使用 HTTP resolver 通过 bearer token 按 write key 读取 `simpletrack-saas` 的内部 runtime-source API，并用短 TTL 缓存降低热路径依赖；控制面 URL 默认必须是 HTTPS，本地 loopback HTTP 只能显式 opt-in。
 - 执行 write key、Origin/domain allowlist、server-only privacy salts、internal traffic、bot 过滤和后续 quota runtime enforcement。
 - 不信任客户端传入的 tenant/project/source/source_type，统一由控制面配置覆盖后调用 `analytics-core`。
+- 装配 session / visit resolver：`session_salt`、`visit_salt`、`visit_window_seconds` 由控制面 runtime source config 提供，公开 write key 不参与派生 salt。
 - 显式开启 ingestion 时，装配 Redis Stream consumer、MySQL checkpoint guard、ClickHouse native writer 和 typed property indexing；默认启动时校验 ClickHouse event/property 表存在，HTTP resolver 返回的 source 也必须落在启动 schema surface 内；也可在本地/小部署通过显式开关创建当前 runtime config 内所有启用 source 的 routed tables 后再校验，仍不拥有配置生命周期。
 
 `analytics-core` 负责：
@@ -440,7 +448,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | 本地依赖 | 当前已提供 `src/analytics-core/docker-compose.yml`，包含 Redis Stack、MySQL 8.4、ClickHouse 25.3；默认使用高位端口避开本机已有数据库 |
 | Kafka 保留 | `KafkaBus` 接口和 adapter 边界存在，不删除高吞吐路线 |
 | 事件协议 | 标准字段清楚，不提供 xwl_bi legacy 字段兼容 |
-| HTTP collect API | `collect/httpapi` 可作为 fasthttp 协议适配器；SimpleTrack 产品运行时的 write key、domain/CORS、quota 由 `simpletrack-anaysitics-service` 执行 |
+| HTTP collect API | `collect/httpapi` 可作为 Fiber 协议适配器；SimpleTrack 产品运行时的 write key、domain/CORS、quota 由 `simpletrack-anaysitics-service` 执行 |
 | Redis Stream 消费 | pending 优先重试，写入成功才 ack，超过 `MaxAttempts` 后进入死信队列 |
 | ingestion worker | 当前已明确 `ingestion.Processor` 为 P1 worker 边界，`simpletrack-anaysitics-service` 可显式开启同进程 worker 并复用它 |
 | 表策略 | P1 采用按 project/source 物理分表的方案 B，但上层仍只面对统一 `events` 逻辑模型 |
@@ -451,7 +459,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | Events / Raw Events | 当前已落地 query plan builder 和 ClickHouse query reader，并通过 opt-in e2e 验证明细事件可查且属性可确认；SaaS Events 页面已把事件名、distinct id、排序、分页参数限制在白名单内，并通过额外读取一条判断 `hasMore`；重复 query 参数和空页偏移已补回归硬化 |
 | 事件属性 | P1-002A 已约束属性入口、提供 typed row 逻辑展开，并通过 `PropertyIndexingEventWriter` + ClickHouse `PropertyBatchWriter` + MySQL `property_indexing_status` 接入 ingestion 热路径；真实 ClickHouse e2e 已确认 property rows 可写入、可查询、可按 allowlisted property filter 精确过滤 |
 | 用户属性 | identify 语义进入 `DistinctID` + `UserProps`，用户属性和事件属性分开处理，不混成一类 JSON；当前已共用 collect 属性入口约束、typed row 展开模型、属性热路径写入和属性过滤模型 |
-| session/visit | P1-002C 需要可替换 resolver，支持匿名 hash、业务 id、cookie/no-cookie 和 salt 轮换策略 |
+| session/visit | `SessionResolverStage` 与 `VisitResolverStage` 已落地；`visit_id` 是写入前确定并持久化的 canonical analytics visit key，cookie/no-cookie、salt 轮换和 Sessions 专页放 P1.5/P2 |
 | client enrich / bot 过滤 | P1-002B 需要以 stage 形式实现 IP/UA/geo/utm/click id 补齐和 bot/IP/internal traffic 过滤，不进入 writer |
 | 查询安全 | P1-002D 已落地 Events 排序/过滤字段白名单、operator enum、filter 数量上限、typed property filter allowlist、非法输入测试和真实 ClickHouse e2e；后续复杂查询必须补真实执行验证 |
 | 元数据 | 事件名、事件属性、用户属性能被捕获 |
@@ -469,7 +477,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 - Funnel / Retention 查询如何落到统一 GORM query builder。
 - `analytics-core` 压测基线指标、数据量级和验收阈值。
 - 事件属性存储选择：typed rows、ClickHouse Map/JSON、原始 JSON + 高频属性展开的混合模型，分别对应哪些查询能力和迁移成本。
-- session/visit 隐私策略：salt 轮换、IP 保留策略、cookie/no-cookie、server identity 和 retention 的默认值；DNT 浏览器侧 opt-in 已落地，后续只评审产品配置和 audit。
+- session/visit 隐私策略：`visit_id` 持久化方案已定，后续评审 salt 轮换、IP 保留策略、cookie/no-cookie、server identity、retention 默认值和 Sessions 产品页；DNT 浏览器侧 opt-in 已落地，后续只评审产品配置和 audit。
 - client info enrich 与 bot/IP 过滤的执行位置、配置面和失败语义。
 - ClickHouse 读侧优化何时引入 materialized view、projection、小时聚合表和高频属性索引，方案 B 多物理表如何批量迁移。
 - Web tracker SDK 与多语言 SDK 的阶段路线：P1 浏览器最短链路由 `simpletrack-anaysitics-service` 静态托管；React/Next/Node/mobile SDK 后续评审。
