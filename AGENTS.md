@@ -131,6 +131,7 @@
   - `git@github-simpletrack:simpletrack/anaysitics-service.git`
 - 不要依赖默认 `$env:USERPROFILE\.ssh\config` 推送这三个仓库；该文件曾因 Windows ACL 权限异常导致 OpenSSH 报 `Bad owner or permissions`。
 - 在 PowerShell 中读取、验证或引用带括号/空格的路径时，优先使用单引号加 `-LiteralPath`，不要让 PowerShell 重新解释路径片段；例如 `Get-Content -LiteralPath 'C:\Users\admin\.ssh\config_simpletrack'`。否则像 `(authenticated)` 这样的路径片段可能被拆成裸标识符并触发 `The term 'authenticated' is not recognized` 这类解析错误。
+- 在 Windows 下通过 `corepack pnpm ... test -- <path>`、`npm run ... -- <path>` 或其他可能转入 `cmd.exe` 的命令传递 Next.js route group 路径时，不要传 `app/(authenticated)/(main)/...` 这类完整路径；即使用 PowerShell 单引号，后续 `cmd.exe` 仍可能把括号当命令分组。优先使用 Vitest 文件名过滤，例如 `websites-page.test.tsx`，或先 `Set-Location` 到目标目录后使用不含括号的相对文件名。
 - 相关说明维护在 `simpletrack/docs/Q&A/Windows-SSH仓库权限怎么配置.md`。
 
 ## 截图评审标准
