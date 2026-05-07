@@ -25,6 +25,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-07 | `analytics-core` 的 P1-002B enrich 边界继续收口：新增 browser / OS / device 的可插拔 UA 派生，以及基于离线 MaxMind mmdb 的 geo enrichment 接口；`simpletrack-anaysitics-service` 可通过 `ANALYTICS_SERVICE_GEOIP_MMDB_FILE` 提供地理库文件，collect 侧继续保持框架无关 | P1-002B、collect、analytics-core、analytics-service、geo、browser、device |
 | 2026-05-07 | 明确 SimpleTrack 仍处于新建项目阶段，`src/analytics-core`、`src/simpletrack-saas` 和 `src/analytics-service` 的 schema 调整只走初始化 / 建表 / 启动校验路径，不提前引入迁移 SQL、backfill、兼容分支或完整迁移框架；生产级迁移逻辑留到真实上线后单独评估 | 仓库治理、schema、P1-005B、P1-005C |
 | 2026-05-07 | `visit_id` 从 readback provisional 字段升级为 canonical analytics visit key：`analytics-core` 增加 VisitResolver、存储字段、writer/reader/query 支持；`simpletrack-anaysitics-service` runtime config 增加 `visit_salt` / `visit_window_seconds`；`simpletrack-saas` runtime-source 输出 visit 配置并让 Realtime / Events 使用真实存储字段 | P1-002C、P1-005C、P1-005D、analytics-core、analytics-service、simpletrack-saas |
 | 2026-05-07 | `simpletrack-anaysitics-service` 补充 runtime source resolver 与 HTTP resolver cache 边界注释，作为 `/tracker.js`、`/v1/realtime`、`/v1/events` 源码解读的稳定证据基线；子仓提交 `825e366` 已推送，父仓随后同步 gitlink 和 `docs/analytics-source-reading/collectapi-query-and-tracker-flow.md` 引用 | P1-005B、P1-005C、P1-005D、analytics-service、源码解读、submodule |
@@ -188,7 +189,7 @@
 正在推进：
 
 - Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载；其中 Websites 已从 UI-only gate 前进到真实 source 列表 + 最小创建表单，marketing 文案、pricing 语义、docs/quickstart、mail-preview 和浏览器截图验证也已完成。
-- `analytics-core` P1 数据管道：collect handler、Fiber `POST /collect` 适配器、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单、P1-002B/C collect pre-queue stage 和持久化 `visit_id` 链路已完成；core 现在以 Go library 方式被 `simpletrack-anaysitics-service` 引用，P1-004 Browser SDK 已迁到 `simpletrack-anaysitics-service` 静态交付；下一步进入 geo/internal traffic 等剩余评审。
+- `analytics-core` P1 数据管道：collect handler、Fiber `POST /collect` 适配器、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单、P1-002B/C collect pre-queue stage 和持久化 `visit_id` 链路已完成；browser / OS / device 派生和 geo enrichment 边界也已补齐，core 继续保持 Go library 方式被 `simpletrack-anaysitics-service` 引用；下一步聚焦 internal traffic 产品配置和过滤审计。
 - `simpletrack-anaysitics-service` 主线（本地仓库 `src/analytics-service`）：已完成本地仓库、服务骨架、Fiber runtime app、memory / HTTP runtime config resolver、`/collect` 运行时校验、`/tracker.js` 静态托管、collect 单测、Redis durable enqueue、可选 ingestion worker 装配、本地/小部署 ClickHouse routed table auto migration，以及 `P1-005D` 内部 Events / Realtime 查询入口、query routes 配置、Swagger UI / OpenAPI 文件、query token 轮换 allowlist、结构化生命周期、source-scoped 属性过滤白名单、`visit_id` 持久字段读取和 control-plane revoke handler 回归；`simpletrack-saas` 内部 runtime-source API、Websites 真实 source 管理最小闭环（create/list/update/enable/disable/delete）、visit resolver runtime 配置、Realtime/Events 页面读回放、visit_id 可见列、页面级回归、client-safe Website selector 和 Events 时间窗口预设已落地，下一步转向更完整的 quota 策略、internal traffic 产品配置、salt 轮换和更复杂筛选组合交互。
 - `simpletrack/prototype/simpletrack-enterprise-mvp/` 继续作为 P0/P1 评审原型，后续围绕当前页面集合补齐更清晰的 contract / mock / production 映射。
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
@@ -199,7 +200,7 @@
 
 下一步：
 
-1. 继续评审 P1-002B/C 剩余项：geo/browser/os/device 的 enrich 边界、internal traffic 产品配置和过滤审计策略；`visit_id` 持久化方案已定。
+1. 继续评审 P1-002B/C 剩余项：internal traffic 产品配置和过滤审计策略；`visit_id` 持久化方案已定，browser / OS / device 与 geo enrich 边界已落地。
 2. 继续推进 P1-005：补更多查询筛选组合交互，保留 ClickHouse 本地/小部署建表与启动校验边界；生产迁移/回滚逻辑等真实上线后再单独评审，并把更完整的 quota、internal traffic 和 salt 轮换纳入后续控制面任务。
 3. 把 R3-U1/R3-U2 的剩余项降为 P1.5/P2：属性字典治理、ambiguous `property_indexing_status=processing` 恢复策略、ClickHouse projection/materialized view/去重方案。
 4. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
