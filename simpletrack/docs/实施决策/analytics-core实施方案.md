@@ -602,7 +602,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 3. P1-002C 正在按长期方案收口：`visit_id` 已进入 collect 契约、ClickHouse schema、event/property writer、reader 和 query builder；`simpletrack-anaysitics-service` 负责装配 visit resolver，`simpletrack-saas` runtime source 输出 server-only `visit_salt` / `visit_window_seconds`。
 4. P1-004 已完成并纠偏：浏览器 SDK 最短链路和 docs/quickstart 已改为 write key 接入，SDK 由 `simpletrack-anaysitics-service` 托管，不再属于 `analytics-core`；后续继续评审 geo、SDK 发布策略和多语言 SDK。
 5. P1-005D 正在推进：内部 `/v1/realtime`、`/v1/events` 已由 `simpletrack-anaysitics-service` 读回放，SaaS 页面只走 server-side helper；Events 已补白名单筛选、排序、属性过滤和 `hasMore` 分页，内部 query token 不进入浏览器，并已支持服务端短窗口轮换 allowlist、结构化生命周期和轮换命中/拒绝审计日志。
-6. P1 数据闭环稳定后，P1.5-001 先做属性治理和 query plan 约束；当前已补 `readSidePolicy`、`EventQueryEvidence`、`PropertyCatalog` 基础契约、MySQL catalog adapter、`PropertyCatalogingEventWriter` 和 `simpletrack-anaysitics-service` ingestion 运行时装配；`simpletrack-anaysitics-service` 的 readback 响应已开始透出 `query_evidence` 与 `pressure`，其中 `pressure` 只是 low / medium / high 的 triage 桶；`analytics-core` 已新增 builder-only read-side shape benchmark、真实 ClickHouse EventReader benchmark 和真实 ClickHouse BatchWriter benchmark，固定 low realtime、medium scalar events、high property events 三类查询的 plan 构建/实际执行基线，以及当前单事件 native batch 写入热路径基线；projection、materialized view 和小时聚合表只在 benchmark 基线、热点路径和稳定指标口径明确后逐步引入。
+6. P1 数据闭环稳定后，P1.5-001 先做属性治理和 query plan 约束；当前已补 `readSidePolicy`、`EventQueryEvidence`、`PropertyCatalog` 基础契约、MySQL catalog adapter、`PropertyCatalogingEventWriter` 和 `simpletrack-anaysitics-service` ingestion 运行时装配；`simpletrack-anaysitics-service` 的 readback 响应已开始透出 `query_evidence` 与 `pressure`，其中 `pressure` 只是 low / medium / high 的 triage 桶；`analytics-core` 已新增 builder-only read-side shape benchmark、真实 ClickHouse EventReader benchmark、真实 ClickHouse BatchWriter benchmark 和 Redis Stream publish / subscribe+ack benchmark，固定 low realtime、medium scalar events、high property events 三类查询的 plan 构建/实际执行基线、当前单事件 native batch 写入热路径基线，以及队列 publish/consume/ack 基线；projection、materialized view 和小时聚合表只在 benchmark 基线、热点路径和稳定指标口径明确后逐步引入。
 
 ## 与上层产品的集成边界
 
@@ -664,7 +664,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | Goal | 能定义关键事件并返回基础结果 |
 | 业务无关 | 不出现订阅、账单、套餐、团队、Admin UI 逻辑 |
 | 代码质量 | 查询、队列、存储、分析模块边界清楚，有最小单元测试 |
-| 压测基线 | 需要建立 `analytics-core` 独立压测基线，覆盖 collect、Redis Stream、KafkaBus、ClickHouse 写入和典型查询；当前已先补 builder-only read-side shape benchmark、真实 ClickHouse EventReader benchmark 和真实 ClickHouse BatchWriter benchmark，后续继续补 Redis Stream、KafkaBus 和稳定聚合查询压测 |
+| 压测基线 | 需要建立 `analytics-core` 独立压测基线，覆盖 collect、Redis Stream、KafkaBus、ClickHouse 写入和典型查询；当前已先补 builder-only read-side shape benchmark、真实 ClickHouse EventReader benchmark、真实 ClickHouse BatchWriter benchmark 和 Redis Stream publish / subscribe+ack benchmark，后续继续补 collect、KafkaBus 和稳定聚合查询压测 |
 
 ## 后续待评审
 
