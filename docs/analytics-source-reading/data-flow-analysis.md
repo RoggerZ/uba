@@ -248,11 +248,11 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 1. HTTP query string 解析成 `storage.EventListQuery` 或 `storage.RealtimeQuery`。
 2. `EventQueryBuilder` 校验时间窗、limit、offset、filter 数量、排序字段、filter 字段、property allowlist。
 3. builder 生成 SQL + bound args + query evidence，不执行。
-4. `EventReader` 执行 SQL，把 `eventRowModel` 转成 `storage.EventRecord`。
-5. service 把 `EventRecord` 转成 JSON response，并把 properties 字符串转成 `json.RawMessage`。
-6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前不直接进入产品 JSON。
+4. `EventReader` 执行 SQL，把 `eventRowModel` 转成 `storage.EventRecord`，并把 `QueryEvidence()` 随 `EventQueryResult` 返回。
+5. service 把 `EventRecord` 转成 JSON response，并把 properties 字符串转成 `json.RawMessage`，同时把 evidence 转成 `query_evidence`。
+6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前会进入内部 readback JSON，帮助服务端评审 query shape；它不是 public tracker.js 响应字段。
 
-代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: ee455ac, file: storage/event_query.go:132-172`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: ee455ac, file: storage/clickhouse/query_builder.go:388-411`。
+代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: 979a29f, file: storage/event_query.go:133-180`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: 979a29f, file: storage/clickhouse/query_builder.go:390-417`；服务层响应转换位于 `仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:558-571`。
 
 ## 3. 处理动作分析
 
@@ -409,8 +409,8 @@ sequenceDiagram
     Builder-->>Reader: EventQueryPlan + QueryEvidence()
     Reader->>CH: Raw(plan.SQL, plan.Args...)
     CH-->>Reader: event rows
-    Reader-->>API: []EventRecord
-    API-->>SaaS: JSON response
+    Reader-->>API: EventQueryResult(records, evidence)
+    API-->>SaaS: JSON response with query_evidence
 ```
 
 ## 8. 数据转换关键节点
@@ -512,7 +512,7 @@ XAdd(... Values: map[string]any{"envelope": payload})
 - query struct 变成 SQL + bound args + `QueryEvidence()`。
 - ClickHouse row 变成 storage-neutral `EventRecord`。
 - `Properties/UserProperties` 字符串如果是合法 JSON，就作为 JSON 返回；否则作为字符串 JSON 返回。
-- `QueryEvidence()` 只描述 query family、read path、optimization、filter count、属性表参与和排序口径；它是后续 projection / materialized view / 小时聚合表取舍证据，不是产品事件响应字段。
+- `QueryEvidence()` 描述 query family、read path、optimization、effective limit、offset、time window、filter count、属性表参与和排序口径；它是后续 projection / materialized view / 小时聚合表取舍证据，会进入内部 readback 响应，但不是 public tracker.js / collect 响应字段。
 
 ## 9. 数据流控制逻辑
 

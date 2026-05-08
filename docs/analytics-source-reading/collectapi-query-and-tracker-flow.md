@@ -438,7 +438,7 @@ parsed, err = time.Parse(time.RFC3339, value)
 
 #### 如何调用 QueryReader
 
-`handleRealtime` 调 `ListRealtime`，底层 ClickHouse reader 会先让 builder 生成 Realtime query plan，再执行。query plan 现在还会通过 `QueryEvidence()` 暴露读侧证据，但这份 evidence 只用于工程取舍和后续压测分析，不进入 Realtime 产品响应。证据：`仓库: analytics-core, commit: ee455ac, file: storage/clickhouse/event_reader.go:48-59`
+`handleRealtime` 调 `ListRealtime`，底层 ClickHouse reader 会先让 builder 生成 Realtime query plan，再执行。query plan 的证据现在会通过内部 readback 响应透出给服务端调试入口，但不会进入 public tracker.js 响应。证据：`仓库: analytics-core, commit: 979a29f, file: storage/clickhouse/event_reader.go:41-90`
 
 ```go
 plan, err := r.builder.BuildRealtimeQuery(ctx, query)
@@ -775,11 +775,27 @@ Authorization: Bearer query_token_server_side
     }
   ],
   "since": "2026-05-07T01:30:00Z",
-  "limit": 20
+  "limit": 20,
+  "query_evidence": {
+    "family": "realtime",
+    "read_path": "fact_events",
+    "optimization": "direct_fact_table",
+    "effective_limit": 20,
+    "offset": 0,
+    "has_time_lower_bound": true,
+    "has_time_upper_bound": false,
+    "time_window_seconds": 0,
+    "scalar_filter_count": 1,
+    "property_filter_count": 0,
+    "uses_property_table": false,
+    "sort_field": "event_time",
+    "sort_direction": "desc",
+    "pressure": "low"
+  }
 }
 ```
 
-响应结构证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:31-62`
+`query_evidence` 来自 `analytics-core` 的 query plan，不从 SQL 字符串反推；Realtime 的时间窗通常只有 lower bound，所以 `time_window_seconds` 为 0。响应结构证据：`仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:56-75, 558-571`；对应回归位于 `internal/collectapi/handler_test.go:404-414`
 
 ### 4.3 `/v1/events` 请求/响应示例
 
@@ -805,11 +821,27 @@ Authorization: Bearer query_token_server_side
   "limit": 50,
   "offset": 0,
   "from": "2026-05-07T00:00:00Z",
-  "to": "2026-05-07T02:00:00Z"
+  "to": "2026-05-07T02:00:00Z",
+  "query_evidence": {
+    "family": "events",
+    "read_path": "fact_events_properties",
+    "optimization": "direct_fact_table",
+    "effective_limit": 50,
+    "offset": 0,
+    "has_time_lower_bound": true,
+    "has_time_upper_bound": true,
+    "time_window_seconds": 7200,
+    "scalar_filter_count": 3,
+    "property_filter_count": 1,
+    "uses_property_table": true,
+    "sort_field": "received_at",
+    "sort_direction": "desc",
+    "pressure": "high"
+  }
 }
 ```
 
-响应结构证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:48-55`
+`query_evidence` 中的 `uses_property_table=true` 表示这次查询用到了 typed property 表；`pressure=high` 只是读侧 triage 桶，不是 SLA 或扩缩容信号。响应结构证据：`仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:56-75, 558-571`；对应回归位于 `internal/collectapi/handler_test.go:561-571`
 
 ### 4.4 Authorization Bearer token 示例
 
@@ -963,8 +995,8 @@ sequenceDiagram
     Reader->>Builder: BuildEventsQuery
     Builder->>Builder: table route + allowlists + limit cap + evidence
     Builder-->>Reader: EventQueryPlan + QueryEvidence()
-    Reader-->>Handler: []EventRecord
-    Handler-->>SaaS: 200 {source, items, limit, offset, from, to}
+    Reader-->>Handler: EventQueryResult(records, evidence)
+    Handler-->>SaaS: 200 {source, items, limit, offset, from, to, query_evidence}
 ```
 
 ### 5.4 Realtime 数据对象转换图
@@ -976,7 +1008,7 @@ flowchart LR
     Source --> RealtimeQuery["storage.RealtimeQuery<br/>TenantID ProjectID SourceID Since Limit"]
     RealtimeQuery --> Plan["BuildRealtimeQuery<br/>maps Since to EventListQuery.From<br/>QueryEvidence family=realtime"]
     Plan --> Records["[]storage.EventRecord"]
-    Records --> Response["queryRealtimeResponse<br/>source items since limit"]
+    Records --> Response["queryRealtimeResponse<br/>source items since limit query_evidence"]
 ```
 
 ### 5.5 Events 数据对象转换图
@@ -989,7 +1021,7 @@ flowchart LR
     EventList --> Builder["EventQueryBuilder<br/>route + allowlist + cap"]
     Builder --> Plan["EventQueryPlan<br/>SQL + Args + Limit + QueryEvidence()"]
     Plan --> Records["[]storage.EventRecord"]
-    Records --> Response["queryEventsResponse<br/>source items limit offset from to"]
+    Records --> Response["queryEventsResponse<br/>source items limit offset from to query_evidence"]
 ```
 
 ### 5.6 失败控制流图
