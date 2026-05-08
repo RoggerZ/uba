@@ -24,6 +24,7 @@
   "event_name": "pageview",
   "distinct_id": "visitor_1",
   "session_id": "ses_client_optional",
+  "visit_id": "vis_client_optional",
   "event_time": "2026-05-03T10:00:02Z",
   "properties": {
     "page.path": "/docs",
@@ -118,6 +119,7 @@ type Request struct {
     EventName  string         `json:"event_name"`
     DistinctID string         `json:"distinct_id"`
     SessionID  string         `json:"session_id,omitempty"`
+    VisitID    string         `json:"visit_id,omitempty"`
     EventTime  time.Time      `json:"event_time,omitempty"`
     Properties map[string]any `json:"properties,omitempty"`
     UserProps  map[string]any `json:"user_properties,omitempty"`
@@ -132,7 +134,7 @@ type Request struct {
 - 客户端 IP
 - Referer
 
-这些值是 transient metadata，只供 filter/enrichment/session stage 使用。原始 IP 不会进入 `EventEnvelope`。
+这些值是 transient metadata，只供 filter/enrichment/session/visit stage 使用。原始 IP 不会进入 `EventEnvelope`。
 
 ### EventEnvelope
 
@@ -150,6 +152,7 @@ type EventEnvelope struct {
     EventName  string         `json:"event_name"`
     DistinctID string         `json:"distinct_id"`
     SessionID  string         `json:"session_id,omitempty"`
+    VisitID    string         `json:"visit_id,omitempty"`
     EventTime  time.Time      `json:"event_time"`
     ReceivedAt time.Time      `json:"received_at"`
     Properties map[string]any `json:"properties,omitempty"`
@@ -173,7 +176,7 @@ type EventEnvelope struct {
 
 | 正则变量 | 用在哪些字段 | 允许示例 | 拒绝示例 | 作用 |
 | --- | --- | --- | --- | --- |
-| `identifierPattern` | `id`, `tenant_id`, `project_id`, `source_id`, `distinct_id`, `session_id` | `evt_1`, `tenant-1`, `user:42` | `_evt`, `evt 1`, 空字符串 | 保证业务边界 key 可安全用于幂等、路由、队列和存储 |
+| `identifierPattern` | `id`, `tenant_id`, `project_id`, `source_id`, `distinct_id`, `session_id`, `visit_id` | `evt_1`, `tenant-1`, `user:42`, `vis_abc` | `_evt`, `evt 1`, 空字符串 | 保证业务边界 key 可安全用于幂等、路由、队列和存储 |
 | `eventNamePattern` | `event_name` | `pageview`, `checkout.completed`, `button:click` | `/pageview`, `checkout completed` | 让事件名适合指标、筛选和查询 |
 | `propertyKeyPattern` | `properties` 和 `user_properties` 的每个 key | `page.path`, `plan:tier` | `page path`, `$plan`, `items[]` | 防止开放属性 key 进入不可控命名空间 |
 | `sourceTypePattern` | `source_type` | `web`, `server`, `mobile_app` | `Web`, `_web`, `web app` | 保持来源类别小写、稳定、可筛选 |
@@ -206,6 +209,9 @@ type SourceConfig struct {
     InternalCIDRs            []string                `json:"internal_cidrs"`
     InternalIPs              []string                `json:"internal_ips"`
     SessionSalt              string                  `json:"session_salt"`
+    VisitSalt                string                  `json:"visit_salt"`
+    VisitWindow              time.Duration           `json:"-"`
+    VisitWindowSeconds       int                     `json:"visit_window_seconds"`
     ClientHashSalt           string                  `json:"client_hash_salt"`
     IncludeClientFingerprint bool                    `json:"include_client_fingerprint"`
 }
@@ -218,7 +224,8 @@ type SourceConfig struct {
 - `AllowedOrigins`：限制浏览器来源。
 - `AllowedPropertyFilters`：限制内部查询 API 可以按哪些属性过滤。
 - `BotUserAgents/InternalCIDRs/InternalIPs`：运行时过滤规则。
-- `SessionSalt/ClientHashSalt`：服务端私有盐，用于派生 session 和 IP hash。
+- `SessionSalt/VisitSalt/ClientHashSalt`：服务端私有盐，用于派生 session、canonical visit 和 IP hash。
+- `VisitWindow/VisitWindowSeconds`：服务端 visit 时间桶配置。JSON 中用秒数传输，Go runtime 内部用 `time.Duration`。
 
 HTTP resolver 与 control-plane 的交互：
 
@@ -248,6 +255,8 @@ HTTP resolver 与 control-plane 的交互：
   "internal_cidrs": ["10.0.0.0/8"],
   "internal_ips": ["127.0.0.1"],
   "session_salt": "server-only-session-salt",
+  "visit_salt": "server-only-visit-salt",
+  "visit_window_seconds": 1800,
   "client_hash_salt": "server-only-client-salt",
   "include_client_fingerprint": true
 }
@@ -269,7 +278,7 @@ Value: JSON(EventEnvelope)
 
 ```json
 {
-  "envelope": "{\"id\":\"evt_1\",\"tenant_id\":\"tenant_control\",\"project_id\":\"project_control\",\"source_id\":\"source_web\",\"source_type\":\"web\",\"event_name\":\"pageview\",\"distinct_id\":\"visitor_1\",\"event_time\":\"2026-05-03T10:00:02Z\",\"received_at\":\"2026-05-03T10:00:04Z\",\"properties\":{\"page.path\":\"/docs\"}}"
+  "envelope": "{\"id\":\"evt_1\",\"tenant_id\":\"tenant_control\",\"project_id\":\"project_control\",\"source_id\":\"source_web\",\"source_type\":\"web\",\"event_name\":\"pageview\",\"distinct_id\":\"visitor_1\",\"session_id\":\"ses_1\",\"visit_id\":\"vis_1\",\"event_time\":\"2026-05-03T10:00:02Z\",\"received_at\":\"2026-05-03T10:00:04Z\",\"properties\":{\"page.path\":\"/docs\"}}"
 }
 ```
 
@@ -326,6 +335,7 @@ original_message_id   Redis Stream 原消息 ID
 | `event_name` | String | `EventEnvelope.EventName` |
 | `distinct_id` | String | `EventEnvelope.DistinctID` |
 | `session_id` | String | `EventEnvelope.SessionID` |
+| `visit_id` | String | `EventEnvelope.VisitID` |
 | `event_time` | DateTime64(3, UTC) | `EventEnvelope.EventTime.UTC()` |
 | `received_at` | DateTime64(3, UTC) | `EventEnvelope.ReceivedAt.UTC()` |
 | `properties` | String | `EventEnvelope.Properties` JSON 字符串 |
@@ -336,7 +346,7 @@ original_message_id   Redis Stream 原消息 ID
 
 | 列 | 类型 | 来源 |
 | --- | --- | --- |
-| `event_id` 到 `source` | 同事件主表 | 从 envelope 复制 |
+| `event_id` 到 `source` | 同事件主表，包含 `visit_id` | 从 envelope 复制 |
 | `property_scope` | String | `event` 或 `user` |
 | `property_name` | String | 属性 key |
 | `property_type` | String | `null` / `string` / `number` / `bool` |
@@ -405,39 +415,41 @@ Authorization: Bearer query-token
 
 ### `/v1/events`
 
-这个 URI 在代码里不是从环境变量配置出来的，而是在 `analytics-service/internal/collectapi/query.go` 中定义为包内常量：
+`/v1/events` 是默认内部 readback 路径。当前代码不再把它写死在 query 包里，而是由配置层提供默认值，并允许通过环境变量覆盖：
+
+证据：
+
+- `仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:18-20`
+- `仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:97-99`
+- `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:155-160`
 
 ```go
-const (
-    queryRealtimePath = "/v1/realtime"
-    queryEventsPath   = "/v1/events"
-)
+defaultEventsPath   = "/v1/events"
+defaultRealtimePath = "/v1/realtime"
+
+EventsPath:   envString("ANALYTICS_SERVICE_EVENTS_PATH", defaultEventsPath)
+RealtimePath: envString("ANALYTICS_SERVICE_REALTIME_PATH", defaultRealtimePath)
+
+app.Get(h.opts.RealtimePath, h.handleRealtime)
+app.Get(h.opts.EventsPath, h.handleEvents)
 ```
 
-`analytics-service/internal/collectapi/handler.go` 的 `ServeFastHTTP` 会把 `GET /v1/events` 分发到 `handleEvents`，把 `OPTIONS /v1/events` 分发到 `handleQueryPreflight`：
-
-```go
-case ctx.IsOptions() && (path == queryRealtimePath || path == queryEventsPath):
-    h.handleQueryPreflight(ctx)
-case ctx.IsGet() && path == queryEventsPath:
-    h.handleEvents(ctx)
-```
-
-所以 `/v1/events` 是 analytics-service 内部 readback API 的固定路径；和 `/collect`、`/healthz`、`/tracker.js` 不同，它当前没有对应的环境变量覆盖入口。
+所以 `/v1/events` 是 analytics-service 内部 Events readback API 的默认路径；部署时可以保留默认值，也可以改成更内部化的路径，例如 `/internal/events`。
 
 这里的 `readback` 意思是“读回”：服务端从查询存储读取已经由 `/collect` 接收并入库的事件，再返回给 SaaS 页面展示。它不是事件上报，也不是 event replay / 重放历史事件。
 
 请求：
 
 ```http
-GET /v1/events?write_key=wk_live&from=2026-05-03T00:00:00Z&to=2026-05-04T00:00:00Z&event_name=pageview&limit=100&offset=0&sort_field=event_time&sort_direction=desc
+GET /v1/events?write_key=wk_live&from=2026-05-03T00:00:00Z&to=2026-05-04T00:00:00Z&event_name=pageview&visit_id=vis_x&limit=100&offset=0&sort_field=event_time&sort_direction=desc
 Authorization: Bearer query-token
 ```
 
-属性过滤参数是可重复 query 参数，每个值是一段 JSON：
+属性过滤参数是可重复 query 参数，每个值是一段 JSON；`analytics-service` 会先用 runtime source 的 allowlist 校验，再交给 `analytics-core` query builder：
 
 ```http
 property_filter={"scope":"event","name":"plan","type":"string","op":"eq","value":"pro"}
+property_filter={"scope":"user","name":"role","type":"string","op":"eq","value":"admin"}
 ```
 
 对应 core query 结构：

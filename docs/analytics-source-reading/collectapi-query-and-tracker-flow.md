@@ -3,9 +3,9 @@
 > 分析范围：`simpletrack-anaysitics-service` 的 `/tracker.js`、`/v1/realtime`、`/v1/events` 三个入口。
 >
 > 重点入口：
-> - `writeTracker`：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:318-325`
-> - `handleRealtime`：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:72-120`
-> - `handleEvents`：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:122-192`
+> - `writeTracker`：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:345-355`
+> - `handleRealtime`：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:72-120`
+> - `handleEvents`：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:122-192`
 
 ## 0. 版本基线与引用规则
 
@@ -13,9 +13,9 @@
 
 | 子仓 | commit id | 工作区状态说明 |
 | --- | --- | --- |
-| `src/analytics-service` | `b2247d5389c2fdf2ebf6643926473619fa179e09` | `git status --short` 仅显示未跟踪 `.idea/`，本文引用的源码文件与 `HEAD` 一致 |
-| `src/analytics-core` | `58668c9c17ea685d32d0e0136dcb01d885d7d29c` | `git status --short` 仅显示未跟踪 `.idea/`，本文引用源码文件与 `HEAD` 一致 |
-| `src/simpletrack-saas` | `fa822d1a86b248d00bca0bedbf530fdef571544b` | 基于 `HEAD fa822d1a86b248d00bca0bedbf530fdef571544b` + 工作区未提交改动；当前 `packages/database/prisma/zod/index.ts` 有未提交改动、`.omx/` 未跟踪，本文引用的 readback / runtime-source 文件与 `HEAD` 一致 |
+| `src/analytics-service` | `09656b685dd8e9f329c3546764ff80eddf82605f` | `git status --short` 仅显示未跟踪 `.idea/`，本文引用的源码文件与 `HEAD` 一致 |
+| `src/analytics-core` | `7c296670842d0ce95fefa15703c724c794e98d17` | `git status --short` 仅显示未跟踪 `.idea/`，本文引用源码文件与 `HEAD` 一致 |
+| `src/simpletrack-saas` | `bce33354ae27dcba80e2f1ce77ff7ac2c5ed8765` | 基于 `HEAD bce33354ae27dcba80e2f1ce77ff7ac2c5ed8765` + 工作区未提交改动；当前 `packages/database/prisma/zod/index.ts` 有未提交改动、`.omx/` 未跟踪，本文引用的 readback / runtime-source 文件与 `HEAD` 一致 |
 
 后文引用具体代码时使用格式：`仓库: <repo>, commit: <sha>, file: <path>:<line>`；跨多行使用 `<path>:<start>-<end>`。
 
@@ -49,7 +49,7 @@ flowchart LR
 
 ### Fiber app 如何注册 route
 
-`NewApp` 创建 Fiber app，安装 CORS middleware，然后调用 `registerRoutes`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:61-82`
+`NewApp` 创建 Fiber app，安装 CORS middleware，然后调用 `registerRoutes`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:64-84`
 
 ```go
 app := fiber.New(...)
@@ -57,7 +57,7 @@ app.Use(cors.New(...))
 h.registerRoutes(app)
 ```
 
-`registerRoutes` 把 `TrackerPath`、`RealtimePath`、`EventsPath` 分别绑定到三个 handler。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:153-158`
+`registerRoutes` 把 `TrackerPath`、`RealtimePath`、`EventsPath` 分别绑定到三个 handler。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:155-160`
 
 ```go
 app.Get(h.opts.TrackerPath, h.writeTracker)
@@ -65,7 +65,7 @@ app.Get(h.opts.RealtimePath, h.handleRealtime)
 app.Get(h.opts.EventsPath, h.handleEvents)
 ```
 
-默认路径来自配置层：`/tracker.js`、`/v1/events`、`/v1/realtime`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:14-23`
+默认路径来自配置层：`/tracker.js`、`/v1/events`、`/v1/realtime`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:18-24`
 
 ```go
 defaultTrackerPath  = "/tracker.js"
@@ -76,7 +76,7 @@ defaultTrackerFile  = "public/tracker.js"
 
 ### 它们与 Handler、Resolver、EventReader、analytics-core 的关系
 
-`runtime.New` 是装配层：读取 tracker 文件，创建 query reader，再把依赖放进 `collectapi.Options`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/runtime/runtime.go:49-85`
+`runtime.New` 是装配层：读取 tracker 文件，创建 query reader，再把依赖放进 `collectapi.Options`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/runtime/runtime.go:49-85`
 
 ```go
 tracker, err := os.ReadFile(cfg.TrackerFile)
@@ -88,7 +88,7 @@ app, err := collectapi.NewApp(collectapi.Options{
 })
 ```
 
-`newQueryReader` 只在 query enabled 时打开 ClickHouse 读连接，创建 `TableRouter`、`EventQueryBuilder`、`clickhouse.EventReader`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/runtime/runtime.go:156-187`
+`newQueryReader` 只在 query enabled 时打开 ClickHouse 读连接，创建 `TableRouter`、`EventQueryBuilder`、`clickhouse.EventReader`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/runtime/runtime.go:156-187`
 
 ```go
 if !cfg.QueryEnabled {
@@ -99,7 +99,7 @@ builder, err := clickhouse.NewEventQueryBuilder(router, builderOptions...)
 reader, err := clickhouse.NewEventReader(queryDB, builder)
 ```
 
-`storage.EventReader` 是 analytics-core 对读接口的抽象，HTTP 层只调用 `ListEvents` / `ListRealtime`。证据：`仓库: analytics-core, commit: 58668c9c17ea, file: storage/event_query.go:140-146`
+`storage.EventReader` 是 analytics-core 对读接口的抽象，HTTP 层只调用 `ListEvents` / `ListRealtime`。证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/event_query.go:142-146`
 
 ```go
 type EventReader interface {
@@ -110,7 +110,7 @@ type EventReader interface {
 
 ### 与 simpletrack-saas readback helper 的交互
 
-SaaS 页面本身调用 server-only helper，不直接拼 analytics-service 请求。`analytics-readback.ts` 顶部导入 `server-only`，再把 `process.env`、`fetch`、网站列表传给 core helper。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:1-37`、`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:40-99`
+SaaS 页面本身调用 server-only helper，不直接拼 analytics-service 请求。`analytics-readback.ts` 顶部导入 `server-only`，再把 `process.env`、`fetch`、网站列表传给 core helper。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:1-37`、`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:40-99`
 
 ```ts
 import "server-only";
@@ -123,7 +123,7 @@ return readRealtimeReadback(organizationId, {
 }, { websiteId });
 ```
 
-Realtime helper 构造 `/v1/realtime?write_key=...&limit=20`，然后带 query token 调 analytics-service。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:129-160`
+Realtime helper 构造 `/v1/realtime?write_key=...&limit=20`，然后带 query token 调 analytics-service。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:129-160`
 
 ```ts
 const requestUrl = buildServiceUrl(config.baseUrl, "/v1/realtime", {
@@ -133,7 +133,7 @@ const requestUrl = buildServiceUrl(config.baseUrl, "/v1/realtime", {
 const response = await fetchAnalyticsService(requestUrl, config.queryToken, dependencies.fetch);
 ```
 
-Events helper 构造 `/v1/events`，传 `write_key`、时间窗口、分页、排序、可选 `event_name` / `distinct_id` / `property_filter`。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:176-227`
+Events helper 构造 `/v1/events`，传 `write_key`、时间窗口、分页、排序、可选 `event_name` / `distinct_id` / `visit_id` / `property_filter`。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:176-235`
 
 ```ts
 const requestUrl = buildServiceUrl(config.baseUrl, "/v1/events", {
@@ -148,7 +148,7 @@ const requestUrl = buildServiceUrl(config.baseUrl, "/v1/events", {
 requestUrl.searchParams.append("property_filter", JSON.stringify(normalizedOptions.propertyFilter));
 ```
 
-真正发请求时，query token 来自服务端环境变量，并作为 `Authorization: Bearer ...` header 发送。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:279-326`
+真正发请求时，query token 来自服务端环境变量，并作为 `Authorization: Bearer ...` header 发送。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:279-326`
 
 ```ts
 const queryToken =
@@ -224,7 +224,7 @@ src/simpletrack-saas/
 
 #### route 是如何注册的
 
-`newHandler` 默认把 `TrackerPath` 设为 `/tracker.js`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:85-100`
+`newHandler` 默认把 `TrackerPath` 设为 `/tracker.js`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:86-105`
 
 ```go
 if opts.TrackerPath == "" {
@@ -232,7 +232,7 @@ if opts.TrackerPath == "" {
 }
 ```
 
-`registerRoutes` 绑定 `GET /tracker.js -> writeTracker`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:153-155`
+`registerRoutes` 绑定 `GET /tracker.js -> writeTracker`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:155-157`
 
 ```go
 app.Get(h.opts.TrackerPath, h.writeTracker)
@@ -240,13 +240,13 @@ app.Get(h.opts.TrackerPath, h.writeTracker)
 
 #### tracker script 从哪里加载
 
-配置默认 tracker 文件是 `public/tracker.js`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:14-23`
+配置默认 tracker 文件是 `public/tracker.js`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:18-24`
 
 ```go
 defaultTrackerFile = "public/tracker.js"
 ```
 
-启动装配时 `runtime.New` 用 `os.ReadFile(cfg.TrackerFile)` 读入字节数组，再放进 `collectapi.Options.TrackerScript`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/runtime/runtime.go:49-55`、`仓库: analytics-service, commit: b2247d5, file: internal/runtime/runtime.go:68-85`
+启动装配时 `runtime.New` 用 `os.ReadFile(cfg.TrackerFile)` 读入字节数组，再放进 `collectapi.Options.TrackerScript`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/runtime/runtime.go:49-55`、`仓库: analytics-service, commit: 09656b6, file: internal/runtime/runtime.go:68-85`
 
 ```go
 tracker, err := os.ReadFile(cfg.TrackerFile)
@@ -254,7 +254,7 @@ tracker, err := os.ReadFile(cfg.TrackerFile)
 TrackerScript: tracker,
 ```
 
-tracker 文件自身会从 script tag 读取 `data-write-key`、`data-collect-url` 等配置。证据：`仓库: analytics-service, commit: b2247d5, file: public/tracker.js:33-46`
+tracker 文件自身会从 script tag 读取 `data-write-key`、`data-collect-url` 等配置。证据：`仓库: analytics-service, commit: 09656b6, file: public/tracker.js:33-46`
 
 ```js
 var config = {
@@ -264,7 +264,7 @@ var config = {
 };
 ```
 
-它发送事件时把 `write_key` 放进 JSON body，并 POST 到 collect URL。证据：`仓库: analytics-service, commit: b2247d5, file: public/tracker.js:263-304`
+它发送事件时把 `write_key` 放进 JSON body，并 POST 到 collect URL。证据：`仓库: analytics-service, commit: 09656b6, file: public/tracker.js:263-304`
 
 ```js
 return {
@@ -289,7 +289,7 @@ window.fetch(config.collectURL, {
 - `Cache-Control: public, max-age=300`
 - HTTP 200 body 为启动时读入的 tracker bytes
 
-证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:318-325`
+证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:345-355`
 
 ```go
 ctx.Set("Content-Type", "application/javascript; charset=utf-8")
@@ -301,7 +301,7 @@ return ctx.Status(fiber.StatusOK).Send(h.opts.TrackerScript)
 
 #### tracker 缺失时如何返回错误
 
-如果 `TrackerScript` 为空，返回 404 JSON。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:318-321`
+如果 `TrackerScript` 为空，返回 404 JSON。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:345-348`
 
 ```go
 if len(h.opts.TrackerScript) == 0 {
@@ -309,20 +309,20 @@ if len(h.opts.TrackerScript) == 0 {
 }
 ```
 
-另外，正常 `runtime.New` 会在启动时读取 tracker 文件；文件不存在会直接返回错误，不进入服务监听。证据：`仓库: analytics-service, commit: b2247d5, file: internal/runtime/runtime.go:49-55`
+另外，正常 `runtime.New` 会在启动时读取 tracker 文件；文件不存在会直接返回错误，不进入服务监听。证据：`仓库: analytics-service, commit: 09656b6, file: internal/runtime/runtime.go:49-55`
 
 ### 3.2 handleRealtime
 
 #### route 是如何注册的
 
-默认 path 是 `/v1/realtime`，也可由 `ANALYTICS_SERVICE_REALTIME_PATH` 覆盖。证据：`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:19-20`、`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:97-98`
+默认 path 是 `/v1/realtime`，也可由 `ANALYTICS_SERVICE_REALTIME_PATH` 覆盖。证据：`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:19-20`、`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:98-99`
 
 ```go
 defaultRealtimePath = "/v1/realtime"
 RealtimePath: envString("ANALYTICS_SERVICE_REALTIME_PATH", defaultRealtimePath),
 ```
 
-注册点：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:153-158`
+注册点：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:155-160`
 
 ```go
 app.Get(h.opts.RealtimePath, h.handleRealtime)
@@ -330,7 +330,7 @@ app.Get(h.opts.RealtimePath, h.handleRealtime)
 
 #### 如何校验 internal query token
 
-`handleRealtime` 第一层检查 `QueryReader`，没有配置时直接 404。然后调用 `requireQueryToken`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:72-81`
+`handleRealtime` 第一层检查 `QueryReader`，没有配置时直接 404。然后调用 `requireQueryToken`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:72-81`
 
 ```go
 if h.opts.QueryReader == nil {
@@ -339,7 +339,7 @@ if h.opts.QueryReader == nil {
 decision, ok := h.requireQueryToken(ctx)
 ```
 
-`requireQueryToken` 从 `Authorization` header 提取 Bearer token，调用 `authorizeQueryToken`。未知、过期、未生效都返回 401。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:194-210`
+`requireQueryToken` 从 `Authorization` header 提取 Bearer token，调用 `authorizeQueryToken`。未知、过期、未生效都返回 401。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:212-227`
 
 ```go
 decision := authorizeQueryToken(bearerToken(ctx.Get("Authorization")), h.opts.QueryCredentials, h.opts.Now())
@@ -349,7 +349,7 @@ if decision.State == queryTokenAuthUnknown || decision.State == queryTokenAuthEx
 }
 ```
 
-`authorizeQueryToken` 用常量时间比较遍历所有凭证，并判断 `NotBefore` / `ExpiresAt`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query_auth.go:69-98`
+`authorizeQueryToken` 用常量时间比较遍历所有凭证，并判断 `NotBefore` / `ExpiresAt`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query_auth.go:69-98`
 
 ```go
 if subtle.ConstantTimeCompare([]byte(value), []byte(credential.Token)) == 1 {
@@ -366,7 +366,7 @@ if !credential.ExpiresAt.IsZero() && !now.Before(credential.ExpiresAt) { ... }
 1. `X-SimpleTrack-Write-Key` header
 2. `write_key` query 参数
 
-证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:261-266`
+证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:279-284`
 
 ```go
 if value := strings.TrimSpace(ctx.Get("X-SimpleTrack-Write-Key")); value != "" {
@@ -377,7 +377,7 @@ return strings.TrimSpace(ctx.Query("write_key"))
 
 #### 如何通过 resolver 得到 SourceConfig
 
-`resolveQuerySource` 会先取 write key，空值返回 400；再调用 `h.opts.Resolver.ResolveSource`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:212-225`
+`resolveQuerySource` 会先取 write key，空值返回 400；再调用 `h.opts.Resolver.ResolveSource`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:230-242`
 
 ```go
 writeKey := h.queryWriteKey(ctx)
@@ -388,7 +388,7 @@ if writeKey == "" {
 source, err := h.opts.Resolver.ResolveSource(ctx.Context(), writeKey)
 ```
 
-`SourceConfig` 是控制面给 analytics-service 的运行时 source 档案。证据：`仓库: analytics-service, commit: b2247d5, file: internal/controlplane/resolver.go:18-37`
+`SourceConfig` 是控制面给 analytics-service 的运行时 source 档案。证据：`仓库: analytics-service, commit: 09656b6, file: internal/controlplane/resolver.go:21-43`
 
 ```go
 type SourceConfig struct {
@@ -403,7 +403,7 @@ type SourceConfig struct {
 
 #### 如何覆盖 tenant/project/source scope
 
-读接口不是“覆盖请求体字段”，而是根本不接受客户端传 tenant/project/source。`handleRealtime` 用 resolver 返回的 `source.TenantID`、`source.ProjectID`、`source.SourceID` 构造 `storage.RealtimeQuery`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:101-109`
+读接口不是“覆盖请求体字段”，而是根本不接受客户端传 tenant/project/source。`handleRealtime` 用 resolver 返回的 `source.TenantID`、`source.ProjectID`、`source.SourceID` 构造 `storage.RealtimeQuery`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:101-109`
 
 ```go
 records, err := h.opts.QueryReader.ListRealtime(ctx.Context(), storage.RealtimeQuery{
@@ -419,7 +419,7 @@ records, err := h.opts.QueryReader.ListRealtime(ctx.Context(), storage.RealtimeQ
 
 #### 如何构造 Realtime 查询
 
-`since` 默认是当前时间减 30 分钟，`limit` 默认 50 且必须大于等于 1。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:17-22`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:90-99`
+`since` 默认是当前时间减 30 分钟，`limit` 默认 50 且必须大于等于 1。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:17-22`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:90-99`
 
 ```go
 defaultRealtimeWindow   = 30 * time.Minute
@@ -429,7 +429,7 @@ since, err := parseQueryTimeOrDefault(ctx, "since", h.opts.Now().Add(-defaultRea
 limit, err := parseQueryLimitOrDefault(ctx, "limit", defaultRealtimeQueryCap)
 ```
 
-时间格式只接受 RFC3339 / RFC3339Nano。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:317-327`
+时间格式只接受 RFC3339 / RFC3339Nano。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:335-345`
 
 ```go
 parsed, err := time.Parse(time.RFC3339Nano, value)
@@ -438,14 +438,14 @@ parsed, err = time.Parse(time.RFC3339, value)
 
 #### 如何调用 QueryReader
 
-`handleRealtime` 调 `ListRealtime`，底层 ClickHouse reader 会先让 builder 生成 Realtime query plan，再执行。证据：`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/event_reader.go:51-64`
+`handleRealtime` 调 `ListRealtime`，底层 ClickHouse reader 会先让 builder 生成 Realtime query plan，再执行。证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/event_reader.go:51-64`
 
 ```go
 plan, err := r.builder.BuildRealtimeQuery(ctx, query)
 return r.executePlan(ctx, plan)
 ```
 
-Realtime 在 query builder 里复用 Events 查询，只是把 `Since` 映射成 `EventListQuery.From`，并使用较小默认 limit。证据：`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/query_builder.go:209-224`
+Realtime 在 query builder 里复用 Events 查询，只是把 `Since` 映射成 `EventListQuery.From`，并使用较小默认 limit。证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/query_builder.go:209-224`
 
 ```go
 return b.BuildEventsQuery(ctx, storage.EventListQuery{
@@ -459,7 +459,7 @@ return b.BuildEventsQuery(ctx, storage.EventListQuery{
 
 #### 返回数据格式
 
-返回结构是 `source + items + since + limit`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:57-62`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:114-119`
+返回结构是 `source + items + since + limit`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:57-62`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:114-119`
 
 ```go
 type queryRealtimeResponse struct {
@@ -470,7 +470,7 @@ type queryRealtimeResponse struct {
 }
 ```
 
-`EventRecord` 会被映射成 JSON 字段，包括 `visit_id`、`properties`、`user_properties`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:482-498`
+`EventRecord` 会被映射成 JSON 字段，包括 `visit_id`、`properties`、`user_properties`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:492-514`
 
 ```go
 return queryEventResponse{
@@ -485,23 +485,23 @@ return queryEventResponse{
 
 | 失败情况 | 证据 | HTTP |
 | --- | --- | --- |
-| query reader 未配置 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:72-77` | `404 {"error":"not found"}` |
-| query token 缺失/未知/过期/未生效 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:194-210` | `401 {"error":"unauthorized"}` |
-| write key 缺失 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:216-220` | `400 {"error":"write_key is required"}` |
-| write key 无效 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:306-315` | `401 {"error":"invalid write key"}` |
-| source disabled | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:306-315` | `403 {"error":"source is disabled"}` |
-| origin 不允许 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:226-230` | `403 {"error":"origin is not allowed"}` |
-| query 参数非法 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:92-99` | `400 {"error":"..."}` |
-| reader 返回 `ErrInvalidEventQuery` | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:268-275` | `400 {"error":"invalid event query: ..."}` |
-| reader 其他错误 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:268-275` | `500 {"error":"internal server error"}` |
+| query reader 未配置 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:72-77` | `404 {"error":"not found"}` |
+| query token 缺失/未知/过期/未生效 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:212-227` | `401 {"error":"unauthorized"}` |
+| write key 缺失 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:234-238` | `400 {"error":"write_key is required"}` |
+| write key 无效 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:333-344` | `401 {"error":"invalid write key"}` |
+| source disabled | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:333-344` | `403 {"error":"source is disabled"}` |
+| origin 不允许 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:244-248` | `403 {"error":"origin is not allowed"}` |
+| query 参数非法 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:92-99` | `400 {"error":"..."}` |
+| reader 返回 `ErrInvalidEventQuery` | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:286-293` | `400 {"error":"invalid event query: ..."}` |
+| reader 其他错误 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:286-293` | `500 {"error":"internal server error"}` |
 
 ### 3.3 handleEvents
 
 #### route 是如何注册的
 
-默认 path 是 `/v1/events`，也可由 `ANALYTICS_SERVICE_EVENTS_PATH` 覆盖。证据：`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:19-20`、`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:97-98`
+默认 path 是 `/v1/events`，也可由 `ANALYTICS_SERVICE_EVENTS_PATH` 覆盖。证据：`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:19-20`、`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:98-99`
 
-注册点：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:153-158`
+注册点：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:155-160`
 
 ```go
 app.Get(h.opts.EventsPath, h.handleEvents)
@@ -509,7 +509,7 @@ app.Get(h.opts.EventsPath, h.handleEvents)
 
 #### 如何校验 internal query token
 
-与 `handleRealtime` 相同：先要求 `QueryReader`，再要求 query token。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:122-130`
+与 `handleRealtime` 相同：先要求 `QueryReader`，再要求 query token。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:122-130`
 
 ```go
 if h.opts.QueryReader == nil {
@@ -518,7 +518,7 @@ if h.opts.QueryReader == nil {
 decision, ok := h.requireQueryToken(ctx)
 ```
 
-query token 来源和生命周期来自环境变量。`LoadFromEnv` 读取 `ANALYTICS_SERVICE_QUERY_TOKEN`，并解析可选 JSON rotation list。证据：`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:135-143`、`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:218-271`
+query token 来源和生命周期来自环境变量。`LoadFromEnv` 读取 `ANALYTICS_SERVICE_QUERY_TOKEN`，并解析可选 JSON rotation list。证据：`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:135-143`、`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:218-271`
 
 ```go
 QueryEnabled: envBool("ANALYTICS_SERVICE_QUERY_ENABLED", false),
@@ -526,7 +526,7 @@ QueryToken: envString("ANALYTICS_SERVICE_QUERY_TOKEN", ""),
 queryCredentials, err := queryCredentialsFromEnv(config.QueryToken)
 ```
 
-主 token 可配置 `ANALYTICS_SERVICE_QUERY_TOKEN_ID`、`ANALYTICS_SERVICE_QUERY_TOKEN_NOT_BEFORE`、`ANALYTICS_SERVICE_QUERY_TOKEN_EXPIRES_AT`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:274-289`
+主 token 可配置 `ANALYTICS_SERVICE_QUERY_TOKEN_ID`、`ANALYTICS_SERVICE_QUERY_TOKEN_NOT_BEFORE`、`ANALYTICS_SERVICE_QUERY_TOKEN_EXPIRES_AT`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:274-289`
 
 ```go
 ID:        envString("ANALYTICS_SERVICE_QUERY_TOKEN_ID", ""),
@@ -535,11 +535,11 @@ NotBefore: notBefore,
 ExpiresAt: expiresAt,
 ```
 
-轮换 token 可是字符串，也可以是带 `id`、`token`、`not_before`、`expires_at` 的对象。证据：`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:291-327`
+轮换 token 可是字符串，也可以是带 `id`、`token`、`not_before`、`expires_at` 的对象。证据：`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:291-327`
 
 #### write key 从哪里来
 
-与 Realtime 相同：`X-SimpleTrack-Write-Key` header 优先，否则 `write_key` query。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:261-266`
+与 Realtime 相同：`X-SimpleTrack-Write-Key` header 优先，否则 `write_key` query。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:279-284`
 
 #### 支持哪些 query 参数
 
@@ -547,18 +547,18 @@ ExpiresAt: expiresAt,
 
 | 参数 | 是否必填 | 解析位置 | 说明 |
 | --- | --- | --- | --- |
-| `write_key` | 是 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:212-220` | 也可用 `X-SimpleTrack-Write-Key` header |
-| `from` | 是 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:140-145` | RFC3339 / RFC3339Nano，包含起点 |
-| `to` | 是 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:146-149` | RFC3339 / RFC3339Nano，不含终点 |
-| `limit` | 否 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:150-153` | 默认 100，HTTP 层要求整数且至少 1 |
-| `offset` | 否 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:154-157` | 默认 0，HTTP 层要求整数且至少 0 |
-| `event_name` | 否 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:165-179` | trim 后进入 `EventListQuery.EventName` |
-| `distinct_id` | 否 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:165-179` | trim 后进入 `EventListQuery.DistinctID` |
-| `sort_field` | 否 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:165-179` | 传给 analytics-core 白名单校验 |
-| `sort_direction` | 否 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:165-179` | 传给 analytics-core 白名单校验 |
-| `property_filter` | 否，可重复 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:329-402` | 每个值是 URL 解码后的 JSON |
+| `write_key` | 是 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:212-220` | 也可用 `X-SimpleTrack-Write-Key` header |
+| `from` | 是 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:140-145` | RFC3339 / RFC3339Nano，包含起点 |
+| `to` | 是 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:146-149` | RFC3339 / RFC3339Nano，不含终点 |
+| `limit` | 否 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:150-153` | 默认 100，HTTP 层要求整数且至少 1 |
+| `offset` | 否 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:154-157` | 默认 0，HTTP 层要求整数且至少 0 |
+| `event_name` | 否 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:165-179` | trim 后进入 `EventListQuery.EventName` |
+| `distinct_id` | 否 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:165-179` | trim 后进入 `EventListQuery.DistinctID` |
+| `sort_field` | 否 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:165-179` | 传给 analytics-core 白名单校验 |
+| `sort_direction` | 否 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:165-179` | 传给 analytics-core 白名单校验 |
+| `property_filter` | 否，可重复 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:347-420` | 每个值是 URL 解码后的 JSON |
 
-SaaS 页面还支持 `window=30m/6h/24h/7d`，但这是 SaaS 页面状态，不是 analytics-service `/v1/events` 直接参数。SaaS helper 会把它转换成 `from` / `to`。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/events-query.ts:13-20`、`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/events-query.ts:72-83`、`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:205-219`
+SaaS 页面还支持 `window=30m/6h/24h/7d`，但这是 SaaS 页面状态，不是 analytics-service `/v1/events` 直接参数。SaaS helper 会把它转换成 `from` / `to`。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/events-query.ts:13-20`、`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/events-query.ts:72-83`、`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:205-219`
 
 #### 如何做参数白名单和范围限制
 
@@ -569,7 +569,7 @@ HTTP 层做基础范围限制：
 - `from` / `to` 必须是 RFC3339 / RFC3339Nano
 - `property_filter` 最多 5 个
 
-证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:294-315`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:329-349`
+证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:312-345`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:347-367`
 
 ```go
 if parsed < min {
@@ -589,7 +589,7 @@ analytics-core builder 再做数据库层保护：
 - sort field 只允许 `event_time`、`received_at`、`event_name`
 - sort direction 只允许 `asc`、`desc`
 
-证据：`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/query_builder.go:15-20`、`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/query_builder.go:144-206`、`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/query_builder.go:334-388`
+证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/query_builder.go:15-20`、`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/query_builder.go:144-206`、`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/query_builder.go:334-388`
 
 ```go
 defaultMaxQueryLimit = 1000
@@ -602,13 +602,13 @@ if len(query.Filters)+len(query.PropertyFilters) > defaultMaxFilters { ... }
 
 #### 如何通过 SourceConfig 限定 property filter
 
-`SourceConfig` 有 `AllowedPropertyFilters` 字段。证据：`仓库: analytics-service, commit: b2247d5, file: internal/controlplane/resolver.go:18-43`
+`SourceConfig` 有 `AllowedPropertyFilters` 字段。证据：`仓库: analytics-service, commit: 09656b6, file: internal/controlplane/resolver.go:21-43`
 
 ```go
 AllowedPropertyFilters []AllowedPropertyFilter `json:"allowed_property_filters"`
 ```
 
-每个 `property_filter` 先被解析成 JSON：`scope`、`name`、`type`、`op`、`value`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:64-70`
+每个 `property_filter` 先被解析成 JSON：`scope`、`name`、`type`、`op`、`value`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:64-70`
 
 ```go
 type propertyFilterPayload struct {
@@ -620,7 +620,7 @@ type propertyFilterPayload struct {
 }
 ```
 
-然后必须命中 source allowlist，否则直接返回 `ErrInvalidEventQuery`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:364-402`
+然后必须命中 source allowlist，否则直接返回 `ErrInvalidEventQuery`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:406-420`
 
 ```go
 if !source.AllowsPropertyFilter(scope, name, valueType) {
@@ -628,7 +628,7 @@ if !source.AllowsPropertyFilter(scope, name, valueType) {
 }
 ```
 
-`AllowsPropertyFilter` 会按 scope/name 匹配，并可按 value type 限制。证据：`仓库: analytics-service, commit: b2247d5, file: internal/controlplane/resolver.go:80-108`
+`AllowsPropertyFilter` 会按 scope/name 匹配，并可按 value type 限制。证据：`仓库: analytics-service, commit: 09656b6, file: internal/controlplane/resolver.go:80-108`
 
 ```go
 if filter.Scope != scope || filter.Name != name { continue }
@@ -638,9 +638,9 @@ for _, allowed := range filter.ValueTypes {
 }
 ```
 
-最后 HTTP 层还把 selector surface 传给 analytics-core builder，形成第二道 fail-closed guard。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:165-179`、`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/query_builder.go:313-332`
+最后 HTTP 层还把 selector surface 传给 analytics-core builder，形成第二道 fail-closed guard。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:165-179`、`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/query_builder.go:313-332`
 
-当前重要限制：SaaS runtime-source API 返回类型里没有 `allowed_property_filters` 字段。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: packages/api/modules/simpletrack/runtime-source.ts:30-44`、`仓库: simpletrack-saas, commit: fa822d1a86b2, file: packages/api/modules/simpletrack/runtime-source.ts:172-188`
+当前重要限制：SaaS runtime-source API 返回类型里没有 `allowed_property_filters` 字段。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: packages/api/modules/simpletrack/runtime-source.ts:30-44`、`仓库: simpletrack-saas, commit: bce33354ae27, file: packages/api/modules/simpletrack/runtime-source.ts:172-188`
 
 ```ts
 type RuntimeSourceResponse = {
@@ -658,7 +658,7 @@ type RuntimeSourceResponse = {
 
 #### 如何调用 QueryReader
 
-`handleEvents` 把解析后的参数装进 `storage.EventListQuery`，调用 `ListEvents`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:163-181`
+`handleEvents` 把解析后的参数装进 `storage.EventListQuery`，调用 `ListEvents`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:163-181`
 
 ```go
 records, err := h.opts.QueryReader.ListEvents(ctx.Context(), storage.EventListQuery{
@@ -671,7 +671,7 @@ records, err := h.opts.QueryReader.ListEvents(ctx.Context(), storage.EventListQu
 })
 ```
 
-ClickHouse reader 不拼业务参数，而是让 builder 生成 plan 后执行。证据：`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/event_reader.go:36-49`
+ClickHouse reader 不拼业务参数，而是让 builder 生成 plan 后执行。证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/event_reader.go:36-49`
 
 ```go
 plan, err := r.builder.BuildEventsQuery(ctx, query)
@@ -680,7 +680,7 @@ return r.executePlan(ctx, plan)
 
 #### 返回数据格式
 
-返回结构是 `source + items + limit + offset + from + to`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:48-55`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:184-191`
+返回结构是 `source + items + limit + offset + from + to`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:48-55`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:184-191`
 
 ```go
 type queryEventsResponse struct {
@@ -693,7 +693,7 @@ type queryEventsResponse struct {
 }
 ```
 
-OpenAPI 同样定义了 `EventsResponse` 必须包含这些字段。证据：`仓库: analytics-service, commit: b2247d5, file: api/openapi.yaml:352-370`
+OpenAPI 同样定义了 `EventsResponse` 必须包含这些字段。证据：`仓库: analytics-service, commit: 09656b6, file: api/openapi.yaml:352-370`
 
 #### 错误如何映射成 HTTP status/body
 
@@ -703,7 +703,7 @@ Events 与 Realtime 共用大部分错误映射。额外需要注意：
 - property filter JSON、operator、value type、allowlist 错误会包装成 `storage.ErrInvalidEventQuery`，最终 `writeQueryError` 返回 400。
 - builder 发现 `from >= to`、sort 不在白名单、offset 为负、property selector 不在白名单，也会通过 `ErrInvalidEventQuery` 返回 400。
 
-证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:140-160`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:268-275`、`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/query_builder.go:144-206`
+证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:140-160`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:286-293`、`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/query_builder.go:144-206`
 
 ## 4. 与外部交互的逻辑、数据和数据格式
 
@@ -734,7 +734,7 @@ Cache-Control: public, max-age=300
 }
 ```
 
-对应代码证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:318-325`
+对应代码证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:345-355`
 
 ### 4.2 `/v1/realtime` 请求/响应示例
 
@@ -779,7 +779,7 @@ Authorization: Bearer query_token_server_side
 }
 ```
 
-响应结构证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:31-62`
+响应结构证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:31-62`
 
 ### 4.3 `/v1/events` 请求/响应示例
 
@@ -809,7 +809,7 @@ Authorization: Bearer query_token_server_side
 }
 ```
 
-响应结构证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:48-55`
+响应结构证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:48-55`
 
 ### 4.4 Authorization Bearer token 示例
 
@@ -819,7 +819,7 @@ Authorization: Bearer query_token_server_side
 Authorization: Bearer query_token_server_side
 ```
 
-Go 侧提取 Bearer token 的函数是通用 helper。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:386-392`
+Go 侧提取 Bearer token 的函数是通用 helper。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:413-421`
 
 ```go
 if len(value) < len("Bearer ") || !strings.EqualFold(value[:len("Bearer ")], "Bearer ") {
@@ -832,7 +832,7 @@ return strings.TrimSpace(value[len("Bearer "):])
 
 ### 4.5 query token 生命周期/轮换逻辑
 
-生命周期字段定义在配置层和 collectapi 层。证据：`仓库: analytics-service, commit: b2247d5, file: internal/config/config.go:32-38`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query_auth.go:10-16`
+生命周期字段定义在配置层和 collectapi 层。证据：`仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:32-38`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query_auth.go:10-16`
 
 ```go
 type QueryCredential struct {
@@ -851,11 +851,11 @@ type QueryCredential struct {
 - 未到 `NotBefore` 返回 401。
 - 到达或超过 `ExpiresAt` 返回 401。
 
-证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query_auth.go:33-67`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query_auth.go:69-98`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:235-258`
+证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query_auth.go:33-67`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query_auth.go:69-98`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:235-258`
 
 ### 4.6 与 ClickHouse readback 的数据格式边界
 
-HTTP 层与 ClickHouse 不直接耦合。边界是 `storage.EventRecord`。证据：`仓库: analytics-core, commit: 58668c9c17ea, file: storage/event_query.go:114-130`
+HTTP 层与 ClickHouse 不直接耦合。边界是 `storage.EventRecord`。证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/event_query.go:114-130`
 
 ```go
 type EventRecord struct {
@@ -867,14 +867,14 @@ type EventRecord struct {
 }
 ```
 
-ClickHouse adapter 扫描自己的 row model，再转成 storage-neutral record。证据：`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/event_reader.go:66-100`
+ClickHouse adapter 扫描自己的 row model，再转成 storage-neutral record。证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/event_reader.go:66-100`
 
 ```go
 if err := r.db.WithContext(ctx).Raw(plan.SQL, plan.Args...).Scan(&rows).Error; err != nil { ... }
 records = append(records, row.toRecord())
 ```
 
-HTTP 层再把 `Properties` 字符串转成 `json.RawMessage`。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:501-514`
+HTTP 层再把 `Properties` 字符串转成 `json.RawMessage`。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:500-514`
 
 ```go
 if json.Valid([]byte(trimmed)) {
@@ -885,16 +885,16 @@ quoted, err := json.Marshal(trimmed)
 
 ### 4.7 与 SaaS control-plane runtime source config 的交互边界
 
-如果 source resolver 是 HTTP 模式，analytics-service 会 POST write key 到 SaaS runtime-source API。证据：`仓库: analytics-service, commit: b2247d5, file: internal/controlplane/http_resolver.go:194-238`
+如果 source resolver 是 HTTP 模式，analytics-service 会 POST write key 到 SaaS runtime-source API。证据：`仓库: analytics-service, commit: 09656b6, file: internal/controlplane/http_resolver.go:194-238`
 
 ```go
 body, err := json.Marshal(resolveSourceRequest{WriteKey: writeKey})
 request.Header.Set("Authorization", "Bearer "+r.bearerToken)
 ```
 
-SaaS 侧 path 是 `/api/internal/analytics/runtime-source`：Hono app 有 `.basePath("/api")`，并注册 `runtimeSourcePath`。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: packages/api/index.ts:14-34`、`仓库: simpletrack-saas, commit: fa822d1a86b2, file: packages/api/modules/simpletrack/runtime-source.ts:55-60`
+SaaS 侧 path 是 `/api/internal/analytics/runtime-source`：Hono app 有 `.basePath("/api")`，并注册 `runtimeSourcePath`。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: packages/api/index.ts:14-34`、`仓库: simpletrack-saas, commit: bce33354ae27, file: packages/api/modules/simpletrack/runtime-source.ts:55-60`
 
-SaaS runtime-source 校验自己的 service token，按 write key 查 website，返回 source config，支持 ETag / 304。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: packages/api/modules/simpletrack/runtime-source.ts:61-170`
+SaaS runtime-source 校验自己的 service token，按 write key 查 website，返回 source config，支持 ETag / 304。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: packages/api/modules/simpletrack/runtime-source.ts:61-170`
 
 ## 5. 时序图、数据流转图、数据处理方法
 
@@ -1027,7 +1027,7 @@ flowchart TD
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:23-42` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:23-42` |
 | 类型 | `[]byte` |
 | 用途 | 保存启动时读取的 tracker JS bytes，供 `/tracker.js` 直接返回 |
 
@@ -1043,7 +1043,7 @@ TrackerScript []byte // TrackerScript is the JavaScript asset returned by Tracke
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:23-42`、`仓库: analytics-core, commit: 58668c9c17ea, file: storage/event_query.go:140-146` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:23-42`、`仓库: analytics-core, commit: 7c296670842d, file: storage/event_query.go:142-146` |
 | 类型 | `storage.EventReader` interface |
 | 用途 | 服务内部 readback 的 storage 边界 |
 
@@ -1063,7 +1063,7 @@ type EventReader interface {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query_auth.go:10-16` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query_auth.go:10-16` |
 | 类型 | `QueryCredential` |
 | 用途 | 内部读接口认证，不用于 `/collect` 写入 |
 
@@ -1084,7 +1084,7 @@ type QueryCredential struct {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:194-210`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:386-392` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:212-227`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:413-421` |
 | 类型 | HTTP header string |
 | 用途 | `/v1/realtime`、`/v1/events` 中承载 query token |
 
@@ -1100,7 +1100,7 @@ decision := authorizeQueryToken(bearerToken(ctx.Get("Authorization")), h.opts.Qu
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:261-266` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:279-284` |
 | 类型 | `string` |
 | 用途 | 用于解析 SourceConfig，不是查询 scope 本身 |
 
@@ -1119,7 +1119,7 @@ return strings.TrimSpace(ctx.Query("write_key"))
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/controlplane/resolver.go:18-37` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/controlplane/resolver.go:21-43` |
 | 类型 | `controlplane.SourceConfig` |
 | 用途 | 服务端可信 source 档案，决定 tenant/project/source、origin、property filter allowlist |
 
@@ -1143,7 +1143,7 @@ type SourceConfig struct {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-core, commit: 58668c9c17ea, file: storage/event_query.go:96-103` |
+| 定义位置 | `仓库: analytics-core, commit: 7c296670842d, file: storage/event_query.go:96-103` |
 | 类型 | `storage.RealtimeQuery` |
 | 用途 | 表示一个 source 的最近事件查询 |
 
@@ -1165,7 +1165,7 @@ type RealtimeQuery struct {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-core, commit: 58668c9c17ea, file: storage/event_query.go:78-94` |
+| 定义位置 | `仓库: analytics-core, commit: 7c296670842d, file: storage/event_query.go:78-94` |
 | 类型 | `storage.EventListQuery` |
 | 用途 | 表示一个 source 的分页原始事件查询 |
 
@@ -1194,7 +1194,7 @@ type EventListQuery struct {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:64-70`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:329-402` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:64-70`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:347-420` |
 | 类型 | repeatable query parameter，每个值是 JSON |
 | 用途 | 让 Events 按 typed event/user property 过滤 |
 
@@ -1216,7 +1216,7 @@ type propertyFilterPayload struct {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/controlplane/resolver.go:39-43` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/controlplane/resolver.go:45-50` |
 | 类型 | `[]AllowedPropertyFilter` |
 | 用途 | 限定哪些 property 可以进入查询条件 |
 
@@ -1236,7 +1236,7 @@ type AllowedPropertyFilter struct {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-core, commit: 58668c9c17ea, file: storage/event_query.go:114-130` |
+| 定义位置 | `仓库: analytics-core, commit: 7c296670842d, file: storage/event_query.go:114-130` |
 | 类型 | `[]storage.EventRecord` |
 | 用途 | storage-neutral 的事件行结果 |
 
@@ -1258,7 +1258,7 @@ type EventRecord struct {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:31-62` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:31-62` |
 | 类型 | `queryRealtimeResponse` / `queryEventsResponse` |
 | 用途 | 对外 JSON 响应 |
 
@@ -1278,7 +1278,7 @@ type queryEventsResponse struct {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:56-59` |
+| 定义位置 | `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:56-59` |
 | 类型 | `ErrorResponse` |
 | 用途 | 所有稳定错误响应都用 `{"error":"..."}` |
 
@@ -1296,17 +1296,17 @@ type ErrorResponse struct {
 
 | 动作 | 输入数据点 | 输出数据点 | 失败路径 | 数据变化说明 |
 | --- | --- | --- | --- | --- |
-| route registration | `Options.*Path` | Fiber route table | path 为空、不是 `/` 开头、冲突时启动失败 | `TrackerPath` / `RealtimePath` / `EventsPath` 绑定 handler。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:126-169` |
-| tracker asset response | `TrackerScript` | JS bytes response | script 为空返回 404 | 启动时文件 bytes 变成 HTTP JS 响应。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/handler.go:318-325` |
-| query auth validation | `Authorization`、`QueryCredentials` | `queryTokenAuthDecision` | 401 unauthorized | Bearer token 被常量时间比较，并检查生命周期。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query_auth.go:69-98` |
-| write key extraction | header/query | `writeKey` | 空值返回 400 | 读接口不接受 body fallback。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:261-266` |
-| source resolution | `writeKey` | `SourceConfig` | invalid key 401、disabled 403、resolver error 500 | write key 变成可信 scope。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:212-233` |
-| source enabled / origin / scope enforcement | `SourceConfig`、`Origin` | scoped query | origin 403 | tenant/project/source 从 SourceConfig 进入 query object。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:226-230` |
-| query parameter parsing | HTTP query | `since/from/to/limit/offset/sort` | 400 | 时间转 UTC，数字做 min 限制。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:278-327` |
-| property filter parsing and allowlist enforcement | repeatable `property_filter`、SourceConfig allowlist | `[]storage.EventPropertyFilter` | 400 invalid event query | JSON 标量转 typed property filter，先过 SourceConfig allowlist。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:329-402` |
-| query reader call | `RealtimeQuery` / `EventListQuery` | `[]EventRecord` | invalid query 400，其他 500 | HTTP 层调用接口，不拼 SQL。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:101-119`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:163-191` |
-| response serialization | `[]EventRecord` | JSON body | JSON 写入失败交给 Fiber error handler | 时间格式化，properties 尽量保持 JSON。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:474-514` |
-| error mapping | Go error | HTTP status + `ErrorResponse` | 无 | `ErrInvalidEventQuery` 映射 400，其余 reader error 映射 500。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:268-275` |
+| route registration | `Options.*Path` | Fiber route table | path 为空、不是 `/` 开头、冲突时启动失败 | `TrackerPath` / `RealtimePath` / `EventsPath` 绑定 handler。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:126-169` |
+| tracker asset response | `TrackerScript` | JS bytes response | script 为空返回 404 | 启动时文件 bytes 变成 HTTP JS 响应。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:345-355` |
+| query auth validation | `Authorization`、`QueryCredentials` | `queryTokenAuthDecision` | 401 unauthorized | Bearer token 被常量时间比较，并检查生命周期。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query_auth.go:69-98` |
+| write key extraction | header/query | `writeKey` | 空值返回 400 | 读接口不接受 body fallback。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:279-284` |
+| source resolution | `writeKey` | `SourceConfig` | invalid key 401、disabled 403、resolver error 500 | write key 变成可信 scope。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:230-250` |
+| source enabled / origin / scope enforcement | `SourceConfig`、`Origin` | scoped query | origin 403 | tenant/project/source 从 SourceConfig 进入 query object。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:244-248` |
+| query parameter parsing | HTTP query | `since/from/to/limit/offset/sort` | 400 | 时间转 UTC，数字做 min 限制。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:296-345` |
+| property filter parsing and allowlist enforcement | repeatable `property_filter`、SourceConfig allowlist | `[]storage.EventPropertyFilter` | 400 invalid event query | JSON 标量转 typed property filter，先过 SourceConfig allowlist。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:347-420` |
+| query reader call | `RealtimeQuery` / `EventListQuery` | `[]EventRecord` | invalid query 400，其他 500 | HTTP 层调用接口，不拼 SQL。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:101-119`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:163-191` |
+| response serialization | `[]EventRecord` | JSON body | JSON 写入失败交给 Fiber error handler | 时间格式化，properties 尽量保持 JSON。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:483-514` |
+| error mapping | Go error | HTTP status + `ErrorResponse` | 无 | `ErrInvalidEventQuery` 映射 400，其余 reader error 映射 500。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:286-293` |
 
 ### 6.3 数据流图示
 
@@ -1339,7 +1339,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Params["from/to/limit/offset/event_name/distinct_id/sort"] --> EventList["storage.EventListQuery"]
+    Params["from/to/limit/offset/event_name/distinct_id/visit_id/sort"] --> EventList["storage.EventListQuery"]
     PFParam["property_filter JSON"] --> PFParse["parsePropertyFilter"]
     Source["SourceConfig"] --> PFAllow["AllowsPropertyFilter"]
     PFParse --> PFAllow
@@ -1397,34 +1397,34 @@ flowchart TD
 
 ### query token 是什么，为什么不能下发到浏览器
 
-query token 是“读数据的服务端钥匙”。SaaS helper 从服务端环境变量读取它，并放进 `Authorization: Bearer ...`。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:279-326`
+query token 是“读数据的服务端钥匙”。SaaS helper 从服务端环境变量读取它，并放进 `Authorization: Bearer ...`。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:279-326`
 
-如果把 query token 下发到浏览器，任何拿到 token 的人都可能绕过 SaaS 页面权限，直接调用 readback API。当前设计用 `server-only` helper 把它留在服务端。证据：`仓库: simpletrack-saas, commit: fa822d1a86b2, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:1-11`
+如果把 query token 下发到浏览器，任何拿到 token 的人都可能绕过 SaaS 页面权限，直接调用 readback API。当前设计用 `server-only` helper 把它留在服务端。证据：`仓库: simpletrack-saas, commit: bce33354ae27, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:1-11`
 
 ### write key 和 query token 的区别
 
 - write key 是 source 的公开上报 key，浏览器 tracker 可以携带它，用来告诉服务端“我要往哪个 source 写入或读取这个 source 的 readback”。
 - query token 是内部读接口认证 token，只能由 SaaS 服务端或可信后端保存。
 
-读接口需要两个值：query token 证明“你有资格读”，write key 决定“你要读哪个 source”。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:194-233`
+读接口需要两个值：query token 证明“你有资格读”，write key 决定“你要读哪个 source”。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:212-250`
 
 ### Realtime 和 Events 查询的区别
 
-Realtime 是最近窗口，默认最近 30 分钟，默认 limit 50，适合页面上“刚刚有没有收到事件”。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:17-22`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:90-119`
+Realtime 是最近窗口，默认最近 30 分钟，默认 limit 50，适合页面上“刚刚有没有收到事件”。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:17-22`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:90-119`
 
-Events 是明确时间范围内的分页列表，必须传 `from` 和 `to`，支持 `event_name`、`distinct_id`、排序、分页和 property filter。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:140-191`
+Events 是明确时间范围内的分页列表，必须传 `from` 和 `to`，支持 `event_name`、`distinct_id`、`visit_id`、排序、分页和 property filter。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:140-191`
 
 ### SourceConfig 为什么仍然要参与读接口
 
-因为读接口不能相信客户端传 tenant/project/source。它只接受 write key，然后用 resolver 查出 SourceConfig，再把 SourceConfig 的 tenant/project/source 放进 query object。这样读写两条链路都使用同一套 source 边界。证据：`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:212-233`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:101-109`、`仓库: analytics-service, commit: b2247d5, file: internal/collectapi/query.go:163-179`
+因为读接口不能相信客户端传 tenant/project/source。它只接受 write key，然后用 resolver 查出 SourceConfig，再把 SourceConfig 的 tenant/project/source 放进 query object。这样读写两条链路都使用同一套 source 边界。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:230-250`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:101-109`、`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:163-179`
 
 ### property filter 为什么要白名单
 
-property filter 最终会影响 ClickHouse 查询。如果任意 property name 都能查，既可能造成高成本扫描，也可能让产品界面暴露尚未设计好的属性面。当前实现要求 source config 明确允许某个 `scope + name + value type`，并且 builder 再检查 selector。证据：`仓库: analytics-service, commit: b2247d5, file: internal/controlplane/resolver.go:80-108`、`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/query_builder.go:257-332`
+property filter 最终会影响 ClickHouse 查询。如果任意 property name 都能查，既可能造成高成本扫描，也可能让产品界面暴露尚未设计好的属性面。当前实现要求 source config 明确允许某个 `scope + name + value type`，并且 builder 再检查 selector。证据：`仓库: analytics-service, commit: 09656b6, file: internal/controlplane/resolver.go:80-108`、`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/query_builder.go:257-332`
 
 ### QueryReader 是什么，为什么 HTTP 层不直接拼 SQL
 
-`QueryReader` 是 storage-neutral 接口。HTTP 层只负责认证和参数解码；ClickHouse 物理表名、字段白名单、排序、limit cap、property 子查询都由 analytics-core 的 builder 管。证据：`仓库: analytics-core, commit: 58668c9c17ea, file: storage/event_query.go:132-146`、`仓库: analytics-core, commit: 58668c9c17ea, file: storage/clickhouse/event_reader.go:15-23`
+`QueryReader` 是 storage-neutral 接口。HTTP 层只负责认证和参数解码；ClickHouse 物理表名、字段白名单、排序、limit cap、property 子查询都由 analytics-core 的 builder 管。证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/event_query.go:142-146`、`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/event_reader.go:15-23`
 
 这样做的好处是：HTTP handler 不需要知道 ClickHouse 表怎么命名，也不允许 query string 直接变成 SQL 标识符。
 

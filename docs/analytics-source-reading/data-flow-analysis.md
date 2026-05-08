@@ -13,7 +13,7 @@ flowchart TB
     E["collect.Request<br/>覆盖 tenant/project/source"]
     F["Normalize<br/>字段 trim + 正则 + 属性 + 时间"]
     G["EventEnvelope<br/>标准事件消息"]
-    H["Stage 链<br/>filter / enrichment / session"]
+    H["Stage 链<br/>filter / enrichment / session / visit"]
     I["Redis Stream Message<br/>field envelope = JSON"]
     J["eventbus.Message<br/>ID / Attempt / Envelope / Ack / Nack"]
     K["IngestionStatus<br/>事件幂等 claim"]
@@ -35,7 +35,7 @@ flowchart TB
 - `writeKey` 决定使用哪份 `SourceConfig`，但 write key 本身不直接成为 tenant/project/source。
 - `SourceConfig` 覆盖客户端边界字段，这是最重要的信任边界。
 - `Normalize` 决定什么能进入队列，非法事件不会进入 Redis。
-- `Stage` 决定合法事件是否要被过滤、补充属性或派生 session。
+- `Stage` 决定合法事件是否要被过滤、补充属性、派生 session 或派生 canonical `visit_id`。
 - `EventBus` 的 ack/nack 决定消息何时从 pending 状态释放或进入重试/死信。
 - MySQL checkpoint 决定 ClickHouse append 是否幂等。
 - Query API 决定内部读取是否被 token、write key、origin、属性 allowlist 限制。
@@ -46,10 +46,10 @@ flowchart TB
 
 | 数据点 | 定义位置 | 代码段 | 类型 | 用途 |
 | --- | --- | --- | --- | --- |
-| HTTP method/path | `analytics-service/internal/collectapi/handler.go` `ServeFastHTTP` | `path := string(ctx.Path())` | `string` | 路由分发：health、tracker、collect、query |
-| request body | `handleCollect` | `json.Unmarshal(ctx.PostBody(), &payload)` | `[]byte -> collectPayload` | 解析公开采集事件 |
-| `Origin` | `requestOrigin` | `ctx.Request.Header.Peek("Origin")` | `string` | CORS 与来源校验 |
-| User-Agent | `clientInfo` | `string(ctx.UserAgent())` | `string` | bot 过滤、可选属性派生 |
+| HTTP method/path | `analytics-service/internal/collectapi/handler.go` `registerRoutes` | `app.Post(h.opts.CollectPath, h.handleCollect)` | Fiber route | 路由分发：health、tracker、collect、query |
+| request body | `handleCollect` | `json.Unmarshal(ctx.Body(), &payload)` | `[]byte -> collectPayload` | 解析公开采集事件 |
+| `Origin` | `requestOrigin` | `ctx.Get("Origin")` | `string` | CORS 与来源校验 |
+| User-Agent | `clientInfo` | `ctx.Get("User-Agent")` | `string` | bot 过滤、可选属性派生 |
 | Client IP | `clientIP` | `X-Forwarded-For` / `X-Real-IP` / `RemoteIP` | `string` | 内部流量过滤、IP hash 派生、可选 session fingerprint |
 | Referrer | `clientInfo` | `Referer` header | `string` | 可选属性派生 |
 
@@ -89,6 +89,8 @@ source, err := h.opts.Resolver.ResolveSource(ctx, writeKey)
 | `AllowedOrigins` | `SourceConfig.AllowsOrigin` | `allowed == "*" || EqualFold(allowed, origin)` | `[]string` | 浏览器来源限制 |
 | `AllowedPropertyFilters` | `AllowsPropertyFilter` | `scope/name/valueType` 匹配 | `[]AllowedPropertyFilter` | 内部查询属性过滤 allowlist |
 | `SessionSalt` | `stages(source)` | `SessionResolverConfig{Salt: source.SessionSalt}` | `string` | session_id 派生 |
+| `VisitSalt` | `stages(source)` | `VisitResolverConfig{Salt: source.VisitSalt}` | `string` | visit_id 派生 |
+| `VisitWindow` | `stages(source)` | `VisitResolverConfig{Window: source.VisitWindow}` | `time.Duration` | canonical visit 时间桶 |
 | `ClientHashSalt` | `stages(source)` | `ClientEnrichmentConfig{HashSalt: source.ClientHashSalt}` | `string` | IP hash 派生 |
 | bot/internal rules | `stages(source)` | `TrafficFilterConfig{...}` | slices | 入队前过滤噪音流量 |
 
@@ -110,6 +112,7 @@ source, err := h.opts.Resolver.ResolveSource(ctx, writeKey)
 | `EventName` | 同上 | `EventName string` | string | 分析事件名 |
 | `DistinctID` | 同上 | `DistinctID string` | string | 访客或用户标识 |
 | `SessionID` | 同上 | `SessionID string` | string | 可选 session key，不传时可派生 |
+| `VisitID` | 同上 | `VisitID string` | string | 可选 canonical visit key，不传时由服务端派生 |
 | `EventTime` | 同上 | `EventTime time.Time` | time | 事件源发生时间 |
 | `Properties` | 同上 | `map[string]any` | map | 事件属性 |
 | `UserProps` | 同上 | `map[string]any` | map | 用户属性 |
@@ -127,6 +130,8 @@ source, err := h.opts.Resolver.ResolveSource(ctx, writeKey)
 | 数据点 | 定义位置 | 代码段 | 类型 | 用途 |
 | --- | --- | --- | --- | --- |
 | `EventEnvelope` | `analytics-core/contracts/event.go` | `type EventEnvelope struct { ... }` | struct | collect、queue、ingestion、storage 的统一事件消息 |
+| `SessionID` | `Normalize` 或 `SessionResolverStage` | `SessionID: request.SessionID` / `envelope.SessionID = ...` | `string` | 会话来源语义，缺失时可补齐 |
+| `VisitID` | `Normalize` 或 `VisitResolverStage` | `VisitID: request.VisitID` / `envelope.VisitID = ...` | `string` | 长期分析口径的一次访问 key，入库后查询直接读取 |
 | `EventTime` | `Normalize` | `eventTime := request.EventTime` | `time.Time` | 事件发生时间，用于 Events/Realtime 时间窗 |
 | `ReceivedAt` | `Normalize` 参数 | `ReceivedAt: receivedAt.UTC()` | `time.Time` | 服务端接收时间，用于接受确认和诊断 |
 | `Properties/UserProps` | `Normalize` | `cloneMap(...)` | map | 进入 Redis、ClickHouse JSON、属性扁平化 |
@@ -252,17 +257,18 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 | --- | --- | --- | --- |
 | 加载配置 | `config.LoadFromEnv` | 环境变量 -> `Config` | 字符串环境变量变成 typed config；缺 Redis/MySQL/ClickHouse 等必要配置时启动失败 |
 | 装配 runtime | `runtime.New` | `Config` -> resolver/bus/queryReader/handler/processor | 把部署配置变成运行时依赖图 |
-| HTTP 路由 | `ServeFastHTTP` | method/path | 分流到 health、tracker、collect、query |
+| HTTP 路由 | `NewApp` / `registerRoutes` | method/path | Fiber app 分流到 health、tracker、collect、query |
 | 解码 collect body | `handleCollect` | request body -> `collectPayload` | JSON 变成 Go struct；无效 JSON 直接 400 |
 | 提取 write key | `writeKey` | header/bearer/query/body | 按优先级得到一个 string |
 | 解析 source | `Resolver.ResolveSource` | write key -> `SourceConfig` | public key 变成可信租户/项目/来源配置 |
 | 来源校验 | `SourceConfig.AllowsOrigin` | Origin + AllowedOrigins | 不允许的浏览器来源 403 |
 | 覆盖边界字段 | `handleCollect` | `payload.Request` + `SourceConfig` | 客户端边界字段被 control-plane 可信字段替换 |
-| 构建 stages | `stages(source)` | `SourceConfig` | 生成 filter/enrichment/session stage |
+| 构建 stages | `stages(source)` | `SourceConfig` | 生成 filter/enrichment/session/visit stage |
 | 标准化 | `collect.Normalize` | `collect.Request`, `receivedAt` | trim、正则、属性、时间校验后生成 `EventEnvelope` |
 | 过滤流量 | `TrafficFilterStage.Apply` | `ClientInfo`, `EventEnvelope` | bot/internal IP 变成 `FilteredError`，不入队 |
 | 派生客户端属性 | `ClientEnrichmentStage.Apply` | `ClientInfo`, `Properties` | 添加 `client.user_agent/referrer/ip_hash`，不覆盖用户已有 key |
 | 派生 session | `SessionResolverStage.Apply` | `DistinctID`, `EventTime`, optional ClientInfo | 缺失 `session_id` 时生成 `ses_...` |
+| 派生 visit | `VisitResolverStage.Apply` | `TenantID`, `ProjectID`, `SourceID`, `DistinctID`, `SessionID`, `EventTime` | 缺失 `visit_id` 时生成 `vis_...`，并作为后续分析查询的稳定字段 |
 | 发布事件 | `EventBus.Publish` | `EventEnvelope` | envelope marshal 成 JSON 写入 Redis Stream |
 | 消费消息 | `EventBus.Subscribe` | Redis stream records | pending 优先，然后新消息；decode 成 `eventbus.Message` |
 | 写事件 claim | `IngestionStatusGuard.StartEventWrite` | `EventEnvelope` | MySQL 插入/读取/重置 checkpoint，判断是否 duplicate |
@@ -303,6 +309,7 @@ sequenceDiagram
     Core->>Core: Stage: traffic filter
     Core->>Core: Stage: enrichment
     Core->>Core: Stage: session resolver
+    Core->>Core: Stage: visit resolver
     Core->>Bus: Publish(EventEnvelope)
     Bus-->>Core: XADD ok
     Core-->>API: EventEnvelope
@@ -411,7 +418,7 @@ sequenceDiagram
 
 ```go
 var payload collectPayload
-json.Unmarshal(ctx.PostBody(), &payload)
+json.Unmarshal(ctx.Body(), &payload)
 ```
 
 失败控制：无效 JSON 直接 `400 invalid collect payload`，不解析 write key，不访问 resolver。
@@ -590,6 +597,7 @@ tenant_id + project_id + source_id + event_id
   "event_name": "pageview",
   "distinct_id": "visitor_abc",
   "session_id": "ses_...",
+  "visit_id": "vis_...",
   "event_time": "2026-05-03T10:00:02Z",
   "received_at": "2026-05-03T10:00:04Z",
   "properties": {
@@ -624,4 +632,5 @@ event/client.ip_hash/string="ip_..."
 - “为什么 query 查不到”：看 query token、write key source、from/to 时间窗、表路由、property filter allowlist、ClickHouse 物理表名。
 - “字段为什么被改掉”：看 `handleCollect` 覆盖 tenant/project/source/source_type 的逻辑，这是设计上的信任边界。
 - “session_id 哪来的”：看 `SessionResolverStage`，它按 event_time 窗口和 distinct_id 派生。
+- “visit_id 哪来的”：看 `VisitResolverStage`，它在 session 派生后按 visit salt、最终 session_id 和事件时间窗口派生。
 - “client.ip_hash 哪来的”：看 `ClientEnrichmentStage`，它用服务端 salt 对 transient IP 做 hash。

@@ -17,6 +17,7 @@
   - 如仍未最终确认，同步写入 `simpletrack/docs/实施决策/待评审事项.md`
 - 概念解释、选型问答和评审澄清统一写入 `simpletrack/docs/Q&A/`，保持一问一答格式。
 - 支付服务、订阅计费、Merchant of Record 等商业化基础设施说明统一写入 `simpletrack/docs/支付服务/`。
+- `docs/analytics-source-reading/` 是 SimpleTrack 源码解读同步目录；每次推进该目录相关任务后，必须同步更新该目录下的相关 Markdown 文档，保持源码解读、引用、状态和当前实现一致。
 - 决策文档必须标注状态：`已确定`、`待评审`、`已否决` 或 `暂缓`，并写明依据、影响范围和下一步动作。
 - SimpleTrack 当前已确定的 P1 核心目标是“数据管道活了 + 公开产品入口”：页面浏览和自定义事件能够进入 Realtime 与 Events，同时具备产品官网 / Marketing Site / docs/quickstart。不要把 P1 产品层扩成团队/RBAC、收入归因页面、Replay/Performance、Boards/Share/API Key、Funnels/Journeys 的大而全版本。
 - `simpletrack/docs/实施决策/README.md` 必须维护修订记录、实施计划完成列表、当前进度和下一步动作。
