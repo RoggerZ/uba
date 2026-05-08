@@ -2,7 +2,7 @@
 
 > 记录日期：2026-05-08
 > 仓库：`src/analytics-core`
-> commit：`979a29fcfd6a09ee4433a5e8f42d97ddb247dbc1`
+> commit：`1e65684eff8a90d5eb210052e4566d03b7d1c984`
 > 目标：为 P1.5 ClickHouse 读侧优化提供真实 ClickHouse 基线，后续是否引入 projection、materialized view 或小时聚合表必须先和这份基线对比。
 
 ## 本次命令
@@ -30,11 +30,13 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 
 代码证据：
 
-- benchmark 入口：`仓库: analytics-core, commit: 979a29f, file: internal/e2e/clickhouse_reader_benchmark_test.go:25-31`。
-- benchmark 只连接 ClickHouse，不混入 Redis / MySQL：`仓库: analytics-core, commit: 979a29f, file: internal/e2e/clickhouse_reader_benchmark_test.go:39-43`。
-- benchmark 会先 seed deterministic events / properties：`仓库: analytics-core, commit: 979a29f, file: internal/e2e/clickhouse_reader_benchmark_test.go:58-63`。
-- benchmark 场景覆盖 low realtime、medium scalar events、high property events：`仓库: analytics-core, commit: 979a29f, file: internal/e2e/clickhouse_reader_benchmark_test.go:78-147`。
-- 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: 979a29f, file: internal/e2e/clickhouse_reader_benchmark_test.go:149-170`。
+- benchmark 入口：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:25-31`。
+- benchmark 只连接 ClickHouse，不混入 Redis / MySQL：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:39-43`。
+- benchmark 会先 seed deterministic events / properties：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:58-63`。
+- benchmark 场景覆盖 low realtime、medium scalar events、high property events：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:78-147`。
+- 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:149-170`。
+- explain 测试与 benchmark 复用同一套路由表和数据夹具：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:172-289`。
+- explain 直接复用 sealed query plan SQL 和 bound args：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:558-585`。
 
 ## 默认 10k 行结果
 
@@ -80,6 +82,28 @@ BenchmarkEventReaderClickHouseExecution/high_events_property-20       34  312745
 BenchmarkEventReaderClickHouseExecution/high_events_property-20       32  32368522 ns/op  200155 B/op  3590 allocs/op
 ```
 
+## ClickHouse explain 证据
+
+命令：
+
+```powershell
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS='100000'
+go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
+```
+
+观察摘要：
+
+- `low_realtime`：仍是 routed fact table 的 `ReadFromMergeTree` 主键路径，没有属性表参与。
+- `medium_events_scalar`：仍是 routed fact table 主键路径，主要受 `tenant_id / project_id / source_id / event_time` 条件约束。
+- `high_events_property`：出现 `CreatingSets`，并且主查询上出现 3 个 `event_id in ... set` 条件；主键条件已经包含 `visit_id`，但本次 100k 行下仍是 `Granules: 13/13`。
+
+这说明：
+
+- typed property filter 路径确实已经是下一条重点观察候选；
+- 但当前更像“证据补齐”，还不是“立即新增 projection / materialized view / 小时聚合表”的触发器；
+- 现阶段仍应先保持 direct fact table，并继续优先做属性治理、query plan 约束和更大数据量观察。
+
 ## 当前判断
 
 本次基线只证明三类读形状在本地 ClickHouse 上可以稳定执行，不证明现在必须引入 projection、materialized view 或小时聚合表。
@@ -89,6 +113,6 @@ BenchmarkEventReaderClickHouseExecution/high_events_property-20       32  323685
 - Realtime / Events 默认走 direct fact table。
 - `EventQueryBuilder` / `EventReader` 仍是唯一读侧入口。
 - `query_evidence` 继续作为后续优化评审输入。
-- 下一条重点观察候选是 `high_events_property`：100k 行下已连续出现 31-34ms/op，但还需要结合 query plan、ClickHouse explain、目标数据量和回归计划决定是否只优化属性表治理，还是进入 projection / MV / 小时聚合表评审。
+- 下一条重点观察候选仍是 `high_events_property`：100k 行下已连续出现 31-34ms/op，且 explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但还需要更大数据量、稳定 query pattern 和回归计划，才能决定是继续只做属性治理，还是进入 projection / MV / 小时聚合表评审。
 
-只有当同一 query shape 在更大数据量或连续 benchmark 中稳定超过基线，并且无法通过属性治理、过滤白名单、limit cap、时间窗约束解决时，才进入 projection / MV / 小时聚合表评审。
+只有当同一 query shape 在更大数据量或连续 benchmark 中稳定超过基线，并且 explain、属性治理、过滤白名单、limit cap、时间窗约束和回归计划都支持继续下沉时，才进入 projection / MV / 小时聚合表评审。
