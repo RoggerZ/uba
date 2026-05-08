@@ -101,7 +101,7 @@ GORM 参考：
 
 - `EventQueryBuilder`：负责生成 ClickHouse 查询 SQL，底层使用 GORM Raw / SQL Builder / Scopes；当前已落地 `storage.EventQueryBuilder` 契约和 ClickHouse/GORM dry-run query plan builder，先覆盖 Events 与 Realtime。
 - `EventWriter`：负责 ClickHouse 事件明细写入，P1 默认使用 `clickhouse-go/v2 PrepareBatch`；当前已落地 native batch `BatchWriter`、`EventWriteGuard` 幂等接口边界和 GORM/MySQL `IngestionStatusGuard`。
-- `EventWriter` 后续必须保留压测口径，对比 GORM `CreateInBatches`、`clickhouse-go/v2 PrepareBatch` 和必要时的 `ch-go`。
+- `EventWriter` 必须保留压测口径；当前已对比 GORM `CreateInBatches` 与 `clickhouse-go/v2 PrepareBatch`，结论是 GORM 可作为低频管理写入或对照路径，但事件热路径继续优先 native `PrepareBatch`。
 - 不在 handler 或 analysis 模块里直接散落原生 SQL；即使用原生 batch writer，也必须藏在 ClickHouse storage adapter 内。
 
 ## 目标模块边界
@@ -664,12 +664,12 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | Goal | 能定义关键事件并返回基础结果 |
 | 业务无关 | 不出现订阅、账单、套餐、团队、Admin UI 逻辑 |
 | 代码质量 | 查询、队列、存储、分析模块边界清楚，有最小单元测试 |
-| 压测基线 | 需要建立 `analytics-core` 独立压测基线，覆盖 collect、Redis Stream、KafkaBus、ClickHouse 写入和典型查询；当前已补 builder-only read-side shape benchmark、真实 ClickHouse EventReader benchmark、真实 ClickHouse BatchWriter benchmark、Redis Stream publish / subscribe+ack benchmark 和 `collect.Handler` 热路径 benchmark；collect 本地基线约为 normalize+publish 3.2-6.1µs/op、identity resolver 11.0-12.0µs/op、identity + client enrichment 15.2-18.2µs/op；后续继续补 KafkaBus 和稳定聚合查询压测 |
+| 压测基线 | 需要建立 `analytics-core` 独立压测基线，覆盖 collect、Redis Stream、KafkaBus、ClickHouse 写入和典型查询；当前已补 builder-only read-side shape benchmark、真实 ClickHouse EventReader benchmark、真实 ClickHouse BatchWriter benchmark、GORM `CreateInBatches` 对照 benchmark、Redis Stream publish / subscribe+ack benchmark 和 `collect.Handler` 热路径 benchmark；collect 本地基线约为 normalize+publish 3.2-6.1µs/op、identity resolver 11.0-12.0µs/op、identity + client enrichment 15.2-18.2µs/op；ClickHouse 单事件 native writer 约 5.2-6.3ms/op，GORM 单事件约 7.3-8.2ms/op；100 行 native bulk 约 6.3-8.2ms/op，GORM bulk 约 8.0-10.1ms/op；后续继续补 KafkaBus 和稳定聚合查询压测 |
 
 ## 后续待评审
 
 - 方案 B 下物理表名 hash 规则、生产 DDL 迁移/回滚策略和跨 source 查询 fan-out / merge 细节；本地/小部署 auto migrate 只解决当前 runtime config 内所有启用 source 的 routed tables 创建，不替代生产 migration pipeline。
-- GORM `CreateInBatches` 与 `clickhouse-go/v2 PrepareBatch` 在 `analytics-core` 事件模型上的压测差异。
+- GORM `CreateInBatches` 与 `clickhouse-go/v2 PrepareBatch` 的初步压测差异已完成；后续只在批量大小、网络环境或 ClickHouse 版本变化时复测。
 - KafkaBus 的 ack、checkpoint、幂等、死信队列具体实现如何与 Redis Stream 保持一致。
 - KafkaBus 迁移时如何复用 xwl_bi 现有 consumer offset 和 acceptance status 思路。
 - Funnel / Retention 查询如何落到统一 GORM query builder。
