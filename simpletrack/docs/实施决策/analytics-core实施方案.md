@@ -265,6 +265,148 @@ physical table: events_{tenant_hash}_{project_hash}_{source_hash}
 
 如果担心表名过长或暴露业务 ID，可以统一使用短 hash，并在 MySQL metadata 中维护映射。
 
+## ClickHouse 读侧优化方案取舍
+
+P1.5 的目标不是把所有 ClickHouse 手段一次性上完，而是先把读侧长期路线定清楚。四个候选方案不是互斥关系，而是分层能力：
+
+- 属性治理和 query plan 约束是底座。
+- projection 适合单表明细路径的局部加速。
+- materialized view 适合稳定派生结果的持续写入。
+- 小时聚合表适合趋势图、Dashboard 和高频固定口径指标。
+
+### 方案 1：ClickHouse Projection
+
+是什么：
+
+- 在同一张明细表上，给 ClickHouse 增加额外投影，提前组织局部排序、过滤或聚合路径。
+- 适合不改变主事实表语义、但希望缩短某些固定读路径的场景。
+
+适合什么：
+
+- `Realtime`。
+- `Events` 的常用明细筛选。
+- 以单表读为主、字段组合相对稳定的短查询。
+
+优点：
+
+- 对上层逻辑侵入最小。
+- 不需要额外维护一套独立派生表的写入同步逻辑。
+- 对明细读路径有机会获得较低改造成本的收益。
+
+风险：
+
+- 收益强依赖查询形状，查询稍微变化就可能失效。
+- 不适合承载复杂指标语义，也不适合替代分析层的长期建模。
+- 需要更谨慎地观察 ClickHouse 版本行为和执行计划。
+
+结论：
+
+- Projection 更像“明细读路径加速器”，不是分析模型本身。
+- 适合后续只对少数热点查询选择性使用，不适合当作 P1.5 唯一方案。
+
+### 方案 2：Materialized View
+
+是什么：
+
+- 通过 ClickHouse 物化视图把事实事件流持续投影到派生表。
+- 适合把稳定查询口径提前固化成可重复使用的派生数据集。
+
+适合什么：
+
+- 稳定的 Breakdown / Compare。
+- 某些固定维度的事件计数、活跃统计、Top pages、Top events。
+- 需要持续写入但读取频繁的中间结果。
+
+优点：
+
+- 查询时不用每次重算，适合读多写少或读写比高的稳定口径。
+- 能把复杂聚合从在线查询中移出。
+- 适合为 Dashboard 和固定指标页面提供长期支撑。
+
+风险：
+
+- 维护成本高于纯 query plan 约束。
+- 口径变化时需要同步调整派生表逻辑。
+- 如果指标定义还在变，物化视图会把不稳定口径提前固化，后续返工成本高。
+
+结论：
+
+- MV 适合“口径稳定之后的长期承载层”，不适合一开始就替代所有查询。
+
+### 方案 3：小时聚合表
+
+是什么：
+
+- 把事件按小时、项目、来源、事件名、属性维度等口径做预聚合。
+- 通常是 Dashboard 和趋势图最直接的提速方案。
+
+适合什么：
+
+- 时间序列趋势图。
+- 固定维度的事件计数、UV、活跃度、基础漏斗前置统计。
+- 产品首页、概览页、看板类高频查询。
+
+优点：
+
+- 对趋势类查询收益稳定。
+- 语义最接近产品展示层的固定口径。
+- 能显著降低明细大扫表压力。
+
+风险：
+
+- 不适合明细列表。
+- 维度一多，聚合表会快速膨胀。
+- 如果没有明确的 query pattern，容易做出一堆用不上的聚合表。
+
+结论：
+
+- 小时聚合表是长期分析产品最稳的读侧能力之一，但必须建立在稳定指标口径之上。
+
+### 方案 4：只做属性治理 + Query Plan 约束
+
+是什么：
+
+- 不新增 MV、projection 或聚合表，只先把属性字典、过滤白名单、排序、分页、字段选择和 query builder 约束收紧。
+- 让读侧先保持“正确、可控、可回归”，再决定是否加速。
+
+适合什么：
+
+- 当前还在快速迭代阶段。
+- 查询模式没有完全稳定。
+- 还不想提前引入 ClickHouse 派生层的维护成本。
+
+优点：
+
+- 最适合作为长期方案的第一步。
+- 改造成本低，最容易确保 `visit_id`、`property_filter`、排序和分页契约不退化。
+- 便于把 SQL 复杂度牢牢锁在 `analytics-core/storage`。
+
+风险：
+
+- 单靠这层不会解决所有读侧性能问题。
+- 数据量继续上来后，Dashboard 和 Breakdown 还是会需要真正的预聚合层。
+
+结论：
+
+- 这是必须先做的底座，但不是最终答案。
+
+## 推荐长期方案
+
+长期收益最高的顺序不是“现在就选一个重方案”，而是分层推进：
+
+1. 先做属性治理和 query plan 约束，把字段白名单、属性过滤、排序、分页、表路由和执行边界收紧。
+2. 保持当前事实表 + `EventQueryBuilder` + `EventReader` 作为唯一读侧入口，先让 Realtime / Events 稳定可回归。
+3. 当发现少数明细路径反复成为热点时，再对这些路径选择性引入 projection。
+4. 当指标口径稳定、且页面读多写少时，再把稳定指标下沉到 materialized view 或小时聚合表。
+5. Funnels / Journeys / Retention 这类更复杂分析，单独按 query pattern 评估，不和 Realtime / Events 混成一锅。
+
+这条路的核心判断是：
+
+- 属性治理是长期底座。
+- projection 是局部提速。
+- materialized view 和小时聚合表是稳定指标的长期承载层。
+- 不把它们当成互相替代的单选题，而是当成不同层的长期组合。
+
 ## P1 执行步骤
 
 ### Step 1：新建仓库骨架
@@ -394,7 +536,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 | 查询白名单与过滤 | `FILTER_COLUMNS`、operator mapping、分页 | `EventQueryBuilder` 字段白名单、排序白名单、过滤 operator enum、分页上限和 typed property filter allowlist；属性过滤使用 ClickHouse tuple `IN` 半连接查询属性表，避免 correlated `EXISTS` 外层 alias 兼容问题；`simpletrack-saas` Events 页面现在也把 `event_name`、`distinct_id`、`limit`、`offset`、`sort_field`、`sort_direction` 做服务端归一化后再请求内部读回放；`simpletrack-anaysitics-service` 已把 runtime source config 的 `allowed_property_filters` 映射为 URL 编码 JSON `property_filter` 的服务层白名单，并把启动 source surface 下发给 ClickHouse query builder 兜底 | P1-002D 已完成，P1-005D 已补属性过滤入口，后续复杂查询继续复用 allowlist + 真实 ClickHouse e2e |
 | Realtime/Events 验收 | Realtime 短窗口、Events 分页明细 | `EventReader` 读取 ClickHouse query plan 结果；e2e 入口已增加 Redis/MySQL/ClickHouse 冷启动 readiness 重试，避免 compose 刚启动时 native handshake EOF 误伤验收；Events 产品页使用额外读取一条的 `hasMore` 模型，不做总数查询；内部读回放 token 可用 `ANALYTICS_SERVICE_QUERY_TOKENS_JSON` 做短窗口轮换，并可附带 `id`、`not_before`、`expires_at` 供运行时拒绝过期/未来 token 和记录审计日志 | P1-002E 已完成，P1-005D 已补页面分页交互、query token 轮换和生命周期校验，后续作为回归入口 |
 | Web tracker SDK | auto pageview、custom event、identify、performance | P1 已落地 SimpleTrack 浏览器 SDK，但已从 `analytics-core` 迁出；当前由 `simpletrack-anaysitics-service` 的 `/tracker.js` 静态交付，并通过 `data-write-key` 进入运行时 collect 服务 | P1-004 已完成；React/Next/Node/mobile SDK、CDN 版本化和 performance metrics 后续评审 |
-| ClickHouse 读侧优化 | materialized view、小时聚合表、projection、typed 属性 | ClickHouse adapter 的聚合表、projection、高频属性索引和迁移策略 | P1.5-001，P1 闭环后压测评审 |
+| ClickHouse 读侧优化 | materialized view、小时聚合表、projection、typed 属性 | ClickHouse adapter 的属性治理、query plan 约束、聚合表和 projection 分层策略 | P1.5-001，长期路径先做属性治理 + query plan 约束，再按查询稳定度引入 MV / 小时聚合表 / projection |
 | Performance metrics | LCP、INP、CLS、FCP、TTFB | 可作为事件类型或属性组进入协议扩展 | P2-001，P1 只预留承接能力 |
 
 实现顺序：
@@ -404,7 +546,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 3. P1-002C 正在按长期方案收口：`visit_id` 已进入 collect 契约、ClickHouse schema、event/property writer、reader 和 query builder；`simpletrack-anaysitics-service` 负责装配 visit resolver，`simpletrack-saas` runtime source 输出 server-only `visit_salt` / `visit_window_seconds`。
 4. P1-004 已完成并纠偏：浏览器 SDK 最短链路和 docs/quickstart 已改为 write key 接入，SDK 由 `simpletrack-anaysitics-service` 托管，不再属于 `analytics-core`；后续继续评审 geo、SDK 发布策略和多语言 SDK。
 5. P1-005D 正在推进：内部 `/v1/realtime`、`/v1/events` 已由 `simpletrack-anaysitics-service` 读回放，SaaS 页面只走 server-side helper；Events 已补白名单筛选、排序、属性过滤和 `hasMore` 分页，内部 query token 不进入浏览器，并已支持服务端短窗口轮换 allowlist、结构化生命周期和轮换命中/拒绝审计日志。
-6. P1 数据闭环稳定后，再做 P1.5-001 的 ClickHouse 读侧优化压测，不提前用 MV/projection 增加迁移复杂度。
+6. P1 数据闭环稳定后，P1.5-001 先做属性治理和 query plan 约束；projection、materialized view 和小时聚合表只在热点明细路径或稳定指标口径明确后逐步引入。
 
 ## 与上层产品的集成边界
 
@@ -479,6 +621,6 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 - 事件属性存储选择：typed rows、ClickHouse Map/JSON、原始 JSON + 高频属性展开的混合模型，分别对应哪些查询能力和迁移成本。
 - session/visit 隐私策略：`visit_id` 持久化方案已定，后续评审 salt 轮换、IP 保留策略、cookie/no-cookie、server identity、retention 默认值和 Sessions 产品页；DNT 浏览器侧 opt-in 已落地，后续只评审产品配置和 audit。
 - client info enrich 与 bot/IP 过滤的执行位置、配置面和失败语义。
-- ClickHouse 读侧优化何时引入 materialized view、projection、小时聚合表和高频属性索引，方案 B 多物理表如何批量迁移。
+- ClickHouse 读侧优化的压测阈值、projection / materialized view / 小时聚合表的具体落地顺序，以及方案 B 多物理表如何批量应用这些结构。
 - Web tracker SDK 与多语言 SDK 的阶段路线：P1 浏览器最短链路由 `simpletrack-anaysitics-service` 静态托管；React/Next/Node/mobile SDK 后续评审。
 - Performance metrics 是事件属性、独立事件类型还是独立模型，是否进入 P2。

@@ -24,6 +24,7 @@ P1 当前结论：
 - `analytics-service` 的 HTTP 入口是 Fiber v3；`analytics-core/collect` 仍保持框架无关。
 - `/v1/events` 和 `/v1/realtime` 是默认内部 readback 路径，但可通过 `ANALYTICS_SERVICE_EVENTS_PATH`、`ANALYTICS_SERVICE_REALTIME_PATH` 改路由。
 - 更复杂的聚合分析、Breakdown / Compare / Funnels / Journeys、salt 轮换、Sessions 专页和 retention 产品化放 P1.5/P2。
+- P1.5 ClickHouse 读侧优化采用长期分层路线：先做属性治理和 query plan 约束，保持 `EventQueryBuilder` / `EventReader` 为唯一读侧入口；projection 只用于热点明细路径，materialized view / 小时聚合表用于稳定指标和趋势查询。
 
 ## 1. 整体架构图
 
