@@ -411,6 +411,8 @@ P1.5 的目标不是把所有 ClickHouse 手段一次性上完，而是先把读
 
 本节是后续 `analytics-core` 读侧实现的约束规范，不只是当前方案说明。凡是修改 Events、Realtime、Breakdown、Dashboard、Goal、Funnels、Journeys、Retention 或其他 ClickHouse 查询能力，都必须遵守。
 
+`analytics-core` 仓库内的同步规范见 `src/analytics-core/docs/read-side-optimization-policy.md`。该文件把必须提交的 evidence、benchmark、适用边界和验证命令落到子仓，后续新增 projection、materialized view 或小时聚合表时必须同时满足本节和子仓策略文档。
+
 ### 入口规范
 
 - `EventQueryBuilder` 是唯一 query plan 构建入口。
@@ -602,7 +604,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 3. P1-002C 正在按长期方案收口：`visit_id` 已进入 collect 契约、ClickHouse schema、event/property writer、reader 和 query builder；`simpletrack-anaysitics-service` 负责装配 visit resolver，`simpletrack-saas` runtime source 输出 server-only `visit_salt` / `visit_window_seconds`。
 4. P1-004 已完成并纠偏：浏览器 SDK 最短链路和 docs/quickstart 已改为 write key 接入，SDK 由 `simpletrack-anaysitics-service` 托管，不再属于 `analytics-core`；后续继续评审 geo、SDK 发布策略和多语言 SDK。
 5. P1-005D 正在推进：内部 `/v1/realtime`、`/v1/events` 已由 `simpletrack-anaysitics-service` 读回放，SaaS 页面只走 server-side helper；Events 已补白名单筛选、排序、属性过滤和 `hasMore` 分页，内部 query token 不进入浏览器，并已支持服务端短窗口轮换 allowlist、结构化生命周期和轮换命中/拒绝审计日志。
-6. P1 数据闭环稳定后，P1.5-001 先做属性治理和 query plan 约束；当前已补 `readSidePolicy`、`EventQueryEvidence`、`PropertyCatalog` 基础契约、MySQL catalog adapter、`PropertyCatalogingEventWriter` 和 `simpletrack-anaysitics-service` ingestion 运行时装配；`simpletrack-anaysitics-service` 的 readback 响应已开始透出 `query_evidence` 与 `pressure`，其中 `pressure` 只是 low / medium / high 的 triage 桶；`analytics-core` 已新增 builder-only read-side shape benchmark、真实 ClickHouse EventReader benchmark、真实 ClickHouse BatchWriter benchmark、Redis Stream publish / subscribe+ack benchmark 和 `collect.Handler` 热路径 benchmark，固定 low realtime、medium scalar events、high property events 三类查询的 plan 构建/实际执行基线、当前单事件 native batch 写入热路径基线、队列 publish/consume/ack 基线，以及 collect normalize / identity / client enrich 基线；projection、materialized view 和小时聚合表只在 benchmark 基线、热点路径和稳定指标口径明确后逐步引入。
+6. P1 数据闭环稳定后，P1.5-001 先做属性治理和 query plan 约束；当前已补 `readSidePolicy`、`EventQueryEvidence`、`PropertyCatalog` 基础契约、MySQL catalog adapter、`PropertyCatalogingEventWriter` 和 `simpletrack-anaysitics-service` ingestion 运行时装配；`simpletrack-anaysitics-service` 的 readback 响应已开始透出 `query_evidence` 与 `pressure`，其中 `pressure` 只是 low / medium / high 的 triage 桶；`analytics-core` 已新增 builder-only read-side shape benchmark、真实 ClickHouse EventReader benchmark、真实 ClickHouse BatchWriter benchmark、GORM `CreateInBatches` 对照 benchmark、Redis Stream publish / subscribe+ack benchmark、`collect.Handler` 热路径 benchmark 和 `docs/read-side-optimization-policy.md`，固定 low realtime、medium scalar events、high property events 三类查询的 plan 构建/实际执行基线、当前单事件 native/GORM 写入对照基线、队列 publish/consume/ack 基线，以及 collect normalize / identity / client enrich 基线；projection、materialized view 和小时聚合表只在 query evidence、benchmark 基线、热点路径、稳定指标口径和回归计划明确后逐步引入。
 
 ## 与上层产品的集成边界
 
