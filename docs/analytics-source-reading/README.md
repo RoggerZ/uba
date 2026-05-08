@@ -13,7 +13,7 @@
 
 | 子仓 | commit id | 说明 |
 | --- | --- | --- |
-| `src/analytics-core` | `ee455ac25790719cbd42dd7a5bb41492965741d9` | P1 数据管道、`visit_id` 持久化、Events/Realtime query builder 和 P1.5 query evidence 均已收口；历史章节内保留早期 commit 引用作为当时源码证据 |
+| `src/analytics-core` | `423d58cafd343b0e937a682e2b964a731ef15d77` | P1 数据管道、`visit_id` 持久化、Events/Realtime query builder、P1.5 query evidence 和 property catalog 基础契约均已收口；历史章节内保留早期 commit 引用作为当时源码证据 |
 | `src/analytics-service` | `09656b685dd8e9f329c3546764ff80eddf82605f` | Fiber runtime、`/collect`、`/tracker.js`、内部 `/v1/realtime` / `/v1/events`、HTTP resolver 和 readback API 均已收口 |
 | `src/simpletrack-saas` | `bce33354ae27dcba80e2f1ce77ff7ac2c5ed8765` | runtime-source API、Websites 控制面、Realtime/Events server-side readback helper 均已收口 |
 
@@ -29,6 +29,8 @@ P1 当前结论：
 - 当前第一步实现是 `readSidePolicy`：在 ClickHouse query builder 内统一管理 query limit、filter cap 和 property allowlist，外部 `storage.EventQueryBuilder` / `storage.EventReader` 接口不变。
 - 当前第二步实现是 `EventQueryEvidence`：`storage.EventQueryPlan.QueryEvidence()` 会暴露 query family、read path、optimization、filter count、property table usage 和 sort evidence，用来支持后续读侧取舍。
 - 代码证据：`EventQueryEvidence` / `QueryEvidence()` 位于 `仓库: analytics-core, commit: ee455ac, file: storage/event_query.go:132-172`；ClickHouse evidence 生成位于 `仓库: analytics-core, commit: ee455ac, file: storage/clickhouse/query_builder.go:388-411`。
+- 当前第三步实现是属性字典基础契约：`PropertyCatalogEntry` / `PropertyCatalog` 把 event/user property 的 source-scoped selector、value type、first_seen_at 和 last_seen_at 抽成治理模型，MySQL adapter 落到 `property_catalog` 初始化表；不记录会被重试放大的计数字段。
+- 代码证据：storage-neutral catalog 位于 `仓库: analytics-core, commit: 423d58c, file: storage/property_catalog.go:10-38`；MySQL adapter 位于 `仓库: analytics-core, commit: 423d58c, file: storage/mysql/property_catalog.go:13-91`。
 
 ## 1. 整体架构图
 
