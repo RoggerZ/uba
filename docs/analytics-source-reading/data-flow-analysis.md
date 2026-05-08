@@ -252,7 +252,7 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 5. service 把 `EventRecord` 转成 JSON response，并把 properties 字符串转成 `json.RawMessage`，同时把 evidence 转成 `query_evidence`。
 6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前会进入内部 readback JSON，帮助服务端评审 query shape；它不是 public tracker.js 响应字段。
 
-代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: 979a29f, file: storage/event_query.go:133-180`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: 979a29f, file: storage/clickhouse/query_builder.go:390-417`；服务层响应转换位于 `仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:558-571`。
+代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: 979a29f, file: storage/event_query.go:133-180`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: 979a29f, file: storage/clickhouse/query_builder.go:390-417`；服务层响应转换位于 `仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:558-578`。
 
 ## 3. 处理动作分析
 
