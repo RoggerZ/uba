@@ -25,6 +25,7 @@
 
 | 日期 | 修订内容 | 影响范围 |
 | --- | --- | --- |
+| 2026-05-08 | 将 ClickHouse 读侧长期方案提升为实施规范：固化唯一读侧入口、分层推进顺序、禁止事项、projection / MV / 小时聚合表引入门槛和验收规则，并同步写入 `AGENTS.md` 防止后续偏离方向 | P1.5-001、analytics-core、ClickHouse 读侧规范、AGENTS.md |
 | 2026-05-08 | 细化 P1.5-001 ClickHouse 读侧优化取舍：明确 projection、materialized view、小时聚合表和属性治理的适用边界，推荐长期分层路线为“先做属性治理和 query plan 约束，再按稳定查询引入 MV / 小时聚合表 / projection” | P1.5-001、analytics-core、ClickHouse 读侧优化 |
 | 2026-05-07 | P1-005D 与 P1-005 收口为已完成：Realtime / Events 内部读接口、query routes、query token 轮换、property filter 白名单、visit_id 透传、SaaS readback helper、Website selector、repeatable `property_filter` 和组合查询回归均已验证；更复杂的聚合分析与 Breakdown/Compare 维持到 P1.5/P2 | P1-005、P1-005D、analytics-service、simpletrack-saas、Events、Realtime |
 | 2026-05-07 | P1-005B 与 P1-005C 收口为已完成：collect runtime service 已具备 Fiber `/collect`、write key/source enforcement、Redis durable enqueue、可选同进程 ingestion worker、启动 schema surface 校验和本地/小部署 routed table auto-create；SaaS control-plane runtime enforcement 已具备 HTTP resolver、ETag 条件重验证、disable/delete 后撤权、runtime-source API、Websites CRUD/enable/disable/delete、active source quota 和 runtime source 字段回写 | P1-005B、P1-005C、analytics-service、simpletrack-saas、runtime source、control plane |
@@ -208,6 +209,7 @@
 - `simpletrack-anaysitics-service` 主线（本地仓库 `src/analytics-service`）：已完成本地仓库、服务骨架、Fiber runtime app、memory / HTTP runtime config resolver、`/collect` 运行时校验、`/tracker.js` 静态托管、collect 单测、Redis durable enqueue、可选 ingestion worker 装配、本地/小部署 ClickHouse routed table auto migration，以及 `P1-005D` 内部 Events / Realtime 查询入口、query routes 配置、Swagger UI / OpenAPI 文件、query token 轮换 allowlist、结构化生命周期、source-scoped 属性过滤白名单、`visit_id` 持久字段读取和 control-plane revoke handler 回归；`simpletrack-saas` 内部 runtime-source API、Websites 真实 source 管理最小闭环（create/list/update/enable/disable/delete）、visit resolver runtime 配置、Realtime/Events 页面读回放、visit_id 可见列、页面级回归、client-safe Website selector、Events 时间窗口预设、repeatable property_filter 多条件查询和 P1 active-source quota 策略已落地，复杂聚合分析维持到 P1.5/P2。
 - `analytics-core`、`simpletrack-anaysitics-service` 和 `simpletrack-saas` 近期又补了 Events 组合查询回归：同一条请求里同时携带 `event_name`、`distinct_id`、`visit_id`、分页、排序、时间窗口和 repeatable `property_filter` 时，SaaS 会保持完整 readback state，服务端会把同一组条件送入 `analytics-core`，core 会生成参数化 ClickHouse query plan。
 - `analytics-core` 的 ClickHouse 读侧优化已经从“预研名词”细化成可执行分层路线：属性治理和 query plan 约束先做，热点明细路径再择机引入 projection，稳定指标再落到 materialized view 或小时聚合表。
+- `analytics-core` 的 ClickHouse 读侧长期规范已写入实施方案和 `AGENTS.md`：后续读侧实现必须保持 `EventQueryBuilder` / `EventReader` / `TableRouter` 边界，不允许把 ClickHouse SQL 或物理表名扩散到 service、handler 或产品页面。
 - `simpletrack/prototype/simpletrack-enterprise-mvp/` 继续作为 P0/P1 评审原型，后续围绕当前页面集合补齐更清晰的 contract / mock / production 映射。
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
 - Umami 官方源码只读快照已就位，主要用于参考分析对象体系、tracker 采集、事件属性、Realtime/Events 读侧、ClickHouse 明细与聚合模型；P1 数据管道源码分章节深解和 Q&A 概念解释已落地到 `simpletrack/docs/umami/docs/源码实现参考/`。

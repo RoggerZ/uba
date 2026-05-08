@@ -407,6 +407,60 @@ P1.5 的目标不是把所有 ClickHouse 手段一次性上完，而是先把读
 - materialized view 和小时聚合表是稳定指标的长期承载层。
 - 不把它们当成互相替代的单选题，而是当成不同层的长期组合。
 
+## ClickHouse 读侧长期规范
+
+本节是后续 `analytics-core` 读侧实现的约束规范，不只是当前方案说明。凡是修改 Events、Realtime、Breakdown、Dashboard、Goal、Funnels、Journeys、Retention 或其他 ClickHouse 查询能力，都必须遵守。
+
+### 入口规范
+
+- `EventQueryBuilder` 是唯一 query plan 构建入口。
+- `EventReader` 是唯一 query plan 执行入口。
+- `simpletrack-anaysitics-service` 只能把经过 runtime source 校验后的查询参数传入 `analytics-core`，不能拼接 ClickHouse SQL。
+- `simpletrack-saas` 只能通过服务端 readback helper 调用内部查询 API，不能直接连接 ClickHouse，也不能感知动态物理表名。
+- `TableRouter` 是唯一物理表路由入口，handler、service、产品页面和 analysis 模块都不能自己拼 `events_*` 表名。
+
+### 分层推进规范
+
+读侧优化必须按以下顺序推进：
+
+1. **属性治理和 query plan 约束先行**：先稳定字段白名单、属性白名单、operator enum、排序字段、分页上限、时间窗、表路由和参数绑定。
+2. **明细查询先保持事实表读取**：Realtime 和 Events 默认读取事实事件表，不提前强制走聚合表。
+3. **projection 只用于热点明细路径**：只有当某类明细查询反复成为热点，并且查询形状稳定时，才允许为对应物理表增加 projection。
+4. **materialized view 只用于稳定派生口径**：只有当指标定义稳定、读多写少、且查询已经不适合实时聚合时，才允许新增 MV。
+5. **小时聚合表只用于趋势和固定指标**：Dashboard、Trend、Goal count、Top events、Top pages 等固定时间粒度查询可进入小时聚合表；Raw Events 明细列表不得依赖小时聚合表。
+6. **复杂分析单独建模**：Funnels、Journeys、Retention、Attribution 不能复用 Realtime / Events 的临时优化结构硬凑，应按自己的 query pattern 单独设计。
+
+### 禁止事项
+
+- 禁止在 `analytics-service` handler、`simpletrack-saas` 页面或 API helper 中出现 ClickHouse SQL。
+- 禁止绕过 `EventQueryBuilder` 直接在业务模块中写动态 SQL。
+- 禁止绕过 `EventReader` 直接扫描 ClickHouse row 并返回产品 DTO。
+- 禁止为了短期性能把 `visit_id`、`property_filter`、排序、分页或 allowlist 语义回退。
+- 禁止在没有 query pattern、压测数据和回归测试的情况下提前新增 MV、projection 或小时聚合表。
+- 禁止把 projection / MV / 小时聚合表作为彼此替代的单选题；它们属于不同层的优化手段。
+
+### 引入门槛
+
+新增 projection、materialized view 或小时聚合表前，必须先补齐这些材料：
+
+- 目标查询属于哪个产品能力：Realtime、Events、Dashboard、Breakdown、Goal、Funnels、Journeys、Retention 等。
+- 当前查询的 query plan、过滤字段、排序字段、时间范围、分页方式和预期数据量级。
+- 为什么属性治理和 query plan 约束不足以解决问题。
+- 为什么选择 projection、MV 或小时聚合表，而不是另外两个。
+- 对方案 B 多物理表的影响：是否每个 `tenant/project/source` 物理表都需要同构结构，如何批量创建和校验。
+- 对写入链路的影响：是否增加写入延迟、写放大、失败恢复或数据一致性风险。
+- 回归测试计划：至少覆盖正常查询、非法字段、非法属性、分页、排序、`visit_id` 和跨 source 边界。
+
+### 验收规范
+
+读侧优化完成后必须证明：
+
+- 原有 Realtime / Events 查询契约不退化。
+- `property_filter` 仍然走 source-scoped allowlist 和参数绑定。
+- `visit_id` 仍然读取存储字段，不回退到 readback 派生。
+- ClickHouse 物理结构只存在于 `analytics-core/storage/clickhouse` adapter 内。
+- 相关实施决策 README、分阶段计划和 `docs/analytics-source-reading/` 已同步。
+
 ## P1 执行步骤
 
 ### Step 1：新建仓库骨架
