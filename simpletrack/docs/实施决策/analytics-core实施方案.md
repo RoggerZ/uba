@@ -494,6 +494,8 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 
 这份基线和复测只作为后续对比依据，不触发立即新增 projection、materialized view 或小时聚合表。下一条重点观察候选仍是 typed property 过滤读路径；当前 query plan、value-free property filter shape 和 ClickHouse explain 已补齐，但是否进入物理结构评审，仍要继续看更大数据量、稳定 query pattern 和回归计划。完整记录见 `docs/analytics-source-reading/read-side-benchmark-baseline.md`。
 
+补充结对审查后，`analytics-core` 已按 `$ai-slop-cleaner` 的小范围流程修复 query evidence 快照边界：先用 `go test ./storage ./storage/clickhouse` 锁住行为，再在 `NewEventQueryPlan` 和 `QueryEvidence()` 两个边界复制 `PropertyFilters` slice，最后补 `ExampleEventQueryPlan_QueryEvidence` 和 `TestEventQueryPlanQueryEvidenceClonesPropertyFilters`。这条规则的长期含义是：query evidence 可以被 service 暴露和操作员阅读，但调用方不能通过修改返回 slice 反向污染查询计划内保存的 canonical evidence。
+
 同日已补第一轮 ClickHouse explain 证据：
 
 ```powershell
