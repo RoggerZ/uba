@@ -14,7 +14,7 @@
 | 子仓 | commit id | 工作区状态说明 |
 | --- | --- | --- |
 | `src/analytics-service` | `09656b685dd8e9f329c3546764ff80eddf82605f` | `git status --short` 仅显示未跟踪 `.idea/`，本文引用的源码文件与 `HEAD` 一致 |
-| `src/analytics-core` | `7c296670842d0ce95fefa15703c724c794e98d17` | `git status --short` 仅显示未跟踪 `.idea/`，本文引用源码文件与 `HEAD` 一致 |
+| `src/analytics-core` | `ee455ac25790719cbd42dd7a5bb41492965741d9` | `git status --short` 仅显示未跟踪 `.idea/`；本文新增 query evidence 说明引用 `HEAD`，历史 P1 段落保留原始 commit 证据 |
 | `src/simpletrack-saas` | `bce33354ae27dcba80e2f1ce77ff7ac2c5ed8765` | 基于 `HEAD bce33354ae27dcba80e2f1ce77ff7ac2c5ed8765` + 工作区未提交改动；当前 `packages/database/prisma/zod/index.ts` 有未提交改动、`.omx/` 未跟踪，本文引用的 readback / runtime-source 文件与 `HEAD` 一致 |
 
 后文引用具体代码时使用格式：`仓库: <repo>, commit: <sha>, file: <path>:<line>`；跨多行使用 `<path>:<start>-<end>`。
@@ -438,23 +438,23 @@ parsed, err = time.Parse(time.RFC3339, value)
 
 #### 如何调用 QueryReader
 
-`handleRealtime` 调 `ListRealtime`，底层 ClickHouse reader 会先让 builder 生成 Realtime query plan，再执行。证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/event_reader.go:51-64`
+`handleRealtime` 调 `ListRealtime`，底层 ClickHouse reader 会先让 builder 生成 Realtime query plan，再执行。query plan 现在还会通过 `QueryEvidence()` 暴露读侧证据，但这份 evidence 只用于工程取舍和后续压测分析，不进入 Realtime 产品响应。证据：`仓库: analytics-core, commit: ee455ac, file: storage/clickhouse/event_reader.go:48-59`
 
 ```go
 plan, err := r.builder.BuildRealtimeQuery(ctx, query)
 return r.executePlan(ctx, plan)
 ```
 
-Realtime 在 query builder 里复用 Events 查询，只是把 `Since` 映射成 `EventListQuery.From`，并使用较小默认 limit。证据：`仓库: analytics-core, commit: 7c296670842d, file: storage/clickhouse/query_builder.go:209-224`
+Realtime 在 query builder 里复用 Events 查询，只是把 `Since` 映射成 `EventListQuery.From`，并使用较小默认 limit；长期实现上它仍然会被标记成独立的 query family，避免后续 Realtime 和 Events 读侧优化证据混在一起。证据：`仓库: analytics-core, commit: ee455ac, file: storage/clickhouse/query_builder.go:251-267`
 
 ```go
-return b.BuildEventsQuery(ctx, storage.EventListQuery{
+return b.buildEventsQuery(ctx, storage.EventListQuery{
     TenantID: query.TenantID,
     ProjectID: query.ProjectID,
     SourceID: query.SourceID,
     From: query.Since,
     Limit: b.normalizeLimit(query.Limit, defaultRealtimeLimit),
-})
+}, storage.EventQueryFamilyRealtime)
 ```
 
 #### 返回数据格式
@@ -961,8 +961,8 @@ sequenceDiagram
     Handler->>Source: AllowsPropertyFilter for each property_filter
     Handler->>Reader: ListEvents(EventListQuery)
     Reader->>Builder: BuildEventsQuery
-    Builder->>Builder: table route + allowlists + limit cap
-    Builder-->>Reader: EventQueryPlan
+    Builder->>Builder: table route + allowlists + limit cap + evidence
+    Builder-->>Reader: EventQueryPlan + QueryEvidence()
     Reader-->>Handler: []EventRecord
     Handler-->>SaaS: 200 {source, items, limit, offset, from, to}
 ```
@@ -974,7 +974,7 @@ flowchart LR
     Http["HTTP query<br/>write_key, since?, limit?"] --> Token["query token decision"]
     Token --> Source["SourceConfig<br/>tenant/project/source"]
     Source --> RealtimeQuery["storage.RealtimeQuery<br/>TenantID ProjectID SourceID Since Limit"]
-    RealtimeQuery --> Plan["BuildRealtimeQuery<br/>maps Since to EventListQuery.From"]
+    RealtimeQuery --> Plan["BuildRealtimeQuery<br/>maps Since to EventListQuery.From<br/>QueryEvidence family=realtime"]
     Plan --> Records["[]storage.EventRecord"]
     Records --> Response["queryRealtimeResponse<br/>source items since limit"]
 ```
@@ -987,7 +987,7 @@ flowchart LR
     Source --> PF["[]storage.EventPropertyFilter<br/>source allowlist checked"]
     PF --> EventList["storage.EventListQuery"]
     EventList --> Builder["EventQueryBuilder<br/>route + allowlist + cap"]
-    Builder --> Plan["EventQueryPlan<br/>SQL + Args + Limit"]
+    Builder --> Plan["EventQueryPlan<br/>SQL + Args + Limit + QueryEvidence()"]
     Plan --> Records["[]storage.EventRecord"]
     Records --> Response["queryEventsResponse<br/>source items limit offset from to"]
 ```
@@ -1384,7 +1384,7 @@ flowchart TD
     SourceAllow -- "no" --> NotAllowed["400 not allowlisted"]
     SourceAllow -- "yes" --> Typed["assign typed scalar slot"]
     Typed --> CoreGuard["EventQueryBuilder propertySelectorAllowed"]
-    CoreGuard --> Query["ClickHouse query plan"]
+    CoreGuard --> Query["ClickHouse query plan + QueryEvidence()"]
 ```
 
 ## 7. 关键概念通俗解释

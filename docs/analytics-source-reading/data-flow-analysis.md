@@ -239,7 +239,7 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 | `EventPropertyFilter` | `storage/event_query.go` | scope/name/type/operator/value | struct | typed property 过滤 |
 
 这里的 `readback` 指“读回”链路：由受信服务端用内部 token 从查询存储读取已经接收并落库的事件，供 Realtime / Events 页面展示。它不是浏览器上报，也不是把历史事件重新投递消费的 replay。
-| `EventQueryPlan` | `storage/event_query.go` | SQL/Args/PhysicalTable/Limit | struct | ClickHouse 查询计划 |
+| `EventQueryPlan` | `storage/event_query.go` | SQL/Args/PhysicalTable/Limit/QueryEvidence | struct | ClickHouse 查询计划 |
 | `EventRecord` | `storage/event_query.go` | row record | struct | storage-neutral 查询返回记录 |
 | `queryEventResponse` | `collectapi/query.go` | JSON response | struct | HTTP 输出格式 |
 
@@ -247,9 +247,12 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 
 1. HTTP query string 解析成 `storage.EventListQuery` 或 `storage.RealtimeQuery`。
 2. `EventQueryBuilder` 校验时间窗、limit、offset、filter 数量、排序字段、filter 字段、property allowlist。
-3. builder 生成 SQL + bound args，不执行。
+3. builder 生成 SQL + bound args + query evidence，不执行。
 4. `EventReader` 执行 SQL，把 `eventRowModel` 转成 `storage.EventRecord`。
 5. service 把 `EventRecord` 转成 JSON response，并把 properties 字符串转成 `json.RawMessage`。
+6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前不直接进入产品 JSON。
+
+代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: ee455ac, file: storage/event_query.go:132-172`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: ee455ac, file: storage/clickhouse/query_builder.go:388-411`。
 
 ## 3. 处理动作分析
 
@@ -281,7 +284,7 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 | 查询认证 | `requireQueryToken` | bearer token + credentials | 拒绝未知/过期/未生效 token |
 | 查询 source | `resolveQuerySource` | write key -> `SourceConfig` | 查询也绑定同一个 source 边界 |
 | 解析查询参数 | `handleEvents/handleRealtime` | query string | 生成 `EventListQuery` / `RealtimeQuery` |
-| 构建 SQL plan | `EventQueryBuilder` | query + table router + allowlist | 输出 SQL、args、physical table、limit |
+| 构建 SQL plan | `EventQueryBuilder` | query + table router + allowlist | 输出 SQL、args、physical table、limit、QueryEvidence |
 | 执行查询 | `EventReader` | `EventQueryPlan` | Raw SQL -> row model -> `EventRecord` |
 | 响应转换 | `toQueryEventResponse` | `EventRecord` | 时间格式化，JSON 字符串转 RawMessage |
 
@@ -402,8 +405,8 @@ sequenceDiagram
     API->>API: Origin check + parse query params
     API->>Reader: ListEvents / ListRealtime
     Reader->>Builder: BuildEventsQuery / BuildRealtimeQuery
-    Builder->>Builder: route table, validate filters, build SQL + args
-    Builder-->>Reader: EventQueryPlan
+    Builder->>Builder: route table, validate filters, build SQL + args + evidence
+    Builder-->>Reader: EventQueryPlan + QueryEvidence()
     Reader->>CH: Raw(plan.SQL, plan.Args...)
     CH-->>Reader: event rows
     Reader-->>API: []EventRecord
@@ -506,9 +509,10 @@ XAdd(... Values: map[string]any{"envelope": payload})
 主要变化：
 
 - query string 变成 typed query struct。
-- query struct 变成 SQL + bound args。
+- query struct 变成 SQL + bound args + `QueryEvidence()`。
 - ClickHouse row 变成 storage-neutral `EventRecord`。
 - `Properties/UserProperties` 字符串如果是合法 JSON，就作为 JSON 返回；否则作为字符串 JSON 返回。
+- `QueryEvidence()` 只描述 query family、read path、optimization、filter count、属性表参与和排序口径；它是后续 projection / materialized view / 小时聚合表取舍证据，不是产品事件响应字段。
 
 ## 9. 数据流控制逻辑
 

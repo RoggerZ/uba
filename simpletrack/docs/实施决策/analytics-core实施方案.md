@@ -459,6 +459,7 @@ P1.5 的目标不是把所有 ClickHouse 手段一次性上完，而是先把读
 - 原有 Realtime / Events 查询契约不退化。
 - `property_filter` 仍然走 source-scoped allowlist 和参数绑定。
 - `visit_id` 仍然读取存储字段，不回退到 readback 派生。
+- `EventQueryPlan.QueryEvidence()` 必须能说明当前查询家族、读路径、优化策略、属性表参与情况、过滤数量和排序口径，不能只靠读 SQL 字符串判断。
 - ClickHouse 物理结构只存在于 `analytics-core/storage/clickhouse` adapter 内。
 - 相关实施决策 README、分阶段计划和 `docs/analytics-source-reading/` 已同步。
 
