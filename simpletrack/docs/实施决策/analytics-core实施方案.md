@@ -465,6 +465,23 @@ P1.5 的目标不是把所有 ClickHouse 手段一次性上完，而是先把读
 - ClickHouse 物理结构只存在于 `analytics-core/storage/clickhouse` adapter 内。
 - 相关实施决策 README、分阶段计划和 `docs/analytics-source-reading/` 已同步。
 
+### 当前真实 ClickHouse reader 基线
+
+2026-05-08 已按 `src/analytics-core/docs/read-side-optimization-policy.md` 跑过一次真实 ClickHouse reader benchmark：
+
+```powershell
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
+go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution' -benchmem -count=3
+```
+
+结果摘要：
+
+- `low_realtime`：约 8.6-10.4ms/op。
+- `medium_events_scalar`：约 8.6-9.7ms/op。
+- `high_events_property`：约 15.2-16.3ms/op。
+
+这份基线只作为后续对比依据，不触发立即新增 projection、materialized view 或小时聚合表。完整记录见 `docs/analytics-source-reading/read-side-benchmark-baseline.md`。
+
 ## P1 执行步骤
 
 ### Step 1：新建仓库骨架
