@@ -23,13 +23,13 @@ P1 当前结论：
 - `visit_id` 是 canonical analytics visit key，也就是分析口径里的“一次访问”稳定主键：collect 写入前确定，入库存储，Realtime / Events 直接读取，不再做 readback 临时派生。
 - `analytics-service` 的 HTTP 入口是 Fiber v3；`analytics-core/collect` 仍保持框架无关。
 - `/v1/events` 和 `/v1/realtime` 是默认内部 readback 路径，但可通过 `ANALYTICS_SERVICE_EVENTS_PATH`、`ANALYTICS_SERVICE_REALTIME_PATH` 改路由。
-- `analytics-service` 的 readback 响应现在会透出 `query_evidence`，帮助判断 query family、read path、optimization、过滤数量、属性表参与情况和初始 pressure 分档；这些证据来自 `analytics-core` 的 `EventQueryPlan.QueryEvidence()`，不是 SQL 文本。
+- `analytics-service` 的 readback 响应现在会透出 `query_evidence`，帮助判断 query family、read path、optimization、过滤数量、属性表参与情况和初始 pressure 分档；其中 `pressure` 只是 triage 桶，不是 SLA，也不是自动扩缩容信号。它们来自 `analytics-core` 的 `EventQueryPlan.QueryEvidence()`，不是 SQL 文本。
 - 更复杂的聚合分析、Breakdown / Compare / Funnels / Journeys、salt 轮换、Sessions 专页和 retention 产品化放 P1.5/P2。
 - P1.5 ClickHouse 读侧优化采用长期分层路线：先做属性治理和 query plan 约束，保持 `EventQueryBuilder` / `EventReader` 为唯一读侧入口；projection 只用于热点明细路径，materialized view / 小时聚合表用于稳定指标和趋势查询。
 - 读侧规范已经固化到 `simpletrack/docs/实施决策/analytics-core实施方案.md`：ClickHouse 物理结构只能留在 `analytics-core/storage/clickhouse` adapter 内，service handler 和 SaaS 页面不得拼 SQL 或物理表名。
 - 当前第一步实现是 `readSidePolicy`：在 ClickHouse query builder 内统一管理 query limit、filter cap 和 property allowlist，外部 `storage.EventQueryBuilder` / `storage.EventReader` 接口不变。
-- 当前第二步实现是 `EventQueryEvidence`：`storage.EventQueryPlan.QueryEvidence()` 会暴露 query family、read path、optimization、filter count、property table usage 和 sort evidence，用来支持后续读侧取舍。
-- 代码证据：`EventQueryEvidence` / `QueryEvidence()` 位于 `仓库: analytics-core, commit: ee455ac, file: storage/event_query.go:132-172`；ClickHouse evidence 生成位于 `仓库: analytics-core, commit: ee455ac, file: storage/clickhouse/query_builder.go:388-411`。
+- 当前第二步实现是 `EventQueryEvidence`：`storage.EventQueryPlan.QueryEvidence()` 会暴露 query family、read path、optimization、filter count、property table usage 和 sort evidence，用来支持后续读侧取舍；`pressure` 只是这组证据的派生分档，当前分为 low / medium / high 三档。
+- 代码证据：`EventQueryEvidence` / `QueryEvidence()` 位于 `仓库: analytics-core, commit: ee455ac, file: storage/event_query.go:132-172`；ClickHouse evidence 生成位于 `仓库: analytics-core, commit: ee455ac, file: storage/clickhouse/query_builder.go:388-411`；pressure triage 常量与测试位于 `仓库: analytics-service, commit: a962495, file: internal/collectapi/query.go:79-82` 和 `internal/collectapi/handler_test.go:553-595`。
 - 当前第三步实现是属性字典基础契约和 ingestion 装配：`PropertyCatalogEntry` / `PropertyCatalog` 把 event/user property 的 source-scoped selector、value type、first_seen_at 和 last_seen_at 抽成治理模型，MySQL adapter 落到 `property_catalog` 初始化表；`PropertyCatalogingEventWriter` 在主事件写入成功后做 replay-safe metadata upsert，不记录会被重试放大的计数字段。
 - 代码证据：storage-neutral catalog 位于 `仓库: analytics-core, commit: 423d58c, file: storage/property_catalog.go:10-38`；MySQL adapter 位于 `仓库: analytics-core, commit: 423d58c, file: storage/mysql/property_catalog.go:13-91`；cataloging writer 位于 `仓库: analytics-core, commit: e775e3e8764378261ce94cbd3a8d38dd3d3c0410, file: storage/property_cataloging_writer.go:11-70`；运行时装配位于 `仓库: analytics-service, commit: 14f8aaabb80e52de4849704671124229ba3be339, file: internal/runtime/worker.go:81-127`；启动期 MySQL 表校验位于 `仓库: analytics-service, commit: 14f8aaabb80e52de4849704671124229ba3be339, file: internal/runtime/worker.go:130-151`。
 
