@@ -7,8 +7,18 @@
 
 ## 本次命令
 
+默认 10k 行基线：
+
 ```powershell
 $env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
+go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution' -benchmem -count=3
+```
+
+100k 行 pressure run：
+
+```powershell
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS='100000'
 go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution' -benchmem -count=3
 ```
 
@@ -26,7 +36,7 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 - benchmark 场景覆盖 low realtime、medium scalar events、high property events：`仓库: analytics-core, commit: 979a29f, file: internal/e2e/clickhouse_reader_benchmark_test.go:78-147`。
 - 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: 979a29f, file: internal/e2e/clickhouse_reader_benchmark_test.go:149-170`。
 
-## 本次结果
+## 默认 10k 行结果
 
 | 场景 | 3 次结果 | 读侧含义 |
 | --- | --- | --- |
@@ -48,6 +58,28 @@ BenchmarkEventReaderClickHouseExecution/high_events_property-20       79  158385
 BenchmarkEventReaderClickHouseExecution/high_events_property-20       85  16254566 ns/op  206283 B/op  3594 allocs/op
 ```
 
+## 100k 行 pressure run 结果
+
+| 场景 | 3 次结果 | 与 10k 基线的关系 |
+| --- | --- | --- |
+| `low_realtime` | `13.47ms/op`, `13.02ms/op`, `11.63ms/op` | 有上升，但仍是 direct fact table 可接受观察区 |
+| `medium_events_scalar` | `11.09ms/op`, `11.58ms/op`, `10.74ms/op` | 有上升，但没有达到必须新增物理结构的证据强度 |
+| `high_events_property` | `34.18ms/op`, `31.27ms/op`, `32.37ms/op` | 相比 10k 基线约 2x，成为下一条重点观察候选 |
+
+原始输出：
+
+```text
+BenchmarkEventReaderClickHouseExecution/low_realtime-20               76  13465708 ns/op  162748 B/op  3225 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar-20      100  11092991 ns/op  167096 B/op  3346 allocs/op
+BenchmarkEventReaderClickHouseExecution/high_events_property-20       39  34184221 ns/op  200720 B/op  3590 allocs/op
+BenchmarkEventReaderClickHouseExecution/low_realtime-20               93  13023144 ns/op  165853 B/op  3227 allocs/op
+BenchmarkEventReaderClickHouseExecution/low_realtime-20              109  11627696 ns/op  163816 B/op  3226 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar-20      100  11577511 ns/op  167105 B/op  3346 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar-20      100  10739546 ns/op  167066 B/op  3345 allocs/op
+BenchmarkEventReaderClickHouseExecution/high_events_property-20       34  31274535 ns/op  199882 B/op  3590 allocs/op
+BenchmarkEventReaderClickHouseExecution/high_events_property-20       32  32368522 ns/op  200155 B/op  3590 allocs/op
+```
+
 ## 当前判断
 
 本次基线只证明三类读形状在本地 ClickHouse 上可以稳定执行，不证明现在必须引入 projection、materialized view 或小时聚合表。
@@ -57,5 +89,6 @@ BenchmarkEventReaderClickHouseExecution/high_events_property-20       85  162545
 - Realtime / Events 默认走 direct fact table。
 - `EventQueryBuilder` / `EventReader` 仍是唯一读侧入口。
 - `query_evidence` 继续作为后续优化评审输入。
+- 下一条重点观察候选是 `high_events_property`：100k 行下已连续出现 31-34ms/op，但还需要结合 query plan、ClickHouse explain、目标数据量和回归计划决定是否只优化属性表治理，还是进入 projection / MV / 小时聚合表评审。
 
 只有当同一 query shape 在更大数据量或连续 benchmark 中稳定超过基线，并且无法通过属性治理、过滤白名单、limit cap、时间窗约束解决时，才进入 projection / MV / 小时聚合表评审。

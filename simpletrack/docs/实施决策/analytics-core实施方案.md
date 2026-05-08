@@ -480,7 +480,13 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 - `medium_events_scalar`：约 8.6-9.7ms/op。
 - `high_events_property`：约 15.2-16.3ms/op。
 
-这份基线只作为后续对比依据，不触发立即新增 projection、materialized view 或小时聚合表。完整记录见 `docs/analytics-source-reading/read-side-benchmark-baseline.md`。
+随后用 `ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS=100000` 做 100k 行 pressure run：
+
+- `low_realtime`：约 11.6-13.5ms/op。
+- `medium_events_scalar`：约 10.7-11.6ms/op。
+- `high_events_property`：约 31.3-34.2ms/op。
+
+这份基线只作为后续对比依据，不触发立即新增 projection、materialized view 或小时聚合表。下一条重点观察候选是 typed property 过滤读路径；是否进入物理结构评审，还需要补 query plan、ClickHouse explain、目标数据量和回归计划。完整记录见 `docs/analytics-source-reading/read-side-benchmark-baseline.md`。
 
 ## P1 执行步骤
 
