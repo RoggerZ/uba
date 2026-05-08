@@ -3,7 +3,7 @@
 > 记录日期：2026-05-08
 > 仓库：`src/analytics-core`
 > 初始基线 commit：`1e65684eff8a90d5eb210052e4566d03b7d1c984`
-> 最近复测 commit：`4393bbd0bdccf41b76f97670e9a57b26f3ecbd2a`
+> 最近复测 commit：`5bac8d8e64234f711fe567e5df865d894e1a2409`
 > 目标：为 P1.5 ClickHouse 读侧优化提供真实 ClickHouse 基线，后续是否引入 projection、materialized view 或小时聚合表必须先和这份基线对比。
 
 ## 本次命令
@@ -23,6 +23,14 @@ $env:ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS='100000'
 go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution' -benchmem -count=3
 ```
 
+500k 行 pressure run：
+
+```powershell
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS='500000'
+go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution' -benchmem -count=3
+```
+
 依赖状态：
 
 - `analytics-core-clickhouse`：`clickhouse/clickhouse-server:25.3`，native TCP `127.0.0.1:29000`。
@@ -31,13 +39,14 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 
 代码证据：
 
-- benchmark 入口：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:25-31`。
-- benchmark 只连接 ClickHouse，不混入 Redis / MySQL：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:39-43`。
-- benchmark 会先 seed deterministic events / properties：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:58-63`。
-- benchmark 场景覆盖 low realtime、medium scalar events、high property events：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:78-147`。
-- 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:149-170`。
-- explain 测试与 benchmark 复用同一套路由表和数据夹具：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:172-289`。
-- explain 直接复用 sealed query plan SQL 和 bound args：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:558-585`。
+- benchmark 入口：`仓库: analytics-core, commit: 5bac8d8, file: internal/e2e/clickhouse_reader_benchmark_test.go:25-32`。
+- benchmark 只连接 ClickHouse，不混入 Redis / MySQL：`仓库: analytics-core, commit: 5bac8d8, file: internal/e2e/clickhouse_reader_benchmark_test.go:40-44`。
+- benchmark 会先 seed deterministic events / properties：`仓库: analytics-core, commit: 5bac8d8, file: internal/e2e/clickhouse_reader_benchmark_test.go:59-64`。
+- benchmark 场景覆盖 recent-window Realtime、wide-since Realtime、medium scalar events、high property events：`仓库: analytics-core, commit: 5bac8d8, file: internal/e2e/clickhouse_reader_benchmark_test.go:78-174`。
+- Realtime 场景会在计时前记录并校验 `since` 和 eligible row count，防止把 wide-since 压力查询误当成短窗口 Realtime：`仓库: analytics-core, commit: 5bac8d8, file: internal/e2e/clickhouse_reader_benchmark_test.go:174-196` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:681-718`。
+- 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: 5bac8d8, file: internal/e2e/clickhouse_reader_benchmark_test.go:174-196`。
+- explain 测试与 benchmark 复用同一套路由表和数据夹具，并记录 Realtime eligible row evidence：`仓库: analytics-core, commit: 5bac8d8, file: internal/e2e/clickhouse_reader_benchmark_test.go:198-343`。
+- explain 直接复用 sealed query plan SQL 和 bound args：`仓库: analytics-core, commit: 5bac8d8, file: internal/e2e/clickhouse_reader_benchmark_test.go:633-660`。
 
 ## 默认 10k 行结果
 
@@ -67,7 +76,7 @@ BenchmarkEventReaderClickHouseExecution/high_events_property-20       85  162545
 | --- | --- | --- |
 | `low_realtime` | `13.47ms/op`, `13.02ms/op`, `11.63ms/op` | 有上升，但仍是 direct fact table 可接受观察区 |
 | `medium_events_scalar` | `11.09ms/op`, `11.58ms/op`, `10.74ms/op` | 有上升，但没有达到必须新增物理结构的证据强度 |
-| `high_events_property` | `34.18ms/op`, `31.27ms/op`, `32.37ms/op` | 相比 10k 基线约 2x，成为下一条重点观察候选 |
+| `high_events_property` | `34.18ms/op`, `31.27ms/op`, `32.37ms/op` | 相比 10k 基线约 2x，当时列入重点观察候选；后续 500k 复测把候选收窄为宽时间窗 Events 与 typed property 过滤 |
 
 原始输出：
 
@@ -138,6 +147,50 @@ go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
 - 但当前更像“证据补齐”，还不是“立即新增 projection / materialized view / 小时聚合表”的触发器；
 - 现阶段仍应先保持 direct fact table，并继续优先做属性治理、query plan 约束和更大数据量观察。
 
+## 500k 行 Realtime 形状纠偏与压力观察
+
+500k 行复测前发现一个基线口径问题：旧 `low_realtime` 场景的 `Since=baseTime-1m` 会随着 fixture 行数增大而变成“宽时间窗扫描”，不再代表产品里的短窗口 Realtime。
+
+因此 `analytics-core` commit `5bac8d8` 将 Realtime 拆成两个场景：
+
+- `low_realtime_recent_window`：`eligible_rows=300`，代表产品短窗口 Realtime。
+- `low_realtime_wide_since`：`eligible_rows=500000`，代表宽时间窗压力查询。
+
+500k explain 摘要：
+
+| 场景 | eligible rows | Granules | 判断 |
+| --- | --- | --- | --- |
+| `low_realtime_recent_window` | `300` | `2/62` | 短窗口 Realtime 能利用时间下界缩小读取范围 |
+| `low_realtime_wide_since` | `500000` | `62/62` | 宽时间窗会读完整 fixture，不能代表正常 Realtime |
+| `medium_events_scalar` | 不适用 | `62/62` | 宽时间窗 Events 标量过滤仍是压力观察对象 |
+| `high_events_property` | 不适用 | `62/62`，3 个 `event_id in 5000-element set` | 属性过滤仍是重点观察对象 |
+
+500k benchmark 结果：
+
+| 场景 | 3 次结果 | 判断 |
+| --- | --- | --- |
+| `low_realtime_recent_window` | `7.73ms/op`, `8.41ms/op`, `8.23ms/op` | 产品短窗口 Realtime 仍稳定，不触发物理结构优化 |
+| `low_realtime_wide_since` | `45.74ms/op`, `33.88ms/op`, `33.74ms/op` | 宽时间窗压力明显，不能和短窗口 Realtime 混用 |
+| `medium_events_scalar` | `37.75ms/op`, `38.36ms/op`, `42.77ms/op` | 宽时间窗 Events 标量过滤进入观察区 |
+| `high_events_property` | `39.62ms/op`, `41.21ms/op`, `43.89ms/op` | 属性过滤继续是重点观察对象，但仍未单独证明必须新增物理结构 |
+
+原始输出：
+
+```text
+BenchmarkEventReaderClickHouseExecution/low_realtime_recent_window-20  140   7734325 ns/op  162679 B/op  3225 allocs/op
+BenchmarkEventReaderClickHouseExecution/low_realtime_recent_window-20  146   8408761 ns/op  163727 B/op  3225 allocs/op
+BenchmarkEventReaderClickHouseExecution/low_realtime_recent_window-20  140   8234399 ns/op  162616 B/op  3225 allocs/op
+BenchmarkEventReaderClickHouseExecution/low_realtime_wide_since-20      25  45743896 ns/op  167298 B/op  3227 allocs/op
+BenchmarkEventReaderClickHouseExecution/low_realtime_wide_since-20      30  33884143 ns/op  167973 B/op  3227 allocs/op
+BenchmarkEventReaderClickHouseExecution/low_realtime_wide_since-20      36  33743761 ns/op  167334 B/op  3227 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar-20         31  37750048 ns/op  170622 B/op  3347 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar-20         30  38359730 ns/op  170861 B/op  3347 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar-20         36  42773969 ns/op  170280 B/op  3347 allocs/op
+BenchmarkEventReaderClickHouseExecution/high_events_property-20         31  39623755 ns/op  203806 B/op  3594 allocs/op
+BenchmarkEventReaderClickHouseExecution/high_events_property-20         31  41206961 ns/op  203825 B/op  3594 allocs/op
+BenchmarkEventReaderClickHouseExecution/high_events_property-20         32  43893362 ns/op  203683 B/op  3594 allocs/op
+```
+
 ## 当前判断
 
 本次基线只证明三类读形状在本地 ClickHouse 上可以稳定执行，不证明现在必须引入 projection、materialized view 或小时聚合表。
@@ -147,6 +200,7 @@ go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
 - Realtime / Events 默认走 direct fact table。
 - `EventQueryBuilder` / `EventReader` 仍是唯一读侧入口。
 - `query_evidence` 继续作为后续优化评审输入。
-- 下一条重点观察候选仍是 `high_events_property`：100k 行下两轮已稳定在约 29.8-34.2ms/op，且 explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但还需要更大数据量、稳定 query pattern 和回归计划，才能决定是继续只做属性治理，还是进入 projection / MV / 小时聚合表评审。
+- 产品短窗口 Realtime 暂不构成读侧物理结构优化压力。后续不要再用 wide-since benchmark 代表正常 Realtime。
+- 下一条重点观察候选调整为“宽时间窗 Events 明细查询”和 `high_events_property`：500k 行下二者都进入约 37-44ms/op 区间，其中 high property explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但还需要稳定 query pattern 和回归计划，才能决定是继续只做属性治理，还是进入 projection / MV / 小时聚合表评审。
 
 只有当同一 query shape 在更大数据量或连续 benchmark 中稳定超过基线，并且 explain、属性治理、过滤白名单、limit cap、时间窗约束和回归计划都支持继续下沉时，才进入 projection / MV / 小时聚合表评审。

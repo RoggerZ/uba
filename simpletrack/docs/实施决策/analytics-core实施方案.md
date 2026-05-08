@@ -467,14 +467,14 @@ P1.5 的目标不是把所有 ClickHouse 手段一次性上完，而是先把读
 
 ### 当前真实 ClickHouse reader 基线
 
-2026-05-08 已按 `src/analytics-core/docs/read-side-optimization-policy.md` 跑过一次真实 ClickHouse reader benchmark：
+2026-05-08 已按 `src/analytics-core/docs/read-side-optimization-policy.md` 跑过真实 ClickHouse reader benchmark：
 
 ```powershell
 $env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
 go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution' -benchmem -count=3
 ```
 
-结果摘要：
+10k 行结果摘要：
 
 - `low_realtime`：约 8.6-10.4ms/op。
 - `medium_events_scalar`：约 8.6-9.7ms/op。
@@ -492,11 +492,18 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 - `medium_events_scalar`：约 10.4-11.2ms/op。
 - `high_events_property`：约 29.8-32.8ms/op。
 
-这份基线和复测只作为后续对比依据，不触发立即新增 projection、materialized view 或小时聚合表。下一条重点观察候选仍是 typed property 过滤读路径；当前 query plan、value-free property filter shape 和 ClickHouse explain 已补齐，但是否进入物理结构评审，仍要继续看更大数据量、稳定 query pattern 和回归计划。完整记录见 `docs/analytics-source-reading/read-side-benchmark-baseline.md`。
+在 `analytics-core` commit `5bac8d8` 修正 Realtime benchmark shape 后，同日做 500k 行复测：
+
+- `low_realtime_recent_window`：eligible rows 为 300，约 7.7-8.4ms/op；explain 显示 `Granules: 2/62`。
+- `low_realtime_wide_since`：eligible rows 为 500000，约 33.7-45.7ms/op；explain 显示 `Granules: 62/62`。
+- `medium_events_scalar`：约 37.7-42.8ms/op。
+- `high_events_property`：约 39.6-43.9ms/op，仍可观察到 `CreatingSets` 和 3 个 `event_id in ... set`。
+
+这份基线和复测只作为后续对比依据，不触发立即新增 projection、materialized view 或小时聚合表。当前结论已经纠偏：产品短窗口 Realtime 不是现阶段读侧压力点；宽时间窗 Events 明细查询和 typed property 过滤读路径是后续观察候选。是否进入物理结构评审，仍要继续看稳定 query pattern、数据量级、explain、benchmark 和回归计划。完整记录见 `docs/analytics-source-reading/read-side-benchmark-baseline.md`。
 
 补充结对审查后，`analytics-core` 已按 `$ai-slop-cleaner` 的小范围流程修复 query evidence 快照边界：先用 `go test ./storage ./storage/clickhouse` 锁住行为，再在 `NewEventQueryPlan` 和 `QueryEvidence()` 两个边界复制 `PropertyFilters` slice，最后补 `ExampleEventQueryPlan_QueryEvidence` 和 `TestEventQueryPlanQueryEvidenceClonesPropertyFilters`。这条规则的长期含义是：query evidence 可以被 service 暴露和操作员阅读，但调用方不能通过修改返回 slice 反向污染查询计划内保存的 canonical evidence。
 
-同日已补第一轮 ClickHouse explain 证据：
+同日已补 ClickHouse explain 证据：
 
 ```powershell
 $env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
@@ -504,13 +511,15 @@ $env:ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS='100000'
 go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
 ```
 
-当前观察到：
+100k 行时观察到：
 
 - `low_realtime` 和 `medium_events_scalar` 仍是 routed fact table 的 `ReadFromMergeTree` 主键路径。
 - `high_events_property` 的 query evidence 只暴露属性过滤形状，不暴露实际属性值；explain 已出现 `CreatingSets`，并且主查询上出现 3 个 `event_id in ... set` 条件。
 - 同一个高属性过滤场景的主键条件已经包含 `visit_id`，但在本次 100k 行数据量下仍是 `Granules: 13/13`。
 
-这说明 typed property 过滤读路径值得继续观察，但仍然只是“是否新增物理结构”的证据补齐，不是立即上 projection、materialized view 或小时聚合表的触发器。下一步仍应优先保持 direct fact table，并继续做属性治理、query plan 约束、更大数据量 benchmark 和回归计划。
+500k 行时进一步确认：短窗口 Realtime 可由时间下界缩小读取范围，而 wide-since Realtime 会退化为宽时间窗压力查询。后续文档和 benchmark 命名必须区分这两个场景，不能用 wide-since 结果代表正常产品 Realtime。
+
+这说明 typed property 过滤和宽时间窗 Events 路径值得继续观察，但仍然只是“是否新增物理结构”的证据补齐，不是立即上 projection、materialized view 或小时聚合表的触发器。下一步仍应优先保持 direct fact table，并继续做属性治理、query plan 约束、更大数据量 benchmark 和回归计划。
 
 ## P1 执行步骤
 
