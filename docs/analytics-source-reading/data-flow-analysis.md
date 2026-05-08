@@ -247,7 +247,7 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 | `PropertyCatalogQuery` | `storage/property_catalog.go` | TenantID/ProjectID/SourceID/Scope/Limit | struct | source-scoped 属性目录查询 |
 | `propertyCatalogResponse` | `collectapi/query.go` | source/items/limit | struct | `/v1/properties` HTTP 输出格式 |
 
-这里的 `readback` 指“读回”链路：由受信服务端用内部 token 从查询存储读取已经接收并落库的事件或元数据，供 Realtime / Events 页面和后续 filter builder 使用。它不是浏览器上报，也不是把历史事件重新投递消费的 replay。
+这里的 `readback` 指“读回”链路：由受信服务端用内部 token 从查询存储读取已经接收并落库的事件或元数据，供 Realtime / Events 页面和 Events filter builder 使用。它不是浏览器上报，也不是把历史事件重新投递消费的 replay。
 
 查询数据变化：
 
@@ -258,7 +258,7 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 5. service 把 `EventRecord` 转成 JSON response，并把 properties 字符串转成 `json.RawMessage`，同时把 evidence 转成 `query_evidence`；属性目录接口把 `PropertyCatalogEntry` 转成 property catalog items。
 6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前会进入内部 Events / Realtime readback JSON，帮助服务端评审 query shape；它不是 public tracker.js 响应字段。
 
-代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: 979a29f, file: storage/event_query.go:133-180`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: 979a29f, file: storage/clickhouse/query_builder.go:390-417`；服务层响应转换位于 `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:627-638`。属性目录读回契约位于 `仓库: analytics-core, commit: 91ac1db, file: storage/property_catalog.go:31-55`，服务层 `/v1/properties` 处理位于 `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:240-285`。
+代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: 979a29f, file: storage/event_query.go:133-180`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: 979a29f, file: storage/clickhouse/query_builder.go:390-417`；服务层响应转换位于 `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:627-638`。属性目录读回契约位于 `仓库: analytics-core, commit: 91ac1db, file: storage/property_catalog.go:31-55`，服务层 `/v1/properties` 处理位于 `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:240-285`；SaaS 服务端读取与 UI 传参位于 `仓库: simpletrack-saas, commit: 5147f78, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:110-139` 和 `apps/saas/app/(authenticated)/(main)/(organizations)/[organizationSlug]/events/page.tsx:77-101`、`185-189`。
 
 ## 3. 处理动作分析
 
@@ -642,7 +642,8 @@ event/client.ip_hash/string="ip_..."
 ```
 
 8. 查询 `/v1/events` 时，service 用同一个 write key 找到 source，再查这个 source 对应的物理表，返回事件列表。
-9. 查询 `/v1/properties` 时，service 仍用同一个 write key 找到 source，再从 MySQL `property_catalog` 读取这个 source 已观测到的 event/user property selector 和类型，供后续筛选器 UI 使用。
+9. 查询 `/v1/properties` 时，service 仍用同一个 write key 找到 source，再从 MySQL `property_catalog` 读取这个 source 已观测到的 event/user property selector 和类型。
+10. `simpletrack-saas` 的 Events 页面在服务端读取 `/v1/properties`，把 source-scoped 属性目录作为 datalist 建议传给 filter builder；浏览器提交筛选时仍只提交 repeatable `property_filter`，最终过滤逻辑仍由 `/v1/events` 和 `EventQueryBuilder` 执行。
 
 ## 11. 读源码时的抓手
 
@@ -651,7 +652,7 @@ event/client.ip_hash/string="ip_..."
 - “事件为什么没进库”：先看 `collectapi.handleCollect` -> `collect.Handler.Handle` -> `redisstream.Publish` -> `ingestion.Processor.handle` -> `BatchWriter.WriteEvent`。
 - “为什么 202 但 ClickHouse 没数据”：看 Redis Stream 是否有消息、ingestion 是否启用、MySQL checkpoint 状态、ClickHouse table 是否存在、消息是否 dead-letter。
 - “为什么 query 查不到”：看 query token、write key source、from/to 时间窗、表路由、property filter allowlist、ClickHouse 物理表名。
-- “为什么筛选字段列表为空”：看 `/v1/properties` 是否启用、MySQL DSN 是否配置、`property_catalog` 是否已有该 source 的观测记录。
+- “为什么筛选字段列表为空”：看 `/v1/properties` 是否启用、MySQL DSN 是否配置、`property_catalog` 是否已有该 source 的观测记录，以及 `simpletrack-saas` Events 页面是否拿到了 `getEventsPropertyCatalog` 返回的 `catalogItems`。
 - “字段为什么被改掉”：看 `handleCollect` 覆盖 tenant/project/source/source_type 的逻辑，这是设计上的信任边界。
 - “session_id 哪来的”：看 `SessionResolverStage`，它按 event_time 窗口和 distinct_id 派生。
 - “visit_id 哪来的”：看 `VisitResolverStage`，它在 session 派生后按 visit salt、最终 session_id 和事件时间窗口派生。

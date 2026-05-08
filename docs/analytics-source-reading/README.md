@@ -15,7 +15,7 @@
 | --- | --- | --- |
 | `src/analytics-core` | `91ac1db0084ab49ae1cdf6209e38e43165f9d7f2` | P1 数据管道、`visit_id` 持久化、Events/Realtime query builder、P1.5 query evidence、property catalog 基础契约、cataloging writer、source-scoped catalog reader、builder-only benchmark、真实 ClickHouse EventReader / BatchWriter benchmark、Redis Stream publish / subscribe+ack benchmark、`collect.Handler` 热路径 benchmark、GORM `CreateInBatches` 对照 benchmark、读侧优化引入门槛策略、ClickHouse explain 证据，以及 limit / offset / time window 查询形状证据均已收口；历史章节内保留早期 commit 引用作为当时源码证据 |
 | `src/analytics-service` | `89608bfa2b5d5c3591a6c8e35a7874707b35401b` | Fiber runtime、`/collect`、`/tracker.js`、内部 `/v1/realtime` / `/v1/events` / `/v1/properties`、HTTP resolver、readback API、ingestion 属性目录运行时装配、property metadata readback 和 query shape evidence 透出均已收口；pressure 仅作为 read-side triage 桶公开 |
-| `src/simpletrack-saas` | `bce33354ae27dcba80e2f1ce77ff7ac2c5ed8765` | runtime-source API、Websites 控制面、Realtime/Events server-side readback helper 均已收口 |
+| `src/simpletrack-saas` | `5147f78c02b6478fcd783613e6f90ea5c390f4a2` | runtime-source API、Websites 控制面、Realtime/Events server-side readback helper、Events 属性目录读回和 filter builder 接入均已收口 |
 
 P1 当前结论：
 
@@ -40,8 +40,10 @@ P1 当前结论：
 - explain 证据入口：`仓库: analytics-core, commit: 1e65684, file: internal/e2e/clickhouse_reader_benchmark_test.go:172-289` 定义 `TestEventReaderClickHouseExplain` 三个场景；`internal/e2e/clickhouse_reader_benchmark_test.go:558-585` 说明 explain 直接复用 sealed query plan SQL 和 bound args，不额外拼装第二套 SQL。
 - 当前第四步实现是属性字典基础契约和 ingestion 装配：`PropertyCatalogEntry` / `PropertyCatalog` 把 event/user property 的 source-scoped selector、value type、first_seen_at 和 last_seen_at 抽成治理模型，MySQL adapter 落到 `property_catalog` 初始化表；`PropertyCatalogingEventWriter` 在主事件写入成功后做 replay-safe metadata upsert，不记录会被重试放大的计数字段。
 - 代码证据：storage-neutral catalog 位于 `仓库: analytics-core, commit: 423d58c, file: storage/property_catalog.go:10-38`；MySQL adapter 位于 `仓库: analytics-core, commit: 423d58c, file: storage/mysql/property_catalog.go:13-91`；cataloging writer 位于 `仓库: analytics-core, commit: e775e3e8764378261ce94cbd3a8d38dd3d3c0410, file: storage/property_cataloging_writer.go:11-70`；运行时装配位于 `仓库: analytics-service, commit: 14f8aaabb80e52de4849704671124229ba3be339, file: internal/runtime/worker.go:81-127`；启动期 MySQL 表校验位于 `仓库: analytics-service, commit: 14f8aaabb80e52de4849704671124229ba3be339, file: internal/runtime/worker.go:130-151`。
-- 当前第八步把属性字典从“只写入”补齐为“可读取”：`analytics-core` 新增 `PropertyCatalogReader` / `PropertyCatalogQuery` 和 MySQL `ListPropertyCatalogEntries`，读侧强制带 tenant/project/source 边界并校验 scope/value type 枚举；`simpletrack-anaysitics-service` 新增内部 `/v1/properties`，复用 query token 和 write key source resolution，返回 source-scoped property metadata，用于后续 UI filter builder。
+- 当前第八步把属性字典从“只写入”补齐为“可读取”：`analytics-core` 新增 `PropertyCatalogReader` / `PropertyCatalogQuery` 和 MySQL `ListPropertyCatalogEntries`，读侧强制带 tenant/project/source 边界并校验 scope/value type 枚举；`simpletrack-anaysitics-service` 新增内部 `/v1/properties`，复用 query token 和 write key source resolution，返回 source-scoped property metadata。
 - 属性字典读回证据：`仓库: analytics-core, commit: 91ac1db, file: storage/property_catalog.go:31-55` 定义 query/reader/writer 分离契约；`storage/property_catalog.go:185-280` 定义 entry/query 校验，拒绝非 event/user 和非 null/string/number/bool 枚举；`storage/mysql/property_catalog.go:108-146` 执行 source-scoped list query；`storage/mysql/property_catalog.go:165-180` 将 MySQL row 转回 storage-neutral entry 并再次校验。`仓库: analytics-service, commit: 89608bf, file: internal/collectapi/handler.go:30-41` 定义 `/v1/properties` 路由和 catalog reader 依赖；`internal/collectapi/query.go:240-285` 处理 property catalog readback；`internal/runtime/runtime.go:148-175` 装配 MySQL catalog reader，且读侧不依赖写侧 `PropertyCataloging` flag；`api/openapi.yaml:234-264` 和 `api/openapi.yaml:436-466` 记录 OpenAPI route/schema。
+- 当前第九步把属性目录读回接入 SaaS Events filter builder：`simpletrack-saas` 新增 server-only `getEventsPropertyCatalog`，Events 页面在服务端并行读取 `/v1/events` 和 `/v1/properties`，再把 catalog items 传给 client filter controls。浏览器只拿到已过滤后的属性元数据，不接触内部 query token；如果 `/v1/properties` 返回非法字段，SaaS helper 会显示 service error，避免把契约漂移伪装成空字典。
+- SaaS filter builder 证据：`仓库: simpletrack-saas, commit: 5147f78, file: apps/saas/modules/simpletrack/lib/analytics-readback-core.ts:300-360` 定义 `/v1/properties` readback helper 和 invalid contract fail-soft；`apps/saas/modules/simpletrack/lib/analytics-readback.ts:110-139` 定义 server-only wrapper；`apps/saas/app/(authenticated)/(main)/(organizations)/[organizationSlug]/events/page.tsx:77-101` 并行读取 Events 与 property catalog；`apps/saas/app/(authenticated)/(main)/(organizations)/[organizationSlug]/events/page.tsx:185-189` 把 catalog items 传入筛选控件；`apps/saas/modules/simpletrack/components/events-property-filter-controls.tsx:50-60` 渲染属性建议 datalist；`apps/saas/modules/simpletrack/components/events-property-filter-controls.tsx:117-130` 将属性名输入绑定到 catalog suggestions。回归证据位于 `apps/saas/modules/simpletrack/lib/analytics-readback-core.test.ts:652-766` 和 `apps/saas/app/(authenticated)/(main)/(organizations)/[organizationSlug]/readback-pages.test.tsx:268-313`。
 
 ## 0.1 术语速查
 
@@ -218,6 +220,7 @@ return err
 - `PropertyIndexingEventWriter`：把主事件写入和属性写入组合起来。
 - MySQL `PropertyCatalog`：记录每个 source 观测到的 event/user property selector 和类型，并提供 source-scoped list readback 给后续 UI filter builder。
 - `PropertyCatalogingEventWriter`：把属性目录治理接入 `EventWriter` 链路。主事件或属性索引失败时不写目录；目录写失败时返回错误，让 Redis 重试修复“事件已写入、目录未写入”的部分结果。
+- `simpletrack-saas` Events filter builder：服务端通过 `/v1/properties` 读取 source-scoped 属性目录，传给浏览器控件作为字段建议；真正的事件过滤仍走 `/v1/events` 的 repeatable `property_filter`。
 
 ### 4.6 查询模块
 

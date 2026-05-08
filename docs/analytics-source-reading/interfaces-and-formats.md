@@ -476,7 +476,7 @@ storage.EventPropertyFilter{
 
 ### `/v1/properties`
 
-`/v1/properties` 是默认内部 property metadata readback 路径。它不返回事件明细，而是返回某个 source 已经观测到的 event/user property selector、值类型和 first/last seen 时间，用于后续筛选器 UI 给用户提供可选字段。
+`/v1/properties` 是默认内部 property metadata readback 路径。它不返回事件明细，而是返回某个 source 已经观测到的 event/user property selector、值类型和 first/last seen 时间，用于 SaaS Events filter builder 给用户提供可选字段。
 
 证据：
 
@@ -524,4 +524,4 @@ Authorization: Bearer query-token
 4. `scope` 只能是 `event` 或 `user`；`value_type` 只能是 `null`、`string`、`number`、`bool`。
 5. `limit` 默认 100，当前最大 200，避免筛选器元数据接口变成无界扫描。
 
-这里的关键点是：`/v1/properties` 是“属性目录读回”，不是属性过滤查询本身。真正按属性过滤事件仍然走 `/v1/events` 的 `property_filter`，并继续受 source runtime allowlist 和 `EventQueryBuilder` 约束。
+这里的关键点是：`/v1/properties` 是“属性目录读回”，不是属性过滤查询本身。`simpletrack-saas` 会在服务端用 query token 调这个接口，然后把已过滤后的属性元数据传给浏览器控件；真正按属性过滤事件仍然走 `/v1/events` 的 `property_filter`，并继续受 source runtime allowlist 和 `EventQueryBuilder` 约束。
