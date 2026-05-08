@@ -415,6 +415,7 @@ P1.5 的目标不是把所有 ClickHouse 手段一次性上完，而是先把读
 
 - `EventQueryBuilder` 是唯一 query plan 构建入口。
 - `EventReader` 是唯一 query plan 执行入口。
+- `readSidePolicy` 是 `analytics-core/storage/clickhouse` 内部的读侧 guardrail 容器，负责 query limit、filter cap 和 property allowlist，不向外暴露。
 - `simpletrack-anaysitics-service` 只能把经过 runtime source 校验后的查询参数传入 `analytics-core`，不能拼接 ClickHouse SQL。
 - `simpletrack-saas` 只能通过服务端 readback helper 调用内部查询 API，不能直接连接 ClickHouse，也不能感知动态物理表名。
 - `TableRouter` 是唯一物理表路由入口，handler、service、产品页面和 analysis 模块都不能自己拼 `events_*` 表名。
