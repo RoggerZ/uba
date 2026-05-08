@@ -499,6 +499,15 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 - `medium_events_scalar`：约 37.7-42.8ms/op。
 - `high_events_property`：约 39.6-43.9ms/op，仍可观察到 `CreatingSets` 和 3 个 `event_id in ... set`。
 
+在 `analytics-core` commit `caf314d` 进一步拆分 Events recent / wide shape 后，2026-05-09 做 500k 行复测：
+
+- `low_realtime_recent_window`：eligible rows 为 300，约 7.9-9.0ms/op；explain 显示 `Granules: 2/62`。
+- `low_realtime_wide_since`：eligible rows 为 500000，约 37.4-54.7ms/op；explain 显示 `Granules: 62/62`。
+- `medium_events_scalar_recent_window`：eligible rows 为 5000，约 8.2-9.0ms/op；explain 显示 `Granules: 2/62`。
+- `medium_events_scalar_wide_window`：eligible rows 为 500000，约 40.3-42.1ms/op；explain 显示 `Granules: 62/62`。
+- `high_events_property_recent_window`：eligible rows 为 5000，约 21.4-23.4ms/op；explain 显示 `Granules: 2/62`，仍会出现 `CreatingSets` 和 3 个 `event_id in 5000-element set`。
+- `high_events_property_wide_window`：eligible rows 为 500000，约 43.0-44.1ms/op；explain 显示 `Granules: 62/62`，仍会出现 `CreatingSets` 和 3 个 `event_id in 5000-element set`。
+
 这份基线和复测只作为后续对比依据，不触发立即新增 projection、materialized view 或小时聚合表。当前结论已经纠偏：产品短窗口 Realtime 不是现阶段读侧压力点；宽时间窗 Events 明细查询和 typed property 过滤读路径是后续观察候选。是否进入物理结构评审，仍要继续看稳定 query pattern、数据量级、explain、benchmark 和回归计划。完整记录见 `docs/analytics-source-reading/read-side-benchmark-baseline.md`。
 
 补充结对审查后，`analytics-core` 已按 `$ai-slop-cleaner` 的小范围流程修复 query evidence 快照边界：先用 `go test ./storage ./storage/clickhouse` 锁住行为，再在 `NewEventQueryPlan` 和 `QueryEvidence()` 两个边界复制 `PropertyFilters` slice，最后补 `ExampleEventQueryPlan_QueryEvidence` 和 `TestEventQueryPlanQueryEvidenceClonesPropertyFilters`。这条规则的长期含义是：query evidence 可以被 service 暴露和操作员阅读，但调用方不能通过修改返回 slice 反向污染查询计划内保存的 canonical evidence。
@@ -517,9 +526,9 @@ go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
 - `high_events_property` 的 query evidence 只暴露属性过滤形状，不暴露实际属性值；explain 已出现 `CreatingSets`，并且主查询上出现 3 个 `event_id in ... set` 条件。
 - 同一个高属性过滤场景的主键条件已经包含 `visit_id`，但在本次 100k 行数据量下仍是 `Granules: 13/13`。
 
-500k 行时进一步确认：短窗口 Realtime 可由时间下界缩小读取范围，而 wide-since Realtime 会退化为宽时间窗压力查询。后续文档和 benchmark 命名必须区分这两个场景，不能用 wide-since 结果代表正常产品 Realtime。
+500k 行时进一步确认：短窗口 Realtime 和 recent-window Events 都可由时间下界缩小读取范围，而 wide-since Realtime / wide-window Events 会退化为宽时间窗压力查询。后续文档和 benchmark 命名必须区分这些场景，不能用 wide-since 或 wide-window 结果代表正常产品 Realtime / Events。
 
-这说明 typed property 过滤和宽时间窗 Events 路径值得继续观察，但仍然只是“是否新增物理结构”的证据补齐，不是立即上 projection、materialized view 或小时聚合表的触发器。下一步仍应优先保持 direct fact table，并继续做属性治理、query plan 约束、更大数据量 benchmark 和回归计划。
+这说明 typed property 过滤和宽时间窗 Events 路径值得继续观察，但仍然只是“是否新增物理结构”的证据补齐，不是立即上 projection、materialized view 或小时聚合表的触发器。下一步仍应优先保持 direct fact table，并继续做属性治理、query plan 约束、更大数据量 benchmark 和回归计划。`analytics-core` commit `caf314d` 已要求 Events benchmark / explain 场景在执行前断言真实 `EventQueryPlan.QueryEvidence()` 和 `plan.Args` 都保留 `from/to` 时间上下界，避免只靠 helper 计算误判窗口形状。
 
 ## P1 执行步骤
 
