@@ -459,7 +459,7 @@ return b.buildEventsQuery(ctx, storage.EventListQuery{
 
 #### 返回数据格式
 
-返回结构是 `source + items + since + limit + query_evidence`。`query_evidence` 在 evidence-aware reader 路径下返回；旧 `EventReader` fallback 会省略它。证据：`仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:59-64, 140-146, 224-238`
+返回结构是 `source + items + since + limit + query_evidence`。`query_evidence` 在 evidence-aware reader 路径下返回；旧 `EventReader` fallback 会省略它。证据：`仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:61-66, 165-171, 301-314`
 
 ```go
 type queryRealtimeResponse struct {
@@ -681,7 +681,7 @@ return r.executePlan(ctx, plan)
 
 #### 返回数据格式
 
-返回结构是 `source + items + limit + offset + from + to + query_evidence`。`query_evidence` 在 evidence-aware reader 路径下返回；旧 `EventReader` fallback 会省略它。证据：`仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:49-56, 213-221, 239-253`
+返回结构是 `source + items + limit + offset + from + to + query_evidence`。`query_evidence` 在 evidence-aware reader 路径下返回；旧 `EventReader` fallback 会省略它。证据：`仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:51-59, 238-246, 316-329`
 
 ```go
 type queryEventsResponse struct {
@@ -695,7 +695,7 @@ type queryEventsResponse struct {
 }
 ```
 
-OpenAPI 同样定义了 `EventsResponse` / `RealtimeResponse` 的 `query_evidence` 结构。证据：`仓库: analytics-service, commit: 3d858bf, file: api/openapi.yaml:386-443`
+OpenAPI 同样定义了 `EventsResponse` / `RealtimeResponse` 的 `query_evidence` 结构。证据：`仓库: analytics-service, commit: 64b0bda, file: api/openapi.yaml:397-538`
 
 #### 错误如何映射成 HTTP status/body
 
@@ -797,7 +797,7 @@ Authorization: Bearer query_token_server_side
 }
 ```
 
-`query_evidence` 来自 `analytics-core` 的 query plan，不从 SQL 字符串反推；Realtime 的时间窗通常只有 lower bound，所以 `time_window_seconds` 为 0。响应结构证据：`仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:56-75, 558-578`；对应回归位于 `仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/handler_test.go:404-414`
+`query_evidence` 来自 `analytics-core` 的 query plan，不从 SQL 字符串反推；Realtime 的时间窗通常只有 lower bound，所以 `time_window_seconds` 为 0。响应结构证据：`仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:83-106, 671-710`；对应回归位于 `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/handler_test.go:404-414`
 
 ### 4.3 `/v1/events` 请求/响应示例
 
@@ -826,7 +826,7 @@ Authorization: Bearer query_token_server_side
   "to": "2026-05-07T02:00:00Z",
   "query_evidence": {
     "family": "events",
-    "read_path": "fact_events_properties",
+    "read_path": "fact_events",
     "optimization": "direct_fact_table",
     "effective_limit": 50,
     "offset": 0,
@@ -836,6 +836,14 @@ Authorization: Bearer query_token_server_side
     "scalar_filter_count": 3,
     "property_filter_count": 1,
     "uses_property_table": true,
+    "property_filters": [
+      {
+        "scope": "event",
+        "name": "plan",
+        "value_type": "string",
+        "operator": "eq"
+      }
+    ],
     "sort_field": "received_at",
     "sort_direction": "desc",
     "pressure": "high"
@@ -843,7 +851,7 @@ Authorization: Bearer query_token_server_side
 }
 ```
 
-`query_evidence` 中的 `uses_property_table=true` 表示这次查询用到了 typed property 表；`pressure=high` 只是读侧 triage 桶，不是 SLA 或扩缩容信号。响应结构证据：`仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:56-75, 558-578`；对应回归位于 `仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/handler_test.go:561-571`
+`query_evidence` 中的 `uses_property_table=true` 表示这次查询用到了 typed property 表；`property_filters` 只描述 scope/name/value_type/operator，不返回实际过滤值；`pressure=high` 只是读侧 triage 桶，不是 SLA 或扩缩容信号。响应结构证据：`仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:83-106, 671-710`；对应回归位于 `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/handler_test.go:573-668`
 
 ### 4.4 Authorization Bearer token 示例
 
@@ -1292,7 +1300,7 @@ type EventRecord struct {
 
 | 项 | 内容 |
 | --- | --- |
-| 定义位置 | `仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:49-80` |
+| 定义位置 | `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:51-106` |
 | 类型 | `queryRealtimeResponse` / `queryEventsResponse` |
 | 用途 | 内部 readback JSON 响应 |
 
@@ -1307,7 +1315,7 @@ type queryEventsResponse struct {
 }
 ```
 
-数据变化：`EventRecord` 的时间统一格式化为 RFC3339Nano；properties 字符串尽量作为 JSON 返回；`EventQueryEvidence` 被转换成 `query_evidence`，供服务端判断 query shape、读路径和压力分档。
+数据变化：`EventRecord` 的时间统一格式化为 RFC3339Nano；properties 字符串尽量作为 JSON 返回；`EventQueryEvidence` 被转换成 `query_evidence`，供服务端判断 query shape、读路径和压力分档；如果存在属性过滤，`property_filters` 只包含 scope/name/value_type/operator，不包含实际 value。
 
 #### DP-13 错误响应结构
 
@@ -1339,8 +1347,8 @@ type ErrorResponse struct {
 | source enabled / origin / scope enforcement | `SourceConfig`、`Origin` | scoped query | origin 403 | tenant/project/source 从 SourceConfig 进入 query object。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:244-248` |
 | query parameter parsing | HTTP query | `since/from/to/limit/offset/sort` | 400 | 时间转 UTC，数字做 min 限制。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:296-345` |
 | property filter parsing and allowlist enforcement | repeatable `property_filter`、SourceConfig allowlist | `[]storage.EventPropertyFilter` | 400 invalid event query | JSON 标量转 typed property filter，先过 SourceConfig allowlist。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:347-420` |
-| query reader call | `RealtimeQuery` / `EventListQuery` | `EventQueryResult` 或 `[]EventRecord` | invalid query 400，其他 500 | HTTP 层优先调用 evidence-aware reader，不拼 SQL；旧 reader fallback 只返回记录。证据：`仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:224-253` |
-| response serialization | `EventQueryResult` / `[]EventRecord` | JSON body | JSON 写入失败交给 Fiber error handler | 时间格式化，properties 尽量保持 JSON；evidence-aware 路径额外序列化 `query_evidence`。证据：`仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:49-80, 558-578` |
+| query reader call | `RealtimeQuery` / `EventListQuery` | `EventQueryResult` 或 `[]EventRecord` | invalid query 400，其他 500 | HTTP 层优先调用 evidence-aware reader，不拼 SQL；旧 reader fallback 只返回记录。证据：`仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:301-329` |
+| response serialization | `EventQueryResult` / `[]EventRecord` | JSON body | JSON 写入失败交给 Fiber error handler | 时间格式化，properties 尽量保持 JSON；evidence-aware 路径额外序列化 `query_evidence`，属性过滤证据只返回 value-free shape。证据：`仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:51-106, 659-710` |
 | error mapping | Go error | HTTP status + `ErrorResponse` | 无 | `ErrInvalidEventQuery` 映射 400，其余 reader error 映射 500。证据：`仓库: analytics-service, commit: 09656b6, file: internal/collectapi/query.go:286-293` |
 
 ### 6.3 数据流图示

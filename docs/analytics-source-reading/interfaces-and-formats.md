@@ -419,9 +419,9 @@ Authorization: Bearer query-token
 
 证据：
 
-- `仓库: analytics-service, commit: 89608bf, file: internal/config/config.go:19-21`
-- `仓库: analytics-service, commit: 89608bf, file: internal/config/config.go:101-103`
-- `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/handler.go:165-167`
+- `仓库: analytics-service, commit: 64b0bda, file: internal/config/config.go:19-21`
+- `仓库: analytics-service, commit: 64b0bda, file: internal/config/config.go:101-103`
+- `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/handler.go:165-167`
 
 ```go
 defaultEventsPath     = "/v1/events"
@@ -474,17 +474,19 @@ storage.EventPropertyFilter{
 
 这两层都是为了防止 query API 变成任意 ClickHouse 扫描入口。
 
+如果这次 Events 查询带了属性过滤，`query_evidence.property_filters` 只返回过滤形状，例如 `scope/name/value_type/operator`，不会返回实际过滤值。这样后续做 projection / materialized view / 小时聚合表取舍时能看清 query shape，同时避免把用户属性值或事件属性值回显到控制面响应里。
+
 ### `/v1/properties`
 
 `/v1/properties` 是默认内部 property metadata readback 路径。它不返回事件明细，而是返回某个 source 已经观测到的 event/user property selector、值类型和 first/last seen 时间，用于 SaaS Events filter builder 给用户提供可选字段。
 
 证据：
 
-- `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/handler.go:30-41`
-- `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:240-285`
-- `仓库: analytics-service, commit: 89608bf, file: internal/runtime/runtime.go:148-175`
-- `仓库: analytics-core, commit: 91ac1db, file: storage/property_catalog.go:31-55`
-- `仓库: analytics-core, commit: 91ac1db, file: storage/mysql/property_catalog.go:108-146`
+- `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/handler.go:30-41`
+- `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:240-285`
+- `仓库: analytics-service, commit: 64b0bda, file: internal/runtime/runtime.go:148-175`
+- `仓库: analytics-core, commit: 4393bbd, file: storage/property_catalog.go:31-55`
+- `仓库: analytics-core, commit: 4393bbd, file: storage/mysql/property_catalog.go:108-146`
 
 请求：
 

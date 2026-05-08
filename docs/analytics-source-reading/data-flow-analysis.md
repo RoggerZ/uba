@@ -256,9 +256,9 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 3. builder 生成 SQL + bound args + query evidence，不执行。
 4. `EventReader` 执行 SQL，把 `eventRowModel` 转成 `storage.EventRecord`，并把 `QueryEvidence()` 随 `EventQueryResult` 返回。
 5. service 把 `EventRecord` 转成 JSON response，并把 properties 字符串转成 `json.RawMessage`，同时把 evidence 转成 `query_evidence`；属性目录接口把 `PropertyCatalogEntry` 转成 property catalog items。
-6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前会进入内部 Events / Realtime readback JSON，帮助服务端评审 query shape；它不是 public tracker.js 响应字段。
+6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前会进入内部 Events / Realtime readback JSON，帮助服务端评审 query shape；它会记录 property filter 的 scope/name/value_type/operator，但不返回 property filter value；它不是 public tracker.js 响应字段。
 
-代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: 979a29f, file: storage/event_query.go:133-180`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: 979a29f, file: storage/clickhouse/query_builder.go:390-417`；服务层响应转换位于 `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:627-638`。属性目录读回契约位于 `仓库: analytics-core, commit: 91ac1db, file: storage/property_catalog.go:31-55`，服务层 `/v1/properties` 处理位于 `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:240-285`；SaaS 服务端读取与 UI 传参位于 `仓库: simpletrack-saas, commit: a48ce44, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:110-139` 和 `apps/saas/app/(authenticated)/(main)/(organizations)/[organizationSlug]/events/page.tsx:77-101`、`185-189`，筛选控件的 catalog selection 行为位于 `apps/saas/modules/simpletrack/components/events-property-filter-controls.tsx:336-381`。
+代码证据：`EventQueryEvidence` 和 `EventPropertyFilterEvidence` 定义在 `仓库: analytics-core, commit: 4393bbd, file: storage/event_query.go:89-100` 和 `storage/event_query.go:150-164`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: 4393bbd, file: storage/clickhouse/query_builder.go:390-451`；服务层响应转换位于 `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:83-106` 和 `internal/collectapi/query.go:671-710`。属性目录读回契约位于 `仓库: analytics-core, commit: 4393bbd, file: storage/property_catalog.go:31-55`，服务层 `/v1/properties` 处理位于 `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:240-285`；SaaS 服务端读取与 UI 传参位于 `仓库: simpletrack-saas, commit: a48ce44, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:110-139` 和 `apps/saas/app/(authenticated)/(main)/(organizations)/[organizationSlug]/events/page.tsx:77-101`、`185-189`，筛选控件的 catalog selection 行为位于 `apps/saas/modules/simpletrack/components/events-property-filter-controls.tsx:336-381`。
 
 ## 3. 处理动作分析
 
@@ -528,7 +528,7 @@ XAdd(... Values: map[string]any{"envelope": payload})
 - query struct 变成 SQL + bound args + `QueryEvidence()`。
 - ClickHouse row 变成 storage-neutral `EventRecord`。
 - `Properties/UserProperties` 字符串如果是合法 JSON，就作为 JSON 返回；否则作为字符串 JSON 返回。
-- `QueryEvidence()` 描述 query family、read path、optimization、effective limit、offset、time window、filter count、属性表参与和排序口径；它是后续 projection / materialized view / 小时聚合表取舍证据，会进入内部 readback 响应，但不是 public tracker.js / collect 响应字段。
+- `QueryEvidence()` 描述 query family、read path、optimization、effective limit、offset、time window、filter count、属性表参与、value-free property filter shape 和排序口径；它是后续 projection / materialized view / 小时聚合表取舍证据，会进入内部 readback 响应，但不是 public tracker.js / collect 响应字段。
 
 ## 9. 数据流控制逻辑
 
