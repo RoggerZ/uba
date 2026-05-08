@@ -21,13 +21,17 @@ flowchart TB
     M["EventPropertyRecord[]<br/>属性扁平化"]
     N["PropertyIndexingStatus<br/>属性幂等 claim"]
     O["ClickHouse property rows<br/>typed 属性表"]
+    R["PropertyCatalogEntry[]<br/>属性目录元数据"]
+    S["MySQL property_catalog<br/>source-scoped 字典"]
     P["EventRecord<br/>查询返回记录"]
-    Q["HTTP JSON response<br/>Events / Realtime"]
+    Q["HTTP JSON response<br/>Events / Realtime / Properties"]
 
     A --> B --> C --> D --> E --> F --> G --> H --> I --> J
     J --> K --> L --> M --> N --> O
+    M --> R --> S
     L --> P --> Q
     O --> P
+    S --> Q
 ```
 
 关键控制点：
@@ -38,7 +42,7 @@ flowchart TB
 - `Stage` 决定合法事件是否要被过滤、补充属性、派生 session 或派生 canonical `visit_id`。
 - `EventBus` 的 ack/nack 决定消息何时从 pending 状态释放或进入重试/死信。
 - MySQL checkpoint 决定 ClickHouse append 是否幂等。
-- Query API 决定内部读取是否被 token、write key、origin、属性 allowlist 限制。
+- Query API 决定内部读取是否被 token、write key、origin、属性 allowlist 和 source-scoped catalog 边界限制。
 
 ## 2. 数据点分析
 
@@ -237,22 +241,24 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 | `RealtimeQuery` | `storage/event_query.go` | `TenantID/ProjectID/SourceID/Since/Limit` | struct | 最近事件查询 |
 | `EventListQuery` | `storage/event_query.go` | from/to/filter/sort/pagination | struct | Events 列表查询 |
 | `EventPropertyFilter` | `storage/event_query.go` | scope/name/type/operator/value | struct | typed property 过滤 |
-
-这里的 `readback` 指“读回”链路：由受信服务端用内部 token 从查询存储读取已经接收并落库的事件，供 Realtime / Events 页面展示。它不是浏览器上报，也不是把历史事件重新投递消费的 replay。
 | `EventQueryPlan` | `storage/event_query.go` | SQL/Args/PhysicalTable/Limit/QueryEvidence | struct | ClickHouse 查询计划 |
 | `EventRecord` | `storage/event_query.go` | row record | struct | storage-neutral 查询返回记录 |
 | `queryEventResponse` | `collectapi/query.go` | JSON response | struct | HTTP 输出格式 |
+| `PropertyCatalogQuery` | `storage/property_catalog.go` | TenantID/ProjectID/SourceID/Scope/Limit | struct | source-scoped 属性目录查询 |
+| `propertyCatalogResponse` | `collectapi/query.go` | source/items/limit | struct | `/v1/properties` HTTP 输出格式 |
+
+这里的 `readback` 指“读回”链路：由受信服务端用内部 token 从查询存储读取已经接收并落库的事件或元数据，供 Realtime / Events 页面和后续 filter builder 使用。它不是浏览器上报，也不是把历史事件重新投递消费的 replay。
 
 查询数据变化：
 
-1. HTTP query string 解析成 `storage.EventListQuery` 或 `storage.RealtimeQuery`。
+1. HTTP query string 解析成 `storage.EventListQuery`、`storage.RealtimeQuery` 或 `storage.PropertyCatalogQuery`。
 2. `EventQueryBuilder` 校验时间窗、limit、offset、filter 数量、排序字段、filter 字段、property allowlist。
 3. builder 生成 SQL + bound args + query evidence，不执行。
 4. `EventReader` 执行 SQL，把 `eventRowModel` 转成 `storage.EventRecord`，并把 `QueryEvidence()` 随 `EventQueryResult` 返回。
-5. service 把 `EventRecord` 转成 JSON response，并把 properties 字符串转成 `json.RawMessage`，同时把 evidence 转成 `query_evidence`。
-6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前会进入内部 readback JSON，帮助服务端评审 query shape；它不是 public tracker.js 响应字段。
+5. service 把 `EventRecord` 转成 JSON response，并把 properties 字符串转成 `json.RawMessage`，同时把 evidence 转成 `query_evidence`；属性目录接口把 `PropertyCatalogEntry` 转成 property catalog items。
+6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前会进入内部 Events / Realtime readback JSON，帮助服务端评审 query shape；它不是 public tracker.js 响应字段。
 
-代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: 979a29f, file: storage/event_query.go:133-180`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: 979a29f, file: storage/clickhouse/query_builder.go:390-417`；服务层响应转换位于 `仓库: analytics-service, commit: 3d858bf, file: internal/collectapi/query.go:558-578`。
+代码证据：`EventQueryEvidence` 和 `QueryEvidence()` 定义在 `仓库: analytics-core, commit: 979a29f, file: storage/event_query.go:133-180`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: 979a29f, file: storage/clickhouse/query_builder.go:390-417`；服务层响应转换位于 `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:627-638`。属性目录读回契约位于 `仓库: analytics-core, commit: 91ac1db, file: storage/property_catalog.go:31-55`，服务层 `/v1/properties` 处理位于 `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:240-285`。
 
 ## 3. 处理动作分析
 
@@ -394,23 +400,33 @@ sequenceDiagram
     participant Auth as Query token auth
     participant CP as Resolver
     participant Reader as storage.EventReader
+    participant Catalog as storage.PropertyCatalogReader
     participant Builder as ClickHouse QueryBuilder
     participant CH as ClickHouse
+    participant MySQL as MySQL property_catalog
 
-    SaaS->>API: GET /v1/events or /v1/realtime
+    SaaS->>API: GET /v1/events, /v1/realtime, or /v1/properties
     API->>Auth: bearer token validation
     Auth-->>API: allowed
     API->>CP: ResolveSource(write_key)
     CP-->>API: SourceConfig
     API->>API: Origin check + parse query params
-    API->>Reader: ListEvents / ListRealtime
-    Reader->>Builder: BuildEventsQuery / BuildRealtimeQuery
-    Builder->>Builder: route table, validate filters, build SQL + args + evidence
-    Builder-->>Reader: EventQueryPlan + QueryEvidence()
-    Reader->>CH: Raw(plan.SQL, plan.Args...)
-    CH-->>Reader: event rows
-    Reader-->>API: EventQueryResult(records, evidence)
-    API-->>SaaS: JSON response with query_evidence
+    alt Events / Realtime
+        API->>Reader: ListEvents / ListRealtime
+        Reader->>Builder: BuildEventsQuery / BuildRealtimeQuery
+        Builder->>Builder: route table, validate filters, build SQL + args + evidence
+        Builder-->>Reader: EventQueryPlan + QueryEvidence()
+        Reader->>CH: Raw(plan.SQL, plan.Args...)
+        CH-->>Reader: event rows
+        Reader-->>API: EventQueryResult(records, evidence)
+        API-->>SaaS: JSON response with query_evidence
+    else Properties
+        API->>Catalog: ListPropertyCatalogEntries
+        Catalog->>MySQL: SELECT property_catalog by tenant/project/source
+        MySQL-->>Catalog: property catalog rows
+        Catalog-->>API: PropertyCatalogEntry[]
+        API-->>SaaS: JSON response with property catalog items
+    end
 ```
 
 ## 8. 数据转换关键节点
@@ -626,6 +642,7 @@ event/client.ip_hash/string="ip_..."
 ```
 
 8. 查询 `/v1/events` 时，service 用同一个 write key 找到 source，再查这个 source 对应的物理表，返回事件列表。
+9. 查询 `/v1/properties` 时，service 仍用同一个 write key 找到 source，再从 MySQL `property_catalog` 读取这个 source 已观测到的 event/user property selector 和类型，供后续筛选器 UI 使用。
 
 ## 11. 读源码时的抓手
 
@@ -634,6 +651,7 @@ event/client.ip_hash/string="ip_..."
 - “事件为什么没进库”：先看 `collectapi.handleCollect` -> `collect.Handler.Handle` -> `redisstream.Publish` -> `ingestion.Processor.handle` -> `BatchWriter.WriteEvent`。
 - “为什么 202 但 ClickHouse 没数据”：看 Redis Stream 是否有消息、ingestion 是否启用、MySQL checkpoint 状态、ClickHouse table 是否存在、消息是否 dead-letter。
 - “为什么 query 查不到”：看 query token、write key source、from/to 时间窗、表路由、property filter allowlist、ClickHouse 物理表名。
+- “为什么筛选字段列表为空”：看 `/v1/properties` 是否启用、MySQL DSN 是否配置、`property_catalog` 是否已有该 source 的观测记录。
 - “字段为什么被改掉”：看 `handleCollect` 覆盖 tenant/project/source/source_type 的逻辑，这是设计上的信任边界。
 - “session_id 哪来的”：看 `SessionResolverStage`，它按 event_time 窗口和 distinct_id 派生。
 - “visit_id 哪来的”：看 `VisitResolverStage`，它在 session 派生后按 visit salt、最终 session_id 和事件时间窗口派生。

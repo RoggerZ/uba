@@ -419,19 +419,22 @@ Authorization: Bearer query-token
 
 证据：
 
-- `仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:18-20`
-- `仓库: analytics-service, commit: 09656b6, file: internal/config/config.go:97-99`
-- `仓库: analytics-service, commit: 09656b6, file: internal/collectapi/handler.go:155-160`
+- `仓库: analytics-service, commit: 89608bf, file: internal/config/config.go:19-21`
+- `仓库: analytics-service, commit: 89608bf, file: internal/config/config.go:101-103`
+- `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/handler.go:165-167`
 
 ```go
-defaultEventsPath   = "/v1/events"
-defaultRealtimePath = "/v1/realtime"
+defaultEventsPath     = "/v1/events"
+defaultRealtimePath   = "/v1/realtime"
+defaultPropertiesPath = "/v1/properties"
 
-EventsPath:   envString("ANALYTICS_SERVICE_EVENTS_PATH", defaultEventsPath)
-RealtimePath: envString("ANALYTICS_SERVICE_REALTIME_PATH", defaultRealtimePath)
+EventsPath:     envString("ANALYTICS_SERVICE_EVENTS_PATH", defaultEventsPath)
+RealtimePath:   envString("ANALYTICS_SERVICE_REALTIME_PATH", defaultRealtimePath)
+PropertiesPath: envString("ANALYTICS_SERVICE_PROPERTIES_PATH", defaultPropertiesPath)
 
 app.Get(h.opts.RealtimePath, h.handleRealtime)
 app.Get(h.opts.EventsPath, h.handleEvents)
+app.Get(h.opts.PropertiesPath, h.handleProperties)
 ```
 
 所以 `/v1/events` 是 analytics-service 内部 Events readback API 的默认路径；部署时可以保留默认值，也可以改成更内部化的路径，例如 `/internal/events`。
@@ -470,3 +473,55 @@ storage.EventPropertyFilter{
 2. core 层：`EventQueryBuilder` 的 `AllowedPropertySelectors`。
 
 这两层都是为了防止 query API 变成任意 ClickHouse 扫描入口。
+
+### `/v1/properties`
+
+`/v1/properties` 是默认内部 property metadata readback 路径。它不返回事件明细，而是返回某个 source 已经观测到的 event/user property selector、值类型和 first/last seen 时间，用于后续筛选器 UI 给用户提供可选字段。
+
+证据：
+
+- `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/handler.go:30-41`
+- `仓库: analytics-service, commit: 89608bf, file: internal/collectapi/query.go:240-285`
+- `仓库: analytics-service, commit: 89608bf, file: internal/runtime/runtime.go:148-175`
+- `仓库: analytics-core, commit: 91ac1db, file: storage/property_catalog.go:31-55`
+- `仓库: analytics-core, commit: 91ac1db, file: storage/mysql/property_catalog.go:108-146`
+
+请求：
+
+```http
+GET /v1/properties?write_key=wk_live&scope=event&limit=100
+Authorization: Bearer query-token
+```
+
+响应：
+
+```json
+{
+  "source": {
+    "tenant_id": "tenant_control",
+    "project_id": "project_control",
+    "source_id": "source_control",
+    "source_type": "web"
+  },
+  "items": [
+    {
+      "scope": "event",
+      "name": "button",
+      "value_type": "string",
+      "first_seen_at": "2026-05-03T09:00:00Z",
+      "last_seen_at": "2026-05-03T10:00:00Z"
+    }
+  ],
+  "limit": 100
+}
+```
+
+边界规则：
+
+1. 仍然必须带内部 query token，不能直接暴露给浏览器。
+2. 仍然必须通过 `write_key` 解析 runtime source，不能让调用方自己传 tenant/project/source。
+3. `analytics-core` 的 `PropertyCatalogQuery` 强制要求 tenant/project/source 三元组。
+4. `scope` 只能是 `event` 或 `user`；`value_type` 只能是 `null`、`string`、`number`、`bool`。
+5. `limit` 默认 100，当前最大 200，避免筛选器元数据接口变成无界扫描。
+
+这里的关键点是：`/v1/properties` 是“属性目录读回”，不是属性过滤查询本身。真正按属性过滤事件仍然走 `/v1/events` 的 `property_filter`，并继续受 source runtime allowlist 和 `EventQueryBuilder` 约束。
