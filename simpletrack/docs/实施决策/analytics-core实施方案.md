@@ -602,7 +602,7 @@ Umami 源码深解已经把 P1 数据管道拆成 tracker、collect、session/vi
 3. P1-002C 正在按长期方案收口：`visit_id` 已进入 collect 契约、ClickHouse schema、event/property writer、reader 和 query builder；`simpletrack-anaysitics-service` 负责装配 visit resolver，`simpletrack-saas` runtime source 输出 server-only `visit_salt` / `visit_window_seconds`。
 4. P1-004 已完成并纠偏：浏览器 SDK 最短链路和 docs/quickstart 已改为 write key 接入，SDK 由 `simpletrack-anaysitics-service` 托管，不再属于 `analytics-core`；后续继续评审 geo、SDK 发布策略和多语言 SDK。
 5. P1-005D 正在推进：内部 `/v1/realtime`、`/v1/events` 已由 `simpletrack-anaysitics-service` 读回放，SaaS 页面只走 server-side helper；Events 已补白名单筛选、排序、属性过滤和 `hasMore` 分页，内部 query token 不进入浏览器，并已支持服务端短窗口轮换 allowlist、结构化生命周期和轮换命中/拒绝审计日志。
-6. P1 数据闭环稳定后，P1.5-001 先做属性治理和 query plan 约束；当前已补 `readSidePolicy`、`EventQueryEvidence` 和 `PropertyCatalog` 基础契约；projection、materialized view 和小时聚合表只在热点明细路径或稳定指标口径明确后逐步引入。
+6. P1 数据闭环稳定后，P1.5-001 先做属性治理和 query plan 约束；当前已补 `readSidePolicy`、`EventQueryEvidence`、`PropertyCatalog` 基础契约、MySQL catalog adapter、`PropertyCatalogingEventWriter` 和 `simpletrack-anaysitics-service` ingestion 运行时装配；projection、materialized view 和小时聚合表只在热点明细路径或稳定指标口径明确后逐步引入。
 
 ## 与上层产品的集成边界
 

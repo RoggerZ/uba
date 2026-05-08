@@ -13,8 +13,8 @@
 
 | 子仓 | commit id | 说明 |
 | --- | --- | --- |
-| `src/analytics-core` | `423d58cafd343b0e937a682e2b964a731ef15d77` | P1 数据管道、`visit_id` 持久化、Events/Realtime query builder、P1.5 query evidence 和 property catalog 基础契约均已收口；历史章节内保留早期 commit 引用作为当时源码证据 |
-| `src/analytics-service` | `09656b685dd8e9f329c3546764ff80eddf82605f` | Fiber runtime、`/collect`、`/tracker.js`、内部 `/v1/realtime` / `/v1/events`、HTTP resolver 和 readback API 均已收口 |
+| `src/analytics-core` | `f9f4ee335790973dfdab4d5ffbcc879e8193a495` | P1 数据管道、`visit_id` 持久化、Events/Realtime query builder、P1.5 query evidence、property catalog 基础契约和 cataloging writer 均已收口；历史章节内保留早期 commit 引用作为当时源码证据 |
+| `src/analytics-service` | `1c83ca9686874122a50e44e9a486d601f8c1155d` | Fiber runtime、`/collect`、`/tracker.js`、内部 `/v1/realtime` / `/v1/events`、HTTP resolver、readback API 和 ingestion 属性目录运行时装配均已收口 |
 | `src/simpletrack-saas` | `bce33354ae27dcba80e2f1ce77ff7ac2c5ed8765` | runtime-source API、Websites 控制面、Realtime/Events server-side readback helper 均已收口 |
 
 P1 当前结论：
@@ -29,8 +29,8 @@ P1 当前结论：
 - 当前第一步实现是 `readSidePolicy`：在 ClickHouse query builder 内统一管理 query limit、filter cap 和 property allowlist，外部 `storage.EventQueryBuilder` / `storage.EventReader` 接口不变。
 - 当前第二步实现是 `EventQueryEvidence`：`storage.EventQueryPlan.QueryEvidence()` 会暴露 query family、read path、optimization、filter count、property table usage 和 sort evidence，用来支持后续读侧取舍。
 - 代码证据：`EventQueryEvidence` / `QueryEvidence()` 位于 `仓库: analytics-core, commit: ee455ac, file: storage/event_query.go:132-172`；ClickHouse evidence 生成位于 `仓库: analytics-core, commit: ee455ac, file: storage/clickhouse/query_builder.go:388-411`。
-- 当前第三步实现是属性字典基础契约：`PropertyCatalogEntry` / `PropertyCatalog` 把 event/user property 的 source-scoped selector、value type、first_seen_at 和 last_seen_at 抽成治理模型，MySQL adapter 落到 `property_catalog` 初始化表；不记录会被重试放大的计数字段。
-- 代码证据：storage-neutral catalog 位于 `仓库: analytics-core, commit: 423d58c, file: storage/property_catalog.go:10-38`；MySQL adapter 位于 `仓库: analytics-core, commit: 423d58c, file: storage/mysql/property_catalog.go:13-91`。
+- 当前第三步实现是属性字典基础契约和 ingestion 装配：`PropertyCatalogEntry` / `PropertyCatalog` 把 event/user property 的 source-scoped selector、value type、first_seen_at 和 last_seen_at 抽成治理模型，MySQL adapter 落到 `property_catalog` 初始化表；`PropertyCatalogingEventWriter` 在主事件写入成功后做 replay-safe metadata upsert，不记录会被重试放大的计数字段。
+- 代码证据：storage-neutral catalog 位于 `仓库: analytics-core, commit: 423d58c, file: storage/property_catalog.go:10-38`；MySQL adapter 位于 `仓库: analytics-core, commit: 423d58c, file: storage/mysql/property_catalog.go:13-91`；cataloging writer 位于 `仓库: analytics-core, commit: f9f4ee3, file: storage/property_cataloging_writer.go:11-70`；运行时装配位于 `仓库: analytics-service, commit: 1c83ca9, file: internal/runtime/worker.go:81-127`；启动期 MySQL 表校验位于 `仓库: analytics-service, commit: 1c83ca9, file: internal/runtime/worker.go:130-151`。
 
 ## 1. 整体架构图
 
@@ -46,7 +46,7 @@ flowchart LR
     EventBus["analytics-core/eventbus<br/>Redis Stream 或 direct"]
     Redis["Redis Stream<br/>analytics.events"]
     Ingestion["analytics-core/ingestion<br/>消费与 ack/nack"]
-    MySQL["MySQL<br/>ingestion_status<br/>property_indexing_status"]
+    MySQL["MySQL<br/>ingestion_status<br/>property_indexing_status<br/>property_catalog"]
     ClickHouse["ClickHouse<br/>events_*<br/>events_*_properties"]
     QueryAPI["/v1/events<br/>/v1/realtime"]
 
@@ -101,6 +101,8 @@ src/
 │   │   ├── event_query.go          # Events/Realtime 查询输入、过滤、排序、返回记录契约
 │   │   ├── property.go             # properties/user_properties 扁平化为 typed property rows
 │   │   ├── property_indexing_writer.go # 事件写入 + 属性索引组合 writer
+│   │   ├── property_catalog.go         # 属性目录治理契约
+│   │   ├── property_cataloging_writer.go # 事件写入 + 属性目录 upsert 组合 writer
 │   │   ├── clickhouse/             # ClickHouse 表路由、DDL、事件写入、属性写入、查询构建与执行
 │   │   └── mysql/                  # MySQL checkpoint：事件幂等与属性索引幂等
 │   └── internal/e2e/               # collect -> bus -> ingestion -> storage 的端到端测试
@@ -129,9 +131,9 @@ src/
 | `analytics-core/contracts` | `event.go` | 定义跨 collect、queue、storage 的 `EventEnvelope` | 不做校验 |
 | `analytics-core/eventbus` | `eventbus.go`, `redisstream/` | 队列抽象、Redis Stream 发布/消费、ack/nack/dead-letter | 不写 ClickHouse |
 | `analytics-core/ingestion` | `processor.go` | 消费 EventBus 消息并调用 `storage.EventWriter` | 不知道 ClickHouse/MySQL 具体实现 |
-| `analytics-core/storage` | `event_writer.go`, `event_query.go`, `property.go` | 存储中立接口、事件查询契约、属性扁平化；`EventQueryPlan.QueryEvidence()` 记录读路径与过滤证据 | 不依赖 HTTP 框架或 Redis |
+| `analytics-core/storage` | `event_writer.go`, `event_query.go`, `property.go`, `property_catalog.go` | 存储中立接口、事件查询契约、属性扁平化、属性目录治理契约；`EventQueryPlan.QueryEvidence()` 记录读路径与过滤证据 | 不依赖 HTTP 框架或 Redis |
 | `analytics-core/storage/clickhouse` | `batch_writer.go`, `query_builder.go`, `event_reader.go`, `schema.go` | ClickHouse 物理表路由、DDL、写入、查询；`query_builder.go` 内部用 `readSidePolicy` 管理 query limit、filter cap 和 property allowlist | 不处理 write key 和 control-plane |
-| `analytics-core/storage/mysql` | `ingestion_status_guard.go`, `property_indexing_status_guard.go` | MySQL 幂等 checkpoint | 不写分析事件表 |
+| `analytics-core/storage/mysql` | `ingestion_status_guard.go`, `property_indexing_status_guard.go`, `property_catalog.go` | MySQL 幂等 checkpoint 和属性目录 metadata upsert | 不写分析事件表 |
 
 ## 4. 内部功能模块拆解
 
@@ -198,6 +200,8 @@ return err
 - MySQL `PropertyIndexingStatusGuard`：用同一业务 key 做属性索引 checkpoint。
 - ClickHouse `PropertyBatchWriter`：写入 typed property 表。
 - `PropertyIndexingEventWriter`：把主事件写入和属性写入组合起来。
+- MySQL `PropertyCatalog`：记录每个 source 观测到的 event/user property selector 和类型。
+- `PropertyCatalogingEventWriter`：把属性目录治理接入 `EventWriter` 链路。主事件或属性索引失败时不写目录；目录写失败时返回错误，让 Redis 重试修复“事件已写入、目录未写入”的部分结果。
 
 ### 4.6 查询模块
 
