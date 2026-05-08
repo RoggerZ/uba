@@ -2,7 +2,8 @@
 
 > 记录日期：2026-05-08
 > 仓库：`src/analytics-core`
-> commit：`1e65684eff8a90d5eb210052e4566d03b7d1c984`
+> 初始基线 commit：`1e65684eff8a90d5eb210052e4566d03b7d1c984`
+> 最近复测 commit：`4393bbd0bdccf41b76f97670e9a57b26f3ecbd2a`
 > 目标：为 P1.5 ClickHouse 读侧优化提供真实 ClickHouse 基线，后续是否引入 projection、materialized view 或小时聚合表必须先和这份基线对比。
 
 ## 本次命令
@@ -82,6 +83,39 @@ BenchmarkEventReaderClickHouseExecution/high_events_property-20       34  312745
 BenchmarkEventReaderClickHouseExecution/high_events_property-20       32  32368522 ns/op  200155 B/op  3590 allocs/op
 ```
 
+## 100k 行 value-free property evidence 复测
+
+复测时间：2026-05-08。
+
+复测 commit：`4393bbd0bdccf41b76f97670e9a57b26f3ecbd2a`。
+
+复测目的：
+
+- 验证 `query_evidence.property_filters` 只记录 `scope/name/value_type/operator` 后，100k 行真实 ClickHouse 读侧表现是否仍稳定。
+- 确认 typed property 过滤路径是否已经需要立即进入 projection、materialized view 或小时聚合表实施。
+
+复测结果：
+
+| 场景 | 3 次结果 | 判断 |
+| --- | --- | --- |
+| `low_realtime` | `18.08ms/op`, `12.34ms/op`, `12.82ms/op` | 第一轮偏高但后两轮回到原 100k 观察区，继续 direct fact table |
+| `medium_events_scalar` | `11.20ms/op`, `10.89ms/op`, `10.44ms/op` | 与上一轮 100k 基线一致 |
+| `high_events_property` | `32.84ms/op`, `31.36ms/op`, `29.84ms/op` | 与上一轮 100k 基线一致，仍是重点观察候选，但不触发立即新增物理结构 |
+
+原始输出：
+
+```text
+BenchmarkEventReaderClickHouseExecution/low_realtime-20               63  18082724 ns/op  167414 B/op  3228 allocs/op
+BenchmarkEventReaderClickHouseExecution/low_realtime-20               93  12344256 ns/op  164035 B/op  3226 allocs/op
+BenchmarkEventReaderClickHouseExecution/low_realtime-20               86  12824671 ns/op  166041 B/op  3226 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar-20       99  11195644 ns/op  168365 B/op  3346 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar-20      100  10888815 ns/op  168761 B/op  3346 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar-20      100  10438323 ns/op  167515 B/op  3346 allocs/op
+BenchmarkEventReaderClickHouseExecution/high_events_property-20       38  32839516 ns/op  201101 B/op  3591 allocs/op
+BenchmarkEventReaderClickHouseExecution/high_events_property-20       42  31357683 ns/op  199677 B/op  3590 allocs/op
+BenchmarkEventReaderClickHouseExecution/high_events_property-20       40  29840255 ns/op  200748 B/op  3591 allocs/op
+```
+
 ## ClickHouse explain 证据
 
 命令：
@@ -96,7 +130,7 @@ go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
 
 - `low_realtime`：仍是 routed fact table 的 `ReadFromMergeTree` 主键路径，没有属性表参与。
 - `medium_events_scalar`：仍是 routed fact table 主键路径，主要受 `tenant_id / project_id / source_id / event_time` 条件约束。
-- `high_events_property`：出现 `CreatingSets`，并且主查询上出现 3 个 `event_id in ... set` 条件；主键条件已经包含 `visit_id`，但本次 100k 行下仍是 `Granules: 13/13`。
+- `high_events_property`：`query_evidence.property_filters` 只暴露 `{Scope:event Name:button ValueType:string Operator:eq}`、`{Scope:event Name:plan ValueType:string Operator:eq}`、`{Scope:user Name:tier ValueType:string Operator:eq}` 这类无 value 的过滤形状；explain 出现 `CreatingSets`，并且主查询上出现 3 个 `event_id in 1000-element set` 条件；主键条件已经包含 `visit_id`，但本次 100k 行下仍是 `Granules: 13/13`。
 
 这说明：
 
@@ -113,6 +147,6 @@ go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
 - Realtime / Events 默认走 direct fact table。
 - `EventQueryBuilder` / `EventReader` 仍是唯一读侧入口。
 - `query_evidence` 继续作为后续优化评审输入。
-- 下一条重点观察候选仍是 `high_events_property`：100k 行下已连续出现 31-34ms/op，且 explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但还需要更大数据量、稳定 query pattern 和回归计划，才能决定是继续只做属性治理，还是进入 projection / MV / 小时聚合表评审。
+- 下一条重点观察候选仍是 `high_events_property`：100k 行下两轮已稳定在约 29.8-34.2ms/op，且 explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但还需要更大数据量、稳定 query pattern 和回归计划，才能决定是继续只做属性治理，还是进入 projection / MV / 小时聚合表评审。
 
 只有当同一 query shape 在更大数据量或连续 benchmark 中稳定超过基线，并且 explain、属性治理、过滤白名单、limit cap、时间窗约束和回归计划都支持继续下沉时，才进入 projection / MV / 小时聚合表评审。

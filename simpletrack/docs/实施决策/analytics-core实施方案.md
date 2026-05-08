@@ -486,7 +486,13 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 - `medium_events_scalar`：约 10.7-11.6ms/op。
 - `high_events_property`：约 31.3-34.2ms/op。
 
-这份基线只作为后续对比依据，不触发立即新增 projection、materialized view 或小时聚合表。下一条重点观察候选是 typed property 过滤读路径；当前 query plan 和第一轮 ClickHouse explain 已补齐，但是否进入物理结构评审，仍要继续看更大数据量、稳定 query pattern 和回归计划。完整记录见 `docs/analytics-source-reading/read-side-benchmark-baseline.md`。
+在 `analytics-core` commit `4393bbd` 补齐 value-free property filter shape evidence 后，同日再次做 100k 行复测：
+
+- `low_realtime`：约 12.3-18.1ms/op，第一轮偏高但后两轮回到原观察区。
+- `medium_events_scalar`：约 10.4-11.2ms/op。
+- `high_events_property`：约 29.8-32.8ms/op。
+
+这份基线和复测只作为后续对比依据，不触发立即新增 projection、materialized view 或小时聚合表。下一条重点观察候选仍是 typed property 过滤读路径；当前 query plan、value-free property filter shape 和 ClickHouse explain 已补齐，但是否进入物理结构评审，仍要继续看更大数据量、稳定 query pattern 和回归计划。完整记录见 `docs/analytics-source-reading/read-side-benchmark-baseline.md`。
 
 同日已补第一轮 ClickHouse explain 证据：
 
@@ -499,7 +505,7 @@ go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
 当前观察到：
 
 - `low_realtime` 和 `medium_events_scalar` 仍是 routed fact table 的 `ReadFromMergeTree` 主键路径。
-- `high_events_property` 已出现 `CreatingSets`，并且主查询上出现 3 个 `event_id in ... set` 条件。
+- `high_events_property` 的 query evidence 只暴露属性过滤形状，不暴露实际属性值；explain 已出现 `CreatingSets`，并且主查询上出现 3 个 `event_id in ... set` 条件。
 - 同一个高属性过滤场景的主键条件已经包含 `visit_id`，但在本次 100k 行数据量下仍是 `Granules: 13/13`。
 
 这说明 typed property 过滤读路径值得继续观察，但仍然只是“是否新增物理结构”的证据补齐，不是立即上 projection、materialized view 或小时聚合表的触发器。下一步仍应优先保持 direct fact table，并继续做属性治理、query plan 约束、更大数据量 benchmark 和回归计划。
