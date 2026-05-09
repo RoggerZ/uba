@@ -256,7 +256,7 @@ property processing -> 不自动 reclaim，因为 ClickHouse 可能已写入但 
 3. builder 生成 SQL + bound args + query evidence，不执行。
 4. `EventReader` 执行 SQL，把 `eventRowModel` 转成 `storage.EventRecord`，并把 `QueryEvidence()` 随 `EventQueryResult` 返回。
 5. service 把 `EventRecord` 转成 JSON response，并把 properties 字符串转成 `json.RawMessage`，同时把 evidence 转成 `query_evidence`；属性目录接口把 `PropertyCatalogEntry` 转成 property catalog items。
-6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前会进入内部 Events / Realtime readback JSON，帮助服务端评审 query shape；它会记录 property filter 的 scope/name/value_type/operator，但不返回 property filter value；它不是 public tracker.js 响应字段。`QueryEvidence()` 返回的是快照，不允许调用方通过修改 `PropertyFilters` slice 反向污染查询计划内的 canonical evidence。
+6. `EventQueryPlan.QueryEvidence()` 是读侧取舍证据，当前会进入内部 Events / Realtime readback JSON，帮助服务端评审 query shape；它会记录 property filter 的 scope/name/value_type/operator，但不返回 property filter value；它不是 public tracker.js 响应字段。`QueryEvidence()` 返回的是快照，不允许调用方通过修改 `PropertyFilters` slice 反向污染查询计划内的 canonical evidence。当前 `analytics-core` commit `f84024a` 已把 typed property filter 收口到 query-builder guardrail：必须显式带 `from/to`，且 direct fact-table 默认只允许 7 天内窗口。
 
 代码证据：`EventQueryEvidence` 和 `EventPropertyFilterEvidence` 定义在 `仓库: analytics-core, commit: b693d62, file: storage/event_query.go:84-94` 和 `storage/event_query.go:149-163`；`NewEventQueryPlan` / `QueryEvidence()` 的 snapshot copy 位于 `storage/event_query.go:181-203`；ClickHouse builder 从 typed query contract 生成 evidence，位置是 `仓库: analytics-core, commit: b693d62, file: storage/clickhouse/query_builder.go:390-451`；服务层响应转换位于 `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:83-106` 和 `internal/collectapi/query.go:671-710`。属性目录读回契约位于 `仓库: analytics-core, commit: b693d62, file: storage/property_catalog.go:31-55`，服务层 `/v1/properties` 处理位于 `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:240-285`；SaaS 服务端读取与 UI 传参位于 `仓库: simpletrack-saas, commit: a48ce44, file: apps/saas/modules/simpletrack/lib/analytics-readback.ts:110-139` 和 `apps/saas/app/(authenticated)/(main)/(organizations)/[organizationSlug]/events/page.tsx:77-101`、`185-189`，筛选控件的 catalog selection 行为位于 `apps/saas/modules/simpletrack/components/events-property-filter-controls.tsx:336-381`。
 
@@ -528,7 +528,7 @@ XAdd(... Values: map[string]any{"envelope": payload})
 - query struct 变成 SQL + bound args + `QueryEvidence()`。
 - ClickHouse row 变成 storage-neutral `EventRecord`。
 - `Properties/UserProperties` 字符串如果是合法 JSON，就作为 JSON 返回；否则作为字符串 JSON 返回。
-- `QueryEvidence()` 描述 query family、read path、optimization、effective limit、offset、time window、filter count、属性表参与、value-free property filter shape 和排序口径；它是后续 projection / materialized view / 小时聚合表取舍证据，会进入内部 readback 响应，但不是 public tracker.js / collect 响应字段。
+- `QueryEvidence()` 描述 query family、read path、optimization、effective limit、offset、time window、filter count、属性表参与、value-free property filter shape 和排序口径；它是后续 projection / materialized view / 小时聚合表取舍证据，会进入内部 readback 响应，但不是 public tracker.js / collect 响应字段。对 typed property filter 来说，当前默认前提还包括显式 `from/to` 和 7 天内 direct fact-table 窗口。
 
 ## 9. 数据流控制逻辑
 
