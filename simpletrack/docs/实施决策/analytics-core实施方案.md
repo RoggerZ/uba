@@ -530,6 +530,8 @@ go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
 
 这说明 typed property 过滤和宽时间窗 Events 路径值得继续观察，但仍然只是“是否新增物理结构”的证据补齐，不是立即上 projection、materialized view 或小时聚合表的触发器。下一步仍应优先保持 direct fact table，并继续做属性治理、query plan 约束、更大数据量 benchmark 和回归计划。`analytics-core` commit `caf314d` 已要求 Events benchmark / explain 场景在执行前断言真实 `EventQueryPlan.QueryEvidence()` 和 `plan.Args` 都保留 `from/to` 时间上下界，避免只靠 helper 计算误判窗口形状。
 
+随后 `analytics-core` commit `f84024a` 又把这一判断进一步落成硬约束：typed property filters 必须显式带 `from/to`，并且在 direct fact-table 路径上默认只允许 7 天内窗口。这样做的含义是，当前产品和服务不会再把“无限宽历史 property 查询”当成默认能力，而是先把 7 天内 property 过滤路径、宽时间窗 scalar Events 明细路径和后续物理结构证据分开治理。若后续要放宽 property 历史窗口，必须先补新的 query evidence、benchmark、explain 和物理结构评审，而不是直接把 guardrail 删除。
+
 ## P1 执行步骤
 
 ### Step 1：新建仓库骨架
