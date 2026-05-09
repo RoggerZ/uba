@@ -472,7 +472,7 @@ storage.EventPropertyFilter{
 1. service 层：`SourceConfig.AllowsPropertyFilter(scope, name, valueType)`。
 2. core 层：`EventQueryBuilder` 的 `AllowedPropertySelectors`。
 
-这两层都是为了防止 query API 变成任意 ClickHouse 扫描入口。
+这两层都是为了防止 query API 变成任意 ClickHouse 扫描入口。当前 `analytics-core` commit `f84024a` 还增加了时间窗护栏：带 typed property filter 的 Events 查询必须显式传 `from/to`，并且 direct fact-table 路径默认只允许 7 天内窗口；超过这个窗口要先回到读侧优化评审，而不是直接放开接口。
 
 如果这次 Events 查询带了属性过滤，`query_evidence.property_filters` 只返回过滤形状，例如 `scope/name/value_type/operator`，不会返回实际过滤值。这样后续做 projection / materialized view / 小时聚合表取舍时能看清 query shape，同时避免把用户属性值或事件属性值回显到控制面响应里。`analytics-core` 还会在 `NewEventQueryPlan` 和 `QueryEvidence()` 两个边界复制这组 slice，防止调用方通过修改返回值影响查询计划里保存的 canonical evidence。
 
