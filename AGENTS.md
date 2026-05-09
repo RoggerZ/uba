@@ -41,6 +41,7 @@
 - `src/simpletrack-saas` 如果 npm/pnpm 网络失败，优先设置 `HTTP_PROXY`、`HTTPS_PROXY`、`npm_config_proxy`、`npm_config_https_proxy` 为 `http://localhost:64320`；如果仍失败，再切到 `http://localhost:7897`，并设置 `npm_config_registry=https://registry.npmjs.org/`，避免落到不稳定镜像源。
 - `src/simpletrack-saas` 的 `saas` type-check 如果报 `packages/database/prisma/generated/client` 缺失，先运行 `pnpm --filter @repo/database run generate`，再重跑 type-check。
 - 后续遇到依赖安装、网络代理、SSH 权限、子仓库推送、构建验证、数据库连接等卡壳问题时，不要把排障细节继续写进 README；统一记录到 `docs/开发环境卡壳问题记录.md`，README 只保留初始化和常用命令入口。
+- 遇到已记录过的环境或工具异常时，先查 `docs/开发环境卡壳问题记录.md` 的“坑位速查索引”，按第一处理动作排查；不要在没有新证据的情况下重复完整排障。
 - `references/xwl_bi-backend/` 是从本地 `xwl_bi` 复制进来的只读临时参考快照，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分；不要把它当作活跃模块开发，不要直接照搬旧业务代码或旧命名。
 - 如需刷新 `references/xwl_bi-backend/`，必须按“重新快照”的方式整体替换，并在 `references/xwl_bi-backend/README.md` 与实施决策文档中记录新的来源 commit。
 
@@ -58,6 +59,10 @@
 - 为减少 Codex App 在子代理中弹出人工确认，代码审查子代理应优先使用 `rg`、`git diff`、`go test`、`go vet`、`pnpm test`、`pnpm type-check` 等命令行验证；只有确有必要时才调用 `omx_code_intel` 这类 MCP 工具。若必须使用 MCP 工具，应优先使用已在本机/项目配置为无需审批的只读工具，不得把“等待人工确认”当成审查完成。
 - 代码改动提交前必须显式执行 `$ai-slop-cleaner` skill 的 bounded cleanup/review 流程：先确认行为锁定和测试证据，再按本次变更文件检查重复逻辑、死代码、无必要抽象、弱边界、样板化实现、低价值注释、缺失回归测试和无关膨胀；不能借机做大范围重写。
 - `$ai-slop-cleaner` 发现必须修复的问题时，主代理先修复、重跑相关验证，并按需追加子代理复审；最终交付说明需要简要写明子代理审查结果、`$ai-slop-cleaner` 结论或剩余风险。
+- 涉及 UI、页面状态、交互文案、布局、视觉层级或前端用户流程的代码修改，除常规 Codex 子代理代码审查和 `$ai-slop-cleaner` 外，提交前必须额外完成两个外部 UI 审查：
+  - 使用 `$ask-gemini` / 本地 Gemini CLI 对本次 UI diff、页面状态、用户误导风险和测试覆盖做独立评审，并将评审 artifact 保存在 `.omx/artifacts/`。
+  - 使用本机 DeepSeek CLI `D:\nvm\v24.1.0\node_modules\deepseek-tui\bin\downloads\deepseek.exe` 对同一 UI diff 做独立评审；DeepSeek 思考时间可能较长，必须耐心等待，不得因为等待时间长就跳过或伪造结论。
+- UI 外部评审的 prompt 必须包含：本次改动目标、涉及文件、关键 diff、已运行测试、需要重点审查的页面状态/错误状态/空状态/边界状态。若 Gemini 或 DeepSeek 因本机未安装、未登录、网络或 CLI 故障无法运行，必须在交付和卡壳记录中明确写明失败原因，并改用可执行的真实替代审查；不得声明未完成的外部评审已经完成。
 - 该规则适用于代码文件和会影响代码行为的配置、脚本、迁移、测试文件；纯文档更新不强制启动子代理，除非用户明确要求审查。
 - 提交和推送默认遵循 `$git-commit-cn` 的流程：先核对 `git status --short --branch`、`git diff --stat`、`git diff --name-status`，只 stage 本次任务相关文件，禁止用 `git add .` 混入 IDE 配置、日志、缓存、临时目录或无关未跟踪文件。
 - 提交信息使用英文，不使用中文提交正文；但正文结构沿用 `$git-commit-cn` 的分路径说明方式，按文件路径分组列出每个文件的具体修改点。
