@@ -223,6 +223,8 @@ BenchmarkEventReaderClickHouseExecution/high_events_property_wide_window-20     
 - `query_evidence` 继续作为后续优化评审输入。
 - 产品短窗口 Realtime 暂不构成读侧物理结构优化压力。后续不要再用 wide-since benchmark 代表正常 Realtime。
 - 近期 Events 明细查询暂不构成读侧物理结构优化压力。后续不要再用 wide-window Events 结果代表正常近期 Events。
-- 下一条重点观察候选调整为“宽时间窗 Events 明细查询”和 `high_events_property_wide_window`：500k 行下二者都进入约 40-44ms/op 区间，其中 high property explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但还需要稳定 query pattern 和回归计划，才能决定是继续只做属性治理，还是进入 projection / MV / 小时聚合表评审。
+- `analytics-core` commit `f84024a` 之后，typed property filter 不再允许无限宽历史窗口：查询必须显式带 `from/to`，并且 direct fact-table 路径默认只允许 7 天内窗口。
+- 下一条重点观察候选因此收窄为“宽时间窗 scalar Events 明细查询”和“7 天内 typed property 过滤读路径”。500k 行下旧 `high_events_property_wide_window` 仍保留为压力证据：它进入约 43-44ms/op 区间，explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但这个旧宽窗口结果不能再被当成默认可放开的产品能力。
+- 如果后续要支持超过 7 天的 property 历史过滤，必须先回到实施决策评审，补新的 query evidence、benchmark、explain 和物理结构方案；不能只删除 query-builder guardrail。
 
 只有当同一 query shape 在更大数据量或连续 benchmark 中稳定超过基线，并且 explain、属性治理、过滤白名单、limit cap、时间窗约束和回归计划都支持继续下沉时，才进入 projection / MV / 小时聚合表评审。
