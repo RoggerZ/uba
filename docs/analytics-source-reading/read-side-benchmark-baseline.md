@@ -3,7 +3,7 @@
 > 记录日期：2026-05-08
 > 仓库：`src/analytics-core`
 > 初始基线 commit：`1e65684eff8a90d5eb210052e4566d03b7d1c984`
-> 最近复测 commit：`93cff0f140024ca006307490eed4b1fefef2cfb1`
+> 最近复测 commit：`a99147f4da07ccfd6643722a891cad65c1270b3e`
 > 目标：为 P1.5 ClickHouse 读侧优化提供真实 ClickHouse 基线，后续是否引入 projection、materialized view 或小时聚合表必须先和这份基线对比。
 
 ## 本次命令
@@ -39,15 +39,15 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 
 代码证据：
 
-- benchmark 入口：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:22-59`。
-- benchmark 只连接 ClickHouse，不混入 Redis / MySQL：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:67-71`。
-- benchmark 会先 seed deterministic events / properties：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:86-91`。
-- benchmark 场景覆盖 recent-window Realtime、wide-since Realtime、recent-window Events、条件启用的 bounded 24h scalar Events、recent-window typed property Events、wide-window scalar Events 和 wide-window typed property Events：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:112-215`。
-- bounded 24h scalar Events 只有在 `rowCount > 86400` 时才会进入 benchmark / explain 套件，避免默认 10k fixture 把它伪装成 wide-window；同时 `benchmarkEndTime` 现在保持精确排他上界，确保 24h slice 的 `QueryEvidence.TimeWindowSeconds` 真正等于 `86400`：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:151-168` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:440-468`。
-- Realtime 场景会在计时前记录并校验 `since` 和 eligible row count，防止把 wide-since 压力查询误当成短窗口 Realtime：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:217-227` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:883-899`。
-- Events 场景会在计时前记录并校验 `from/to` eligible row count，并额外断言真实 `EventQueryPlan` 的 `QueryEvidence()` 和 bound args 都包含时间上下界，防止 helper 计算正确但 ClickHouse SQL 实际丢掉时间条件：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:225-234` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:907-931`。
-- 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:237-250`。
-- explain 测试与 benchmark 复用同一套路由表和数据夹具，并记录 Realtime / Events window evidence：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:256-400`。
+- benchmark 入口：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:22-60`。
+- benchmark 只连接 ClickHouse，不混入 Redis / MySQL：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:89-91`。
+- benchmark 会先 seed deterministic events / properties：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:108-113`。
+- benchmark 场景覆盖 recent-window Realtime、wide-since Realtime、recent-window Events、条件启用的 bounded 24h / 72h / 7d scalar Events、recent-window typed property Events、wide-window scalar Events 和 wide-window typed property Events：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:128-225`。
+- bounded scalar suite 现在按窗口规格展开：只有 `rowCount > windowRows` 才会进入 benchmark / explain 套件，避免默认小 fixture 把多日 bounded 场景伪装成 wide-window；窗口规格和 helper 位于 `仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:26-47` 与 `internal/e2e/clickhouse_reader_benchmark_test.go:443-531`。
+- Realtime 场景会在计时前记录并校验 `since` 和 eligible row count，防止把 wide-since 压力查询误当成短窗口 Realtime：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:228-239` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:883-899`。
+- Events 场景会在计时前记录并校验 `from/to` eligible row count，并额外断言真实 `EventQueryPlan` 的 `QueryEvidence()` 和 bound args 都包含时间上下界，防止 helper 计算正确但 ClickHouse SQL 实际丢掉时间条件：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:236-246` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:907-931`。
+- 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:254-262`。
+- explain 测试与 benchmark 复用同一套路由表和数据夹具，并记录 Realtime / Events window evidence：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:267-404`。
 - explain 直接复用 sealed query plan SQL 和 bound args：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:773-795`。
 
 ## 默认 10k 行结果
@@ -241,6 +241,78 @@ BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window-
 - 它依然保持 `TimeWindowSeconds=86400` 且只读 `12/62` granules，说明 ClickHouse 主键时间约束仍然有效。
 - 这组证据直接支持后续撤回 `analytics-service` 的 `24h => pressure=high` heuristic：仅凭 24h bounded scalar 窗口不足以被标记为高压力。
 
+## 500k 行 bounded 72h scalar Events 证据
+
+运行时间：2026-05-10。
+运行 commit：`a99147f4da07ccfd6643722a891cad65c1270b3e`。
+
+运行目的：
+
+- 用比 24h 更宽、但仍明显小于 wide-window 的 bounded scalar 时间窗，补齐 service triage 讨论所缺的中间证据层。
+- 判断 bounded scalar 从 24h 扩到 72h 后，是否已经足够接近 wide-window scalar 的压力区。
+
+运行命令：
+
+```powershell
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS='500000'
+go test ./internal/e2e -run 'TestEventReaderClickHouseExplain/medium_events_scalar_bounded_72h_window' -count=1 -v
+go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_72h_window' -benchmem -count=3
+```
+
+Explain 结果摘要：
+
+- `eligible_rows=259200`
+- `query_evidence.time_window_seconds=259200`
+- `Granules: 33/62`
+
+Benchmark 结果：
+
+| 场景 | 3 次结果 | 判断 |
+| --- | --- | --- |
+| `medium_events_scalar_bounded_72h_window` | `11.49ms/op`, `10.33ms/op`, `10.56ms/op` | 相比 24h 读了更多 granules，但整体仍留在 direct fact-table 的中等观察区，没有逼近 wide-window scalar 的 `40ms+` 压力区 |
+
+当前判断：
+
+- `72h` bounded scalar 已经明显比 `24h` 更宽，但在 500k 行夹具下仍没有出现需要立即新增物理结构的压力信号。
+- 这组中间证据说明“只要 bounded 时间窗超过 24h 就进入 high”仍然过于激进。
+
+## 1,000,000 行 bounded 7d scalar Events 证据
+
+运行时间：2026-05-10。
+运行 commit：`a99147f4da07ccfd6643722a891cad65c1270b3e`。
+
+运行目的：
+
+- 观察 bounded scalar 在完整 7 天窗口和更大 fixture 下，是否会进入与 wide-window scalar 接近的压力区。
+- 为后续是否需要重新讨论 bounded scalar service heuristic 提供上限样本。
+
+运行命令：
+
+```powershell
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS='1000000'
+go test ./internal/e2e -run 'TestEventReaderClickHouseExplain/medium_events_scalar_bounded_7d_window' -count=1 -v
+go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_7d_window' -benchmem -count=3
+```
+
+Explain 结果摘要：
+
+- `eligible_rows=604800`
+- `query_evidence.time_window_seconds=604800`
+- `Granules: 75/123`
+
+Benchmark 结果：
+
+| 场景 | 3 次结果 | 判断 |
+| --- | --- | --- |
+| `medium_events_scalar_bounded_7d_window` | `52.11ms/op`, `48.43ms/op`, `46.11ms/op` | 这是当前 bounded scalar 证据里第一次稳定进入 `46-52ms/op` 压力区，已经接近或达到 wide-window scalar 的观察区 |
+
+当前判断：
+
+- `7d` bounded scalar 终于表现出明确压力，但它对应的是更大 fixture 和更长历史窗口，不应被简单降格成“24h+ 全都 high”。
+- 当前更合理的结论是：bounded scalar 需要基于更完整的 row-volume + window 证据判断，而不是只靠一个时间窗阈值拍板。
+
 ## ClickHouse explain 证据
 
 命令：
@@ -346,9 +418,9 @@ BenchmarkEventReaderClickHouseExecution/high_events_property_wide_window-20     
 - 近期 Events 明细查询暂不构成读侧物理结构优化压力。后续不要再用 wide-window Events 结果代表正常近期 Events。
 - `analytics-core` commit `f84024a` 之后，typed property filter 不再允许无限宽历史窗口：查询必须显式带 `from/to`，并且 direct fact-table 路径默认只允许 7 天内窗口。
 - 下一条重点观察候选因此收窄为“宽时间窗 scalar Events 明细查询”和“7 天内 typed property 过滤读路径”。500k 行下旧 `high_events_property_wide_window` 仍保留为压力证据：它进入约 43-44ms/op 区间，explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但这个旧宽窗口结果不能再被当成默认可放开的产品能力。
-- `analytics-service` commit `c08e1da` 已撤回“bounded Events `24h+` 且无 property join => pressure=high`”这条 service heuristic。原因是 `analytics-core` `93cff0f` 之后补跑的 100k / 500k bounded 24h scalar Events 证据都更接近 direct fact-table 的 `medium` 观察区，而不是 wide-window scalar 的压力区。
-- 这说明 bounded scalar Events 的 pressure triage 目前不适合只靠时间窗阈值推断；如果未来要重引入类似规则，必须先补新的 benchmark / explain 和更大 row-volume 证据。
-- `analytics-core` commit `93cff0f` 已进一步保证 benchmark 里的 bounded 24h scalar Events 形状本身是“真实 distinct 的证据”，而不是默认小夹具下的假分支；因此后续讨论 `24h` triage 阈值时，可以把它当作 service heuristic 旁边的一条 benchmark hygiene 约束，而不是新的 planner 能力。
+- `analytics-service` commit `c08e1da` 已撤回“bounded Events `24h+` 且无 property join => pressure=high`”这条 service heuristic。原因是 `24h` 和 `72h` bounded scalar 证据都仍落在 direct fact-table 的中等观察区，而不是 wide-window scalar 的压力区。
+- `analytics-core` commit `a99147f` 之后，bounded scalar 已经形成 `24h -> 72h -> 7d` 的证据梯度：前两档仍偏中等，`7d @ 1,000,000 rows` 才首次稳定进入 `46-52ms/op` 压力区。
+- 这说明 bounded scalar Events 的 pressure triage 目前不适合只靠一个时间窗阈值推断；如果未来要重引入类似规则，至少要把时间窗和 row volume 一起纳入判断，而不是简单回到 `24h+` 特判。
 - 如果后续要支持超过 7 天的 property 历史过滤，必须先回到实施决策评审，补新的 query evidence、benchmark、explain 和物理结构方案；不能只删除 query-builder guardrail。
 
 只有当同一 query shape 在更大数据量或连续 benchmark 中稳定超过基线，并且 explain、属性治理、过滤白名单、limit cap、时间窗约束和回归计划都支持继续下沉时，才进入 projection / MV / 小时聚合表评审。
