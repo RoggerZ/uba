@@ -68,7 +68,7 @@ P1.5-001 补充进度：2026-05-08 的 500k 行复测已纠正 Realtime benchmar
 
 ## 当前进度
 
-本节版本标记：`analytics-core` commit `f84024a`；`analytics-service` commit `da852cd`；`simpletrack-saas` commit `ffdb254`；父仓本轮文档 commit `pending commit`。
+本节版本标记：`analytics-core` commit `f84024a`；`analytics-service` commit `da852cd`；`simpletrack-saas` commit `ffdb254`；父仓上一轮同步 commit `952f0a8`。
 
 当前处于 **P0：产品与底座确认**，并已经明确部分 **P1 前置底座任务**。
 

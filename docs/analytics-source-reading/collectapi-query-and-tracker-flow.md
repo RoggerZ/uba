@@ -797,7 +797,7 @@ Authorization: Bearer query_token_server_side
 }
 ```
 
-`query_evidence` 来自 `analytics-core` 的 query plan，不从 SQL 字符串反推；Realtime 的时间窗通常只有 lower bound，所以 `time_window_seconds` 为 0。响应结构证据：`仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:83-106, 671-710`；对应回归位于 `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/handler_test.go:404-414`
+`query_evidence` 来自 `analytics-core` 的 query plan，不从 SQL 字符串反推；Realtime 的时间窗通常只有 lower bound，所以 `time_window_seconds` 为 0。响应结构证据：`仓库: analytics-service, commit: da852cd, file: internal/collectapi/query.go:62-109, 780-802`；对应回归位于 `仓库: analytics-service, commit: da852cd, file: internal/collectapi/handler_test.go:406-416`
 
 ### 4.3 `/v1/events` 请求/响应示例
 
@@ -851,7 +851,7 @@ Authorization: Bearer query_token_server_side
 }
 ```
 
-`query_evidence` 中的 `uses_property_table=true` 表示这次查询用到了 typed property 表；`property_filters` 只描述 scope/name/value_type/operator，不返回实际过滤值；`pressure=high` 只是读侧 triage 桶，不是 SLA 或扩缩容信号。响应结构证据：`仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/query.go:83-106, 671-710`；对应回归位于 `仓库: analytics-service, commit: 64b0bda, file: internal/collectapi/handler_test.go:573-668`
+`query_evidence` 中的 `uses_property_table=true` 表示这次查询用到了 typed property 表；`property_filters` 只描述 scope/name/value_type/operator，不返回实际过滤值；`pressure=high` 只是读侧 triage 桶，不是 SLA 或扩缩容信号。响应结构证据：`仓库: analytics-service, commit: da852cd, file: internal/collectapi/query.go:94-109, 780-802`；对应回归位于 `仓库: analytics-service, commit: da852cd, file: internal/collectapi/handler_test.go:645-670`
 
 ### 4.4 Authorization Bearer token 示例
 
