@@ -32,8 +32,8 @@
 | PLAN-004 | 建立支付服务说明目录 | 已完成 | 已创建 Stripe / Polar / Lemon Squeezy 对比，并明确先按 Supastarter provider 接入 | 上线收费前补 Paddle/Creem/Dodo 和个人开发者收款检查 |
 | P0-001 | Next.js 可交互原型 | 进行中 | `simpletrack-enterprise-mvp` 的当前页面集合已收口到 `onboarding`、`dashboard`、`events`、`goals`、`settings`，并作为 P1 页面 contract 的最新依据；需继续按生产可迁移骨架推进 | 完成 Next.js 迁移和页面验证 |
 | P0-002 | SaaS 模板选型评估 | 已完成 | 已确定先选择 Supastarter for Next.js；MakerKit 保留为 B2B 对照和备选 | 进入 Supastarter 1 天 SimpleTrack spike |
-| P0-003 | 企业分析控制台 UI 可改造性评审 | 进行中 | `src/simpletrack-saas` 已能在 Supastarter `apps/saas` 组织内导航挂载 Websites、Realtime、Events 页面草案；`simpletrack-saas` `9ebe9f4` 又把 Next dev loopback 登录链路收口为共享 helper，真实验证 `localhost:3005` / `127.0.0.1:3005` 都能完成 authenticated 登录跳转，避免截图级评审被 dev origin 假故障打断 | 继续做截图级评审，确认密度、表格、侧边栏和空态是否满足企业分析控制台 |
-| P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；`src/simpletrack-saas` 已作为独立子仓库推送；Websites 页已从 UI-only gate 前进到真实 Website source 列表 + 最小创建入口；marketing/docs/mail-preview 已完成浏览器截图验证；privacy/terms 已从模板占位替换为 SimpleTrack 基线版本（`simpletrack-saas` `d53de11`）；authenticated readback 页面在 `simpletrack-saas` `9c8ba37` 收口了稳定 selector 和 product-safe readback copy，随后 `9ebe9f4` 又修复了 Next dev `localhost` / `127.0.0.1` 下的本地登录与 hydration 假故障；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位，并在需要 authenticated SaaS 流程时用 Docker Postgres 验证 |
+| P0-003 | 企业分析控制台 UI 可改造性评审 | 进行中 | `src/simpletrack-saas` 已能在 Supastarter `apps/saas` 组织内导航挂载 Websites、Realtime、Events 页面草案；`simpletrack-saas` `9ebe9f4` 又把 Next dev loopback 登录链路收口为共享 helper，真实验证 `localhost:3005` / `127.0.0.1:3005` 都能完成 authenticated 登录跳转，避免截图级评审被 dev origin 假故障打断；`simpletrack-saas` `ffdb254` 已把 Websites 页从“行内整块设置表单”重构为“紧凑来源行 + write key 面板 + 右侧动作 + accordion 设置区”，并补上“编辑成功/失败后重新展开目标来源”的上下文保持行为；相关 Vitest（115 tests）、type-check、oxfmt 已通过，系统 Chrome 截图保留为 `websites-refactor-collapsed-v2.png` / `expanded-v2.png`，DeepSeek 基于实际代码片段给出 `APPROVE`，Codex native verifier 子代理真实返回 `PASS` | 继续做 authenticated 页面截图级评审，确认密度、间距、焦点行为和更多空态/错误态是否满足企业分析控制台 |
+| P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；`src/simpletrack-saas` 已作为独立子仓库推送；Websites 页已从 UI-only gate 前进到真实 Website source 列表 + 最小创建入口，并在 `simpletrack-saas` `ffdb254` 继续收口成更接近企业分析控制台的 accordion 行布局，同时修复 settings server action 刷新后丢上下文的问题；marketing/docs/mail-preview 已完成浏览器截图验证；privacy/terms 已从模板占位替换为 SimpleTrack 基线版本（`simpletrack-saas` `d53de11`）；authenticated readback 页面在 `simpletrack-saas` `9c8ba37` 收口了稳定 selector 和 product-safe readback copy，随后 `9ebe9f4` 又修复了 Next dev `localhost` / `127.0.0.1` 下的本地登录与 hydration 假故障；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 继续核验许可证、私有仓库、闭源修改、团队席位，并在需要 authenticated SaaS 流程时用 Docker Postgres 验证 |
 | P0-005 | xwl_bi 分析数据面抽核方案 | 已完成 | 已确认 P1 新建独立业务无关仓库 `analytics-core`，不复用旧 Vue2 后台，不整仓改名 | 进入 P1-000 实施设计 |
 | P1-000A | 输出 `analytics-core` 实施方案 | 已完成 | 已新增 `analytics-core实施方案.md`，并补充方案 B 物理分表、原生 ClickHouse batch writer、入库幂等去重、tenant/project/source 映射 | 根据评审继续细化接口和表模型 |
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github-simpletrack:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
@@ -68,7 +68,7 @@ P1.5-001 补充进度：2026-05-08 的 500k 行复测已纠正 Realtime benchmar
 
 ## 当前进度
 
-本节版本标记：`analytics-core` commit `f84024a`；`analytics-service` commit `3b8d27c`；`simpletrack-saas` commit `9ebe9f4`；父仓本轮文档 commit `3b56959`。
+本节版本标记：`analytics-core` commit `f84024a`；`analytics-service` commit `3b8d27c`；`simpletrack-saas` commit `ffdb254`；父仓本轮文档 commit `pending commit`。
 
 当前处于 **P0：产品与底座确认**，并已经明确部分 **P1 前置底座任务**。
 
@@ -108,7 +108,7 @@ P1.5-001 补充进度：2026-05-08 的 500k 行复测已纠正 Realtime benchmar
 
 正在推进：
 
-- Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载；其中 Websites 已从 UI-only gate 前进到真实 source 列表 + 最小创建表单，marketing 文案、pricing 语义、docs/quickstart、mail-preview、privacy-policy、terms 和浏览器截图验证也已完成。
+- Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载；其中 Websites 已从 UI-only gate 前进到真实 source 列表 + 最小创建表单，并在 `simpletrack-saas` `ffdb254` 进一步重构为“紧凑来源行 + write key 面板 + accordion 设置区”的企业控制台布局，同时补上 settings server action 成功/失败后的上下文保持。目标 `oxfmt --check`、`corepack pnpm --filter saas test -- websites-page.test.tsx`（115 tests）和 `corepack pnpm --filter saas type-check` 均已通过；DeepSeek 现已基于实际代码片段给出 `APPROVE`，Gemini 最小 prompt 仍报 `function_response.name: Name cannot be empty`，Codex native verifier 子代理真实返回 `PASS`。
 - `analytics-core` P1 数据管道已收口：collect handler、Fiber `POST /collect` 适配器、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单、P1-002B/C collect pre-queue stage 和持久化 `visit_id` 链路已完成；browser / OS / device 派生、geo enrichment、internal traffic 产品配置和过滤审计边界也已补齐，core 继续保持 Go library 方式被 `simpletrack-anaysitics-service` 引用。
 - `simpletrack-anaysitics-service` 主线（本地仓库 `src/analytics-service`）：已完成本地仓库、服务骨架、Fiber runtime app、memory / HTTP runtime config resolver、`/collect` 运行时校验、`/tracker.js` 静态托管、collect 单测、Redis durable enqueue、可选 ingestion worker 装配、本地/小部署 ClickHouse routed table auto migration，以及 `P1-005D/E` 内部 Events / Realtime / Goals 查询入口、query routes 配置、Swagger UI / OpenAPI 文件、query token 轮换 allowlist、结构化生命周期、source-scoped 属性过滤白名单、`visit_id` 持久字段读取、control-plane revoke handler 回归和内部 `/v1/properties` 属性目录读回接口；`simpletrack-saas` 内部 runtime-source API、Websites 真实 source 管理最小闭环（create/list/update/enable/disable/delete）、visit resolver runtime 配置、Realtime/Events/Goals 页面读回放、visit_id 可见列、页面级回归、client-safe Website selector、Events 时间窗口预设、repeatable property_filter 多条件查询、Goal event-name contract samples、Goal fan-out 25 条上限、P1 active-source quota 策略和 `readback_policy` 显式契约已落地，复杂聚合分析维持到 P1.5/P2。父仓文档版本以本页顶部版本标记为准。
 - `analytics-core`、`simpletrack-anaysitics-service` 和 `simpletrack-saas` 近期又补了 Events 组合查询回归：同一条请求里同时携带 `event_name`、`distinct_id`、`visit_id`、分页、排序、时间窗口和 repeatable `property_filter` 时，SaaS 会保持完整 readback state，服务端会把同一组条件送入 `analytics-core`，core 会生成参数化 ClickHouse query plan。
@@ -131,7 +131,6 @@ P1.5-001 补充进度：2026-05-08 的 500k 行复测已纠正 Realtime benchmar
 
 1. 继续推进 P1.5-001：围绕宽时间窗 scalar Events 明细查询和 7 天内 typed property 过滤读路径继续做稳定 query pattern 和回归计划评审；当前 500k benchmark 证明短窗口 Realtime 稳定，而更宽的 property 历史窗口已先被 query-builder guardrail 收口，仍不足以触发新增 ClickHouse 物理结构。`docs/analytics-source-reading/read-side-benchmark-baseline.md` 已同步这条结论。
 2. 收口 Goal 最小闭环剩余 `WATCH` 项：事件名契约复制已由 `analytics-core` `1ea78f3` 与 `simpletrack-saas` `9c56e96` 的一致样例测试和 fan-out 上限缓解；readback policy 控制面闭环已完成，下一步继续评审内部 query token 粒度、live browser / e2e 缺口和更细粒度内部读权限；更大规模批量 Goal count 放 P1.5/P2。
-3. 如果后续要把 Events filter builder 的 catalog selection 行为做浏览器交互级测试，先评审是否引入 jsdom/testing-library，避免为单个测试临时加重依赖。
 4. 把过滤统计、salt 轮换、cookie/no-cookie、server identity、Sessions 专页和 retention 产品化维持在 P1.5/P2，除非明确重开范围。
 5. 把 R3-U1/R3-U2 的剩余项降为 P1.5/P2：ambiguous `property_indexing_status=processing` 恢复策略、ClickHouse 读侧优化中的 projection / materialized view / 小时聚合表落地。
 5. 在需要 authenticated SaaS 流程时，用 `src/simpletrack-saas/docker-compose.yml` 启动本地 PostgreSQL，验证登录、组织和真实 subscription gate 依赖。
