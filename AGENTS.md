@@ -18,6 +18,7 @@
 - 概念解释、选型问答和评审澄清统一写入 `simpletrack/docs/Q&A/`，保持一问一答格式。
 - 支付服务、订阅计费、Merchant of Record 等商业化基础设施说明统一写入 `simpletrack/docs/支付服务/`。
 - `docs/analytics-source-reading/` 是 SimpleTrack 源码解读同步目录；每次推进该目录相关任务后，必须同步更新该目录下的相关 Markdown 文档，保持源码解读、引用、状态和当前实现一致。
+- 实施决策、进度表、Q&A、支付说明、源码解读或卡壳记录这类文档同步工作可以委托给 Codex native 子代理并行处理；但主代理必须在继续主线前亲自核实目标文件已经真实写入成功，例如检查子代理返回、`git diff -- <path>`、文件内容或 staged diff。只看到子代理“已启动 / 已回复 / 已完成”而没有落盘证据，不能算文档已同步；若子代理因接口异常、中断或超时没有真正写入，主代理必须重跑该子代理或自行补写。
 - 决策文档必须标注状态：`已确定`、`待评审`、`已否决` 或 `暂缓`，并写明依据、影响范围和下一步动作。
 - SimpleTrack 当前已确定的 P1 核心目标是“数据管道活了 + 公开产品入口”：页面浏览和自定义事件能够进入 Realtime 与 Events，同时具备产品官网 / Marketing Site / docs/quickstart。不要把 P1 产品层扩成团队/RBAC、收入归因页面、Replay/Performance、Boards/Share/API Key、Funnels/Journeys 的大而全版本。
 - `simpletrack/docs/实施决策/README.md` 必须维护修订记录、实施计划完成列表、当前进度和下一步动作。
