@@ -3,7 +3,7 @@
 > 记录日期：2026-05-08
 > 仓库：`src/analytics-core`
 > 初始基线 commit：`1e65684eff8a90d5eb210052e4566d03b7d1c984`
-> 最近复测 commit：`caf314db9ea1c29241902b31ee74d6399d7e5715`
+> 最近复测 commit：`93cff0f140024ca006307490eed4b1fefef2cfb1`
 > 目标：为 P1.5 ClickHouse 读侧优化提供真实 ClickHouse 基线，后续是否引入 projection、materialized view 或小时聚合表必须先和这份基线对比。
 
 ## 本次命令
@@ -39,15 +39,16 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 
 代码证据：
 
-- benchmark 入口：`仓库: analytics-core, commit: caf314d, file: internal/e2e/clickhouse_reader_benchmark_test.go:26-34`。
-- benchmark 只连接 ClickHouse，不混入 Redis / MySQL：`仓库: analytics-core, commit: caf314d, file: internal/e2e/clickhouse_reader_benchmark_test.go:40-44`。
-- benchmark 会先 seed deterministic events / properties：`仓库: analytics-core, commit: caf314d, file: internal/e2e/clickhouse_reader_benchmark_test.go:59-64`。
-- benchmark 场景覆盖 recent-window Realtime、wide-since Realtime、recent-window Events、wide-window Events 和 high property Events：`仓库: analytics-core, commit: caf314d, file: internal/e2e/clickhouse_reader_benchmark_test.go:81-176`。
-- Realtime 场景会在计时前记录并校验 `since` 和 eligible row count，防止把 wide-since 压力查询误当成短窗口 Realtime：`仓库: analytics-core, commit: caf314d, file: internal/e2e/clickhouse_reader_benchmark_test.go:185-208` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:815-831`。
-- Events 场景会在计时前记录并校验 `from/to` eligible row count，并额外断言真实 `EventQueryPlan` 的 `QueryEvidence()` 和 bound args 都包含时间上下界，防止 helper 计算正确但 ClickHouse SQL 实际丢掉时间条件：`仓库: analytics-core, commit: caf314d, file: internal/e2e/clickhouse_reader_benchmark_test.go:187-199` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:832-884`。
-- 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: caf314d, file: internal/e2e/clickhouse_reader_benchmark_test.go:201-215`。
-- explain 测试与 benchmark 复用同一套路由表和数据夹具，并记录 Realtime / Events window evidence：`仓库: analytics-core, commit: caf314d, file: internal/e2e/clickhouse_reader_benchmark_test.go:221-356`。
-- explain 直接复用 sealed query plan SQL 和 bound args：`仓库: analytics-core, commit: caf314d, file: internal/e2e/clickhouse_reader_benchmark_test.go:750-772`。
+- benchmark 入口：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:22-59`。
+- benchmark 只连接 ClickHouse，不混入 Redis / MySQL：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:67-71`。
+- benchmark 会先 seed deterministic events / properties：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:86-91`。
+- benchmark 场景覆盖 recent-window Realtime、wide-since Realtime、recent-window Events、条件启用的 bounded 24h scalar Events、recent-window typed property Events、wide-window scalar Events 和 wide-window typed property Events：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:112-215`。
+- bounded 24h scalar Events 只有在 `rowCount > 86400` 时才会进入 benchmark / explain 套件，避免默认 10k fixture 把它伪装成 wide-window；同时 `benchmarkEndTime` 现在保持精确排他上界，确保 24h slice 的 `QueryEvidence.TimeWindowSeconds` 真正等于 `86400`：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:151-168` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:440-468`。
+- Realtime 场景会在计时前记录并校验 `since` 和 eligible row count，防止把 wide-since 压力查询误当成短窗口 Realtime：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:217-227` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:883-899`。
+- Events 场景会在计时前记录并校验 `from/to` eligible row count，并额外断言真实 `EventQueryPlan` 的 `QueryEvidence()` 和 bound args 都包含时间上下界，防止 helper 计算正确但 ClickHouse SQL 实际丢掉时间条件：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:225-234` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:907-931`。
+- 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:237-250`。
+- explain 测试与 benchmark 复用同一套路由表和数据夹具，并记录 Realtime / Events window evidence：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:256-400`。
+- explain 直接复用 sealed query plan SQL 和 bound args：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:773-795`。
 
 ## 默认 10k 行结果
 
@@ -167,6 +168,12 @@ go test ./internal/e2e -run TestEventReaderClickHouseExplain -count=1 -v
 - `high_events_property_recent_window`：`eligible_rows=5000`，代表近期 Events typed property 过滤。
 - `high_events_property_wide_window`：`eligible_rows=500000`，代表宽时间窗 typed property 过滤压力。
 
+2026-05-10 的 `analytics-core` commit `93cff0f` 又把这个 benchmark / explain 基线再收紧了一步：
+
+- `medium_events_scalar_bounded_24h_window` 只有在 fixture 大于 86400 行时才会启用。
+- 默认 10k 本地基线不会再出现一个实际上等于 wide-window 的“伪 24h 场景”。
+- `benchmarkEndTime` 改成精确排他上界后，bounded 24h slice 的 `QueryEvidence.TimeWindowSeconds` 会稳定等于 `86400`，不再因为 helper 偏差变成 `86401`。
+
 500k explain 摘要：
 
 | 场景 | eligible rows | Granules | 判断 |
@@ -226,6 +233,7 @@ BenchmarkEventReaderClickHouseExecution/high_events_property_wide_window-20     
 - `analytics-core` commit `f84024a` 之后，typed property filter 不再允许无限宽历史窗口：查询必须显式带 `from/to`，并且 direct fact-table 路径默认只允许 7 天内窗口。
 - 下一条重点观察候选因此收窄为“宽时间窗 scalar Events 明细查询”和“7 天内 typed property 过滤读路径”。500k 行下旧 `high_events_property_wide_window` 仍保留为压力证据：它进入约 43-44ms/op 区间，explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但这个旧宽窗口结果不能再被当成默认可放开的产品能力。
 - `analytics-service` commit `da852cd` 已把“bounded Events `24h+` 且无 property join”映射成 service-side `pressure=high` triage heuristic。它引用的是这里的宽时间窗 scalar Events 观察结论，用来提醒运维和后续评审关注这类请求；但它仍然只是服务层经验规则，不是 `analytics-core` planner 自己导出的物理层事实，也不能单独作为新增 projection / materialized view / 小时聚合表的依据。
+- `analytics-core` commit `93cff0f` 已进一步保证 benchmark 里的 bounded 24h scalar Events 形状本身是“真实 distinct 的证据”，而不是默认小夹具下的假分支；因此后续讨论 `24h` triage 阈值时，可以把它当作 service heuristic 旁边的一条 benchmark hygiene 约束，而不是新的 planner 能力。
 - 如果后续要支持超过 7 天的 property 历史过滤，必须先回到实施决策评审，补新的 query evidence、benchmark、explain 和物理结构方案；不能只删除 query-builder guardrail。
 
 只有当同一 query shape 在更大数据量或连续 benchmark 中稳定超过基线，并且 explain、属性治理、过滤白名单、limit cap、时间窗约束和回归计划都支持继续下沉时，才进入 projection / MV / 小时聚合表评审。
