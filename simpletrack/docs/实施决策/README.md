@@ -68,7 +68,7 @@ P1.5-001 补充进度：2026-05-08 的 500k 行复测已纠正 Realtime benchmar
 
 ## 当前进度
 
-本节版本标记：`analytics-core` commit `f84024a`；`analytics-service` commit `3b8d27c`；`simpletrack-saas` commit `e69cea6`；父仓本轮文档 commit `6db373d`。
+本节版本标记：`analytics-core` commit `f84024a`；`analytics-service` commit `3b8d27c`；`simpletrack-saas` commit `e69cea6`；父仓本轮文档 commit `pending commit`。
 
 当前处于 **P0：产品与底座确认**，并已经明确部分 **P1 前置底座任务**。
 
@@ -109,7 +109,7 @@ P1.5-001 补充进度：2026-05-08 的 500k 行复测已纠正 Realtime benchmar
 
 - Supastarter for Next.js 的 1 天 SimpleTrack spike：已创建独立工作副本并推送远端，已完成 Websites、Realtime、Events 组织内页面挂载；其中 Websites 已从 UI-only gate 前进到真实 source 列表 + 最小创建表单，marketing 文案、pricing 语义、docs/quickstart、mail-preview 和浏览器截图验证也已完成。
 - `analytics-core` P1 数据管道已收口：collect handler、Fiber `POST /collect` 适配器、属性入口约束、typed property row 逻辑展开、ClickHouse property batch writer、`PropertyIndexingEventWriter` 热路径组合、MySQL `property_indexing_status` guard、表路由契约、ClickHouse native batch writer、GORM/MySQL ingestion status guard、Realtime/Events query builder、typed property filter、ClickHouse query reader、worker 边界、本地运行依赖、最小端到端验证、Events 排序/过滤白名单、P1-002B/C collect pre-queue stage 和持久化 `visit_id` 链路已完成；browser / OS / device 派生、geo enrichment、internal traffic 产品配置和过滤审计边界也已补齐，core 继续保持 Go library 方式被 `simpletrack-anaysitics-service` 引用。
-- `simpletrack-anaysitics-service` 主线（本地仓库 `src/analytics-service`）：已完成本地仓库、服务骨架、Fiber runtime app、memory / HTTP runtime config resolver、`/collect` 运行时校验、`/tracker.js` 静态托管、collect 单测、Redis durable enqueue、可选 ingestion worker 装配、本地/小部署 ClickHouse routed table auto migration，以及 `P1-005D/E` 内部 Events / Realtime / Goals 查询入口、query routes 配置、Swagger UI / OpenAPI 文件、query token 轮换 allowlist、结构化生命周期、source-scoped 属性过滤白名单、`visit_id` 持久字段读取、control-plane revoke handler 回归和内部 `/v1/properties` 属性目录读回接口；`simpletrack-saas` 内部 runtime-source API、Websites 真实 source 管理最小闭环（create/list/update/enable/disable/delete）、visit resolver runtime 配置、Realtime/Events/Goals 页面读回放、visit_id 可见列、页面级回归、client-safe Website selector、Events 时间窗口预设、repeatable property_filter 多条件查询、Goal event-name contract samples、Goal fan-out 25 条上限、P1 active-source quota 策略和 `readback_policy` 显式契约已落地，复杂聚合分析维持到 P1.5/P2。当前状态的父仓文档 commit 已回填为 `1a81b75`。
+- `simpletrack-anaysitics-service` 主线（本地仓库 `src/analytics-service`）：已完成本地仓库、服务骨架、Fiber runtime app、memory / HTTP runtime config resolver、`/collect` 运行时校验、`/tracker.js` 静态托管、collect 单测、Redis durable enqueue、可选 ingestion worker 装配、本地/小部署 ClickHouse routed table auto migration，以及 `P1-005D/E` 内部 Events / Realtime / Goals 查询入口、query routes 配置、Swagger UI / OpenAPI 文件、query token 轮换 allowlist、结构化生命周期、source-scoped 属性过滤白名单、`visit_id` 持久字段读取、control-plane revoke handler 回归和内部 `/v1/properties` 属性目录读回接口；`simpletrack-saas` 内部 runtime-source API、Websites 真实 source 管理最小闭环（create/list/update/enable/disable/delete）、visit resolver runtime 配置、Realtime/Events/Goals 页面读回放、visit_id 可见列、页面级回归、client-safe Website selector、Events 时间窗口预设、repeatable property_filter 多条件查询、Goal event-name contract samples、Goal fan-out 25 条上限、P1 active-source quota 策略和 `readback_policy` 显式契约已落地，复杂聚合分析维持到 P1.5/P2。父仓文档版本以本页顶部版本标记为准。
 - `analytics-core`、`simpletrack-anaysitics-service` 和 `simpletrack-saas` 近期又补了 Events 组合查询回归：同一条请求里同时携带 `event_name`、`distinct_id`、`visit_id`、分页、排序、时间窗口和 repeatable `property_filter` 时，SaaS 会保持完整 readback state，服务端会把同一组条件送入 `analytics-core`，core 会生成参数化 ClickHouse query plan。
 - `analytics-core` 的 ClickHouse 读侧优化已经从“预研名词”细化成可执行分层路线：属性治理和 query plan 约束先做，热点明细路径再择机引入 projection，稳定指标再落到 materialized view 或小时聚合表；`f84024a` 进一步把 typed property filters 收口到 query-builder guardrail，要求显式 `from/to` 且 direct fact-table 历史窗口默认不超过 7 天。
 - `analytics-core` 的 ClickHouse 读侧长期规范已写入实施方案、`AGENTS.md` 和 `src/analytics-core/docs/read-side-optimization-policy.md`：后续读侧实现必须保持 `EventQueryBuilder` / `EventReader` / `TableRouter` 边界，不允许把 ClickHouse SQL 或物理表名扩散到 service、handler 或产品页面。
@@ -123,7 +123,7 @@ P1.5-001 补充进度：2026-05-08 的 500k 行复测已纠正 Realtime benchmar
 - `xwl_bi` 后端只读临时快照已就位，主要用于参考后端架构设计：模块边界、启动装配、消费链路、ClickHouse 写入/查询分层、元数据流转和分析服务拆分。
 - Umami 官方源码只读快照已就位，主要用于参考分析对象体系、tracker 采集、事件属性、Realtime/Events 读侧、ClickHouse 明细与聚合模型；P1 数据管道源码分章节深解和 Q&A 概念解释已落地到 `simpletrack/docs/umami/docs/源码实现参考/`。
 - Umami 源码启发的 `analytics-core` 优化项已排期并部分落地：P1 已补属性入库/查询、client enrich 第一版、session resolver 第一版、查询安全、端到端验收、浏览器 SDK 最短链路、DNT opt-in 和 UTM/click id 白名单；P1.5/P2 再评审 ClickHouse 聚合优化、多语言 SDK、visit 扩展、SDK CDN 发布和 performance metrics。
-- 企业分析控制台 UI 可改造性确认。
+- 企业分析控制台 UI 可改造性评审继续推进，当前已确认 Supastarter shell 能承载 Websites、Realtime、Events 页面骨架。
 - 产品官网 / Marketing Site / docs 公开站点的信息架构已按 P1 验收完成，后续只做轻量优化。
 
 下一步：
