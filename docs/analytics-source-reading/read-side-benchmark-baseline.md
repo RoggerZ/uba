@@ -134,7 +134,7 @@ BenchmarkEventReaderClickHouseExecution/high_events_property-20       40  298402
 
 运行目的：
 
-- 补齐 `analytics-service` `da852cd` 中“bounded Events `24h+` -> pressure=high” service heuristic 旁边的真实 ClickHouse benchmark / explain 证据。
+- 复核并修正 `analytics-service` 里 bounded scalar Events 的 pressure triage：先用真实 ClickHouse benchmark / explain 判断 `24h` 是否真的值得进入 `high` 桶。
 - 验证 `93cff0f` 引入的 bounded 24h scalar Events 场景在 `rowCount > 86400` 时是否真的形成独立读形状，而不是默认小夹具下的伪分支。
 
 运行命令：
@@ -182,7 +182,64 @@ BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window-
 
 - `24h` bounded scalar Events 在 100k 行夹具下已经是一个真实独立的读形状，不再依赖 wide-window 压力结果做代称。
 - 这个形状比 recent-window scalar Events 更重，但当前证据更接近“中高观察区”，还没有单独证明必须新增 projection、materialized view 或小时聚合表。
-- 因此 `analytics-service` 的 `24h` `pressure=high` 仍应理解为 service-side triage heuristic：它是在提醒“这类请求值得关注”，不是在宣告 planner 已经证明它必须进入物理结构优化。
+- 因此仅凭 `24h` bounded scalar Events 还不足以进入 `pressure=high`。如果要继续保留服务层时间窗 triage 阈值，至少需要更新鲜的 benchmark / explain 证据来支持它。
+
+## 500k 行 bounded 24h scalar Events 证据
+
+运行时间：2026-05-10。
+运行 commit：`93cff0f140024ca006307490eed4b1fefef2cfb1`。
+
+运行目的：
+
+- 确认 bounded 24h scalar Events 在更大夹具下是否会向 wide-window scalar 的压力区靠拢。
+- 验证 `analytics-service` 是否还应该保留 `24h => pressure=high` 这条 service heuristic。
+
+运行命令：
+
+```powershell
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS='500000'
+go test ./internal/e2e -run 'TestEventReaderClickHouseExplain/medium_events_scalar_bounded_24h_window' -count=1 -v
+go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window' -benchmem -count=3
+```
+
+Explain 结果摘要：
+
+- `from=2026-05-06T02:53:20Z`
+- `to=2026-05-07T02:53:20Z`
+- `eligible_rows=86400`
+- `query_evidence.time_window_seconds=86400`
+- `ReadFromMergeTree` 主键条件仍然是 `tenant_id / project_id / source_id / event_time`
+- `Granules: 12/62`
+
+原始 explain 关键输出：
+
+```text
+events window evidence: from=2026-05-06T02:53:20Z to=2026-05-07T02:53:20Z eligible_rows=86400 row_count=500000
+query evidence: {Family:events ReadPath:fact_events Optimization:direct_fact_table EffectiveLimit:50 Offset:0 HasTimeLowerBound:true HasTimeUpperBound:true TimeWindowSeconds:86400 ScalarFilterCount:4 PropertyFilterCount:0 UsesPropertyTable:false PropertyFilters:[] SortField:event_time SortDirection:desc}
+ReadFromMergeTree (analytics_core.events_...)
+Granules: 12/62
+```
+
+Benchmark 结果：
+
+| 场景 | 3 次结果 | 判断 |
+| --- | --- | --- |
+| `medium_events_scalar_bounded_24h_window` | `10.02ms/op`, `10.14ms/op`, `10.63ms/op` | 在 500k 行夹具下仍接近 direct fact-table 的中等观察区，明显低于 wide-window scalar Events 的 `40ms+` 压力区 |
+
+原始输出：
+
+```text
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window-20         100  10017510 ns/op  166781 B/op  3346 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window-20         100  10135990 ns/op  167053 B/op  3346 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window-20         100  10626158 ns/op  167035 B/op  3346 allocs/op
+```
+
+当前判断：
+
+- 500k 行夹具下的 bounded 24h scalar Events 并没有向 wide-window scalar 压力区靠拢。
+- 它依然保持 `TimeWindowSeconds=86400` 且只读 `12/62` granules，说明 ClickHouse 主键时间约束仍然有效。
+- 这组证据直接支持后续撤回 `analytics-service` 的 `24h => pressure=high` heuristic：仅凭 24h bounded scalar 窗口不足以被标记为高压力。
 
 ## ClickHouse explain 证据
 
@@ -289,8 +346,8 @@ BenchmarkEventReaderClickHouseExecution/high_events_property_wide_window-20     
 - 近期 Events 明细查询暂不构成读侧物理结构优化压力。后续不要再用 wide-window Events 结果代表正常近期 Events。
 - `analytics-core` commit `f84024a` 之后，typed property filter 不再允许无限宽历史窗口：查询必须显式带 `from/to`，并且 direct fact-table 路径默认只允许 7 天内窗口。
 - 下一条重点观察候选因此收窄为“宽时间窗 scalar Events 明细查询”和“7 天内 typed property 过滤读路径”。500k 行下旧 `high_events_property_wide_window` 仍保留为压力证据：它进入约 43-44ms/op 区间，explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但这个旧宽窗口结果不能再被当成默认可放开的产品能力。
-- `analytics-service` commit `da852cd` 已把“bounded Events `24h+` 且无 property join”映射成 service-side `pressure=high` triage heuristic。它引用的是这里的宽时间窗 scalar Events 观察结论，用来提醒运维和后续评审关注这类请求；但它仍然只是服务层经验规则，不是 `analytics-core` planner 自己导出的物理层事实，也不能单独作为新增 projection / materialized view / 小时聚合表的依据。
-- `analytics-core` commit `93cff0f` 之后，这条 heuristic 已经有了自己的 100k bounded 24h scalar Events benchmark / explain 证据：它是一个真实独立的中高观察区读形状，但当前仍没有到必须新增物理结构的强度。
+- `analytics-service` commit `c08e1da` 已撤回“bounded Events `24h+` 且无 property join => pressure=high`”这条 service heuristic。原因是 `analytics-core` `93cff0f` 之后补跑的 100k / 500k bounded 24h scalar Events 证据都更接近 direct fact-table 的 `medium` 观察区，而不是 wide-window scalar 的压力区。
+- 这说明 bounded scalar Events 的 pressure triage 目前不适合只靠时间窗阈值推断；如果未来要重引入类似规则，必须先补新的 benchmark / explain 和更大 row-volume 证据。
 - `analytics-core` commit `93cff0f` 已进一步保证 benchmark 里的 bounded 24h scalar Events 形状本身是“真实 distinct 的证据”，而不是默认小夹具下的假分支；因此后续讨论 `24h` triage 阈值时，可以把它当作 service heuristic 旁边的一条 benchmark hygiene 约束，而不是新的 planner 能力。
 - 如果后续要支持超过 7 天的 property 历史过滤，必须先回到实施决策评审，补新的 query evidence、benchmark、explain 和物理结构方案；不能只删除 query-builder guardrail。
 
