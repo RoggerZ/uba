@@ -32,8 +32,8 @@
 | PLAN-004 | 建立支付服务说明目录 | 已完成 | 已创建 Stripe / Polar / Lemon Squeezy 对比，并明确先按 Supastarter provider 接入 | 上线收费前补 Paddle/Creem/Dodo 和个人开发者收款检查 |
 | P0-001 | Next.js 可交互原型 | 进行中 | `simpletrack-enterprise-mvp` 的当前页面集合已收口到 `onboarding`、`dashboard`、`events`、`goals`、`settings`，并作为 P1 页面 contract 的最新依据；需继续按生产可迁移骨架推进 | 完成 Next.js 迁移和页面验证 |
 | P0-002 | SaaS 模板选型评估 | 已完成 | 已确定先选择 Supastarter for Next.js；MakerKit 保留为 B2B 对照和备选 | 进入 Supastarter 1 天 SimpleTrack spike |
-| P0-003 | 企业分析控制台 UI 可改造性评审 | 进行中 | `src/simpletrack-saas` 已能在 Supastarter `apps/saas` 组织内导航挂载 Websites、Realtime、Events 页面草案；`simpletrack-saas` `9c8ba37` 又收口了 Realtime / Events / Goals 的 Website selector 文案、readback 空态/错误态和 Events 重复消息 | 继续做截图级评审，确认密度、表格、侧边栏和空态是否满足企业分析控制台 |
-| P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；`src/simpletrack-saas` 已作为独立子仓库推送；Websites 页已从 UI-only gate 前进到真实 Website source 列表 + 最小创建入口；marketing/docs/mail-preview 已完成浏览器截图验证；privacy/terms 已从模板占位替换为 SimpleTrack 基线版本（`simpletrack-saas` `d53de11`）；authenticated readback 页面又在 `simpletrack-saas` `9c8ba37` 收口了稳定 selector 和 product-safe readback copy；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位，并在需要 authenticated SaaS 流程时用 Docker Postgres 验证 |
+| P0-003 | 企业分析控制台 UI 可改造性评审 | 进行中 | `src/simpletrack-saas` 已能在 Supastarter `apps/saas` 组织内导航挂载 Websites、Realtime、Events 页面草案；`simpletrack-saas` `9ebe9f4` 又把 Next dev loopback 登录链路收口为共享 helper，真实验证 `localhost:3005` / `127.0.0.1:3005` 都能完成 authenticated 登录跳转，避免截图级评审被 dev origin 假故障打断 | 继续做截图级评审，确认密度、表格、侧边栏和空态是否满足企业分析控制台 |
+| P0-004 | Supastarter for Next.js 接入核验 | 进行中 | 已确定先选 Supastarter；`src/simpletrack-saas` 已作为独立子仓库推送；Websites 页已从 UI-only gate 前进到真实 Website source 列表 + 最小创建入口；marketing/docs/mail-preview 已完成浏览器截图验证；privacy/terms 已从模板占位替换为 SimpleTrack 基线版本（`simpletrack-saas` `d53de11`）；authenticated readback 页面在 `simpletrack-saas` `9c8ba37` 收口了稳定 selector 和 product-safe readback copy，随后 `9ebe9f4` 又修复了 Next dev `localhost` / `127.0.0.1` 下的本地登录与 hydration 假故障；支付先按模板已有 Stripe、Lemon Squeezy、Polar、Creem、Dodo Payments provider 接入 | 核验许可证、私有仓库、闭源修改、团队席位，并在需要 authenticated SaaS 流程时用 Docker Postgres 验证 |
 | P0-005 | xwl_bi 分析数据面抽核方案 | 已完成 | 已确认 P1 新建独立业务无关仓库 `analytics-core`，不复用旧 Vue2 后台，不整仓改名 | 进入 P1-000 实施设计 |
 | P1-000A | 输出 `analytics-core` 实施方案 | 已完成 | 已新增 `analytics-core实施方案.md`，并补充方案 B 物理分表、原生 ClickHouse batch writer、入库幂等去重、tenant/project/source 映射 | 根据评审继续细化接口和表模型 |
 | P1-000 | 创建 `analytics-core` 独立核心仓库 | 已完成 | `src/analytics-core` 已初始化为独立 Git 仓库，远端为 `git@github-simpletrack:simpletrack/analytics-core.git`，并已挂载到父仓子模块 | 后续按独立仓库推进数据面实现 |
@@ -68,7 +68,7 @@ P1.5-001 补充进度：2026-05-08 的 500k 行复测已纠正 Realtime benchmar
 
 ## 当前进度
 
-本节版本标记：`analytics-core` commit `f84024a`；`analytics-service` commit `3b8d27c`；`simpletrack-saas` commit `9c8ba37`；父仓本轮文档 commit `7db421b`。
+本节版本标记：`analytics-core` commit `f84024a`；`analytics-service` commit `3b8d27c`；`simpletrack-saas` commit `9ebe9f4`；父仓本轮文档 commit `pending commit`。
 
 当前处于 **P0：产品与底座确认**，并已经明确部分 **P1 前置底座任务**。
 
@@ -99,7 +99,7 @@ P1.5-001 补充进度：2026-05-08 的 500k 行复测已纠正 Realtime benchmar
 - `src/analytics-service` 已作为本地 Go 仓库创建，服务展示名为 `simpletrack-anaysitics-service`，负责 SimpleTrack 分析数据面的 runtime enforcement：write key、Origin、CORS、internal traffic、bot 过滤、collect 调用 core，以及可选同进程 ingestion worker 装配。
 - `src/analytics-service` 已推送远端 `simpletrack/anaysitics-service`，并开始登记父仓子模块；仓库级 `core.sshCommand` 已对齐 `config_simpletrack`。
 - `src/analytics-service` 已补 `P1-005D/E` 内部读回放入口：`/v1/realtime`、`/v1/events` 和 `/v1/goals` 复用 `analytics-core` 的 `EventReader` / count 读侧契约，通过内部 bearer token 保护，并支持 Fiber CORS preflight；Events 侧已补事件名、distinct id、排序、分页和 typed property filters 白名单；Goal 侧按 write key 解析 source 后做精确事件 count；内部 query token 已支持短窗口轮换 allowlist、结构化生效/过期时间和命中/拒绝审计日志；HTTP resolver revalidation 现在还有 handler 级回归，验证控制面 disable/delete 后 collect/readback 立即撤权；现在 readback 还会按 runtime-source `readback_policy` fail closed，Swagger UI / OpenAPI 文件已接入。
-- `src/simpletrack-saas` 已补 Realtime / Events / Goals 页面服务端读回放 helper 和 client-safe Website 选择器初版：内部 query token 不下发到浏览器，页面按当前组织启用 Website 的 write key 调 `simpletrack-anaysitics-service`，并覆盖未配置服务、无启用 source、禁用 source 和服务异常空态；Events 页面还支持白名单分页、上一页 / 下一页、`30m / 6h / 24h / 7d` 时间窗口预设，以及重复 query 参数/空页偏移的服务端硬化，不会因重复参数把 RSC 页面打崩；Goals 页面可创建一个关键事件目标，并通过 24h `/v1/goals` readback 显示是否已有匹配事件；`simpletrack-saas` 的 runtime-source `readback_policy` 契约已经在当前基线 `9c8ba37` 中稳定存在，且该版本又把 selector 文案、重复消息和 readback 状态文案收口成更稳定的企业分析控制台呈现。
+- `src/simpletrack-saas` 已补 Realtime / Events / Goals 页面服务端读回放 helper 和 client-safe Website 选择器初版：内部 query token 不下发到浏览器，页面按当前组织启用 Website 的 write key 调 `simpletrack-anaysitics-service`，并覆盖未配置服务、无启用 source、禁用 source 和服务异常空态；Events 页面还支持白名单分页、上一页 / 下一页、`30m / 6h / 24h / 7d` 时间窗口预设，以及重复 query 参数/空页偏移的服务端硬化，不会因重复参数把 RSC 页面打崩；Goals 页面可创建一个关键事件目标，并通过 24h `/v1/goals` readback 显示是否已有匹配事件；`simpletrack-saas` 的 runtime-source `readback_policy` 契约已经在 `9c8ba37` 中稳定存在，而当前基线 `9ebe9f4` 又把 Next dev `allowedDevOrigins` 与 Better Auth 本地 loopback trusted origins 收口到共享 helper，真实验证 `localhost:3005` / `127.0.0.1:3005` 都能完成登录跳转，不再让本地 authenticated UI 评审被 dev origin 假故障中断。
 - `simpletrack-saas` `d53de11` 已把 marketing 公开站点的 `privacy-policy` 和 `terms` 从 Supastarter 模板占位替换为 SimpleTrack 基线文案；本轮真实外部审查以 DeepSeek + Codex 子代理为准，Gemini/Claude CLI 失败原因已记录到 `docs/开发环境卡壳问题记录.md`。
 - Umami 源码深解已经转化为 `analytics-core` 优化计划：事件属性与用户属性模型、client info enrich、bot/IP 过滤、session/visit resolver、查询白名单、Realtime/Events 验收、Web tracker SDK、ClickHouse 读侧优化和 performance metrics 均已进入计划表或评审表。
 - `simpletrack-enterprise-mvp` 的页面 contract 已从旧 `simpletrack-umami-inspired` 收口到当前原型页集合，`team` / `funnels` / `insights` 不再作为 P1 页面前置假设。
