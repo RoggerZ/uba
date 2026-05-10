@@ -127,6 +127,63 @@ BenchmarkEventReaderClickHouseExecution/high_events_property-20       42  313576
 BenchmarkEventReaderClickHouseExecution/high_events_property-20       40  29840255 ns/op  200748 B/op  3591 allocs/op
 ```
 
+## 100k 行 bounded 24h scalar Events 证据
+
+运行时间：2026-05-10。
+运行 commit：`93cff0f140024ca006307490eed4b1fefef2cfb1`。
+
+运行目的：
+
+- 补齐 `analytics-service` `da852cd` 中“bounded Events `24h+` -> pressure=high” service heuristic 旁边的真实 ClickHouse benchmark / explain 证据。
+- 验证 `93cff0f` 引入的 bounded 24h scalar Events 场景在 `rowCount > 86400` 时是否真的形成独立读形状，而不是默认小夹具下的伪分支。
+
+运行命令：
+
+```powershell
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH='1'
+$env:ANALYTICS_CORE_CLICKHOUSE_BENCH_ROWS='100000'
+go test ./internal/e2e -run 'TestEventReaderClickHouseExplain/medium_events_scalar_bounded_24h_window' -count=1 -v
+go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window' -benchmem -count=3
+```
+
+Explain 结果摘要：
+
+- `from=2026-05-01T11:46:40Z`
+- `to=2026-05-02T11:46:40Z`
+- `eligible_rows=86400`
+- `query_evidence.time_window_seconds=86400`
+- `ReadFromMergeTree` 主键条件仍然是 `tenant_id / project_id / source_id / event_time`
+- `Granules: 12/13`
+
+原始 explain 关键输出：
+
+```text
+events window evidence: from=2026-05-01T11:46:40Z to=2026-05-02T11:46:40Z eligible_rows=86400 row_count=100000
+query evidence: {Family:events ReadPath:fact_events Optimization:direct_fact_table EffectiveLimit:50 Offset:0 HasTimeLowerBound:true HasTimeUpperBound:true TimeWindowSeconds:86400 ScalarFilterCount:4 PropertyFilterCount:0 UsesPropertyTable:false PropertyFilters:[] SortField:event_time SortDirection:desc}
+ReadFromMergeTree (analytics_core.events_...)
+Granules: 12/13
+```
+
+Benchmark 结果：
+
+| 场景 | 3 次结果 | 判断 |
+| --- | --- | --- |
+| `medium_events_scalar_bounded_24h_window` | `10.79ms/op`, `12.61ms/op`, `15.52ms/op` | 明显重于 recent-window scalar Events，但仍明显轻于 500k wide-window scalar Events 的 `40ms+` 观察区 |
+
+原始输出：
+
+```text
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window-20          99  10785435 ns/op  168995 B/op  3347 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window-20          80  12607200 ns/op  169781 B/op  3347 allocs/op
+BenchmarkEventReaderClickHouseExecution/medium_events_scalar_bounded_24h_window-20         100  15515889 ns/op  167806 B/op  3346 allocs/op
+```
+
+当前判断：
+
+- `24h` bounded scalar Events 在 100k 行夹具下已经是一个真实独立的读形状，不再依赖 wide-window 压力结果做代称。
+- 这个形状比 recent-window scalar Events 更重，但当前证据更接近“中高观察区”，还没有单独证明必须新增 projection、materialized view 或小时聚合表。
+- 因此 `analytics-service` 的 `24h` `pressure=high` 仍应理解为 service-side triage heuristic：它是在提醒“这类请求值得关注”，不是在宣告 planner 已经证明它必须进入物理结构优化。
+
 ## ClickHouse explain 证据
 
 命令：
@@ -233,6 +290,7 @@ BenchmarkEventReaderClickHouseExecution/high_events_property_wide_window-20     
 - `analytics-core` commit `f84024a` 之后，typed property filter 不再允许无限宽历史窗口：查询必须显式带 `from/to`，并且 direct fact-table 路径默认只允许 7 天内窗口。
 - 下一条重点观察候选因此收窄为“宽时间窗 scalar Events 明细查询”和“7 天内 typed property 过滤读路径”。500k 行下旧 `high_events_property_wide_window` 仍保留为压力证据：它进入约 43-44ms/op 区间，explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但这个旧宽窗口结果不能再被当成默认可放开的产品能力。
 - `analytics-service` commit `da852cd` 已把“bounded Events `24h+` 且无 property join”映射成 service-side `pressure=high` triage heuristic。它引用的是这里的宽时间窗 scalar Events 观察结论，用来提醒运维和后续评审关注这类请求；但它仍然只是服务层经验规则，不是 `analytics-core` planner 自己导出的物理层事实，也不能单独作为新增 projection / materialized view / 小时聚合表的依据。
+- `analytics-core` commit `93cff0f` 之后，这条 heuristic 已经有了自己的 100k bounded 24h scalar Events benchmark / explain 证据：它是一个真实独立的中高观察区读形状，但当前仍没有到必须新增物理结构的强度。
 - `analytics-core` commit `93cff0f` 已进一步保证 benchmark 里的 bounded 24h scalar Events 形状本身是“真实 distinct 的证据”，而不是默认小夹具下的假分支；因此后续讨论 `24h` triage 阈值时，可以把它当作 service heuristic 旁边的一条 benchmark hygiene 约束，而不是新的 planner 能力。
 - 如果后续要支持超过 7 天的 property 历史过滤，必须先回到实施决策评审，补新的 query evidence、benchmark、explain 和物理结构方案；不能只删除 query-builder guardrail。
 
