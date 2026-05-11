@@ -4,6 +4,7 @@
 > 仓库：`src/analytics-core`
 > 初始基线 commit：`1e65684eff8a90d5eb210052e4566d03b7d1c984`
 > 最近复测 commit：`a99147f4da07ccfd6643722a891cad65c1270b3e`
+> 最近 benchmark 完整性修复 commit：`be47dfb87507dfe128b1de856a852f5843731533`
 > 目标：为 P1.5 ClickHouse 读侧优化提供真实 ClickHouse 基线，后续是否引入 projection、materialized view 或小时聚合表必须先和这份基线对比。
 
 ## 本次命令
@@ -49,6 +50,8 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 - 计时区只测 `EventReader` 执行：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:254-262`。
 - explain 测试与 benchmark 复用同一套路由表和数据夹具，并记录 Realtime / Events window evidence：`仓库: analytics-core, commit: a99147f, file: internal/e2e/clickhouse_reader_benchmark_test.go:267-404`。
 - explain 直接复用 sealed query plan SQL 和 bound args：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:773-795`。
+- builder-only benchmark 的 high property 场景在 `be47dfb` 修复后，allowlist 和实际 query 都覆盖 `button` string、`score` number、`is_paid` bool 三类 typed property predicate：`仓库: analytics-core, commit: be47dfb, file: storage/clickhouse/query_builder_benchmark_test.go:25-29` 与 `storage/clickhouse/query_builder_benchmark_test.go:53-72`。
+- 同一 high property 场景的预期 `EventQueryEvidence` 也显式记录这三类 value-free property filter shape，避免 benchmark label 与实际 query 分叉：`仓库: analytics-core, commit: be47dfb, file: storage/clickhouse/query_builder_benchmark_test.go:124-163`。
 
 ## 默认 10k 行结果
 
@@ -420,6 +423,7 @@ BenchmarkEventReaderClickHouseExecution/high_events_property_wide_window-20     
 - 下一条重点观察候选因此收窄为“宽时间窗 scalar Events 明细查询”和“7 天内 typed property 过滤读路径”。500k 行下旧 `high_events_property_wide_window` 仍保留为压力证据：它进入约 43-44ms/op 区间，explain 已出现 `CreatingSets`、3 个 `event_id in ... set` 和包含 `visit_id` 的主键条件；但这个旧宽窗口结果不能再被当成默认可放开的产品能力。
 - `analytics-service` commit `c08e1da` 已撤回“bounded Events `24h+` 且无 property join => pressure=high`”这条 service heuristic。原因是 `24h` 和 `72h` bounded scalar 证据都仍落在 direct fact-table 的中等观察区，而不是 wide-window scalar 的压力区。
 - `analytics-core` commit `a99147f` 之后，bounded scalar 已经形成 `24h -> 72h -> 7d` 的证据梯度：前两档仍偏中等，`7d @ 1,000,000 rows` 才首次稳定进入 `46-52ms/op` 压力区。
+- `analytics-core` commit `be47dfb` 之后，builder-only `high_events_property` 的实际 query 与预期 evidence 已重新对齐到 string / number / bool typed property 形状；这次修复不改变既有 ClickHouse 性能数字，但提高了后续引用 benchmark label 的可信度。
 - 这说明 bounded scalar Events 的 pressure triage 目前不适合只靠一个时间窗阈值推断；如果未来要重引入类似规则，至少要把时间窗和 row volume 一起纳入判断，而不是简单回到 `24h+` 特判。
 - 如果后续要支持超过 7 天的 property 历史过滤，必须先回到实施决策评审，补新的 query evidence、benchmark、explain 和物理结构方案；不能只删除 query-builder guardrail。
 
