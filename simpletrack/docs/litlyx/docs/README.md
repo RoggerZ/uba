@@ -24,8 +24,10 @@
 | Litlyx 现在到底验证了哪些能力 | [../快照进度.md](../快照进度.md) |
 | 某个模块解决什么问题、证据在哪 | [../Litlyx功能矩阵.md](../Litlyx功能矩阵.md) |
 | 需要完整理解产品结构和交互意图 | [../Litlyx功能深度分析.md](../Litlyx功能深度分析.md) |
+| 需要知道事件、metadata、visit、session 到底怎么存 | [事件与属性存储模型源码分析](./事件与属性存储模型源码分析.md) |
 | 需要把能力翻译成 SimpleTrack 的实施路径 | `playbooks/` |
 | 需要看 Litlyx 和 Umami 的取舍差异 | [00-Litlyx与Umami取舍对照.md](./00-Litlyx与Umami取舍对照.md) |
+| 需要看 Litlyx、Umami、`analytics-core`、`xwl_bi` 的存储差异 | [../../事件与属性存储方案对比.md](../../事件与属性存储方案对比.md) |
 | 需要直接开范围评审会 | [落地评审清单.md](./落地评审清单.md) |
 | 需要把能力排成实施阶段 | [SimpleTrack实施路线图.md](./SimpleTrack实施路线图.md) |
 | 需要把结论转成 PRD 草案 | [SimpleTrack产品需求草案.md](./SimpleTrack产品需求草案.md) |
@@ -68,6 +70,7 @@
 - [03-Marketing、Reports 与 AI.md](<./03-Marketing、Reports 与 AI.md>)
 - [04-治理、分享、协作与套餐.md](<./04-治理、分享、协作与套餐.md>)
 - [05-门槛、受限态与升级表达.md](<./05-门槛、受限态与升级表达.md>)
+- [事件与属性存储模型源码分析.md](./事件与属性存储模型源码分析.md)
 - [落地评审清单.md](./落地评审清单.md)
 - [SimpleTrack实施路线图.md](./SimpleTrack实施路线图.md)
 - [SimpleTrack产品需求草案.md](./SimpleTrack产品需求草案.md)

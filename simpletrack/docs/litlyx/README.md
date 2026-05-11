@@ -14,6 +14,8 @@
   - `docs/功能打通矩阵.md` 适合快速判断哪些能力已经打通、哪些仍停在页面态或受限态。
   - `docs/执行与复验手册.md` 适合后续继续接力这轮调研。
   - `docs/数据模型与事件字典.md` 记录当前真实发送的事件、metadata 和 payload 边界。
+  - `docs/事件与属性存储模型源码分析.md` 直接回答 Litlyx 的 event / metadata / visit / session 怎么存。
+  - 如果你要把 Litlyx 和 `analytics-core`、`xwl_bi`、Umami 的存储模型并排比较，直接看 `../事件与属性存储方案对比.md`。
   - `docs/真实业务数据方案.md` 规划下一阶段如何补厚 Marketing / Reports / AI 样本。
   - `docs/00` 到 `docs/05` 这组专题文档按模块拆开了能力地图、安装接入、Product、增长闭环、治理协作和门槛升级表达。
 - `快照索引.md`：正式快照和参考快照的统一入口。
