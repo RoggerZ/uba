@@ -4,7 +4,7 @@
 > 仓库：`src/analytics-core`
 > 初始基线 commit：`1e65684eff8a90d5eb210052e4566d03b7d1c984`
 > 最近复测 commit：`a99147f4da07ccfd6643722a891cad65c1270b3e`
-> 最近 benchmark 完整性修复 commit：`be47dfb87507dfe128b1de856a852f5843731533`
+> 最近 benchmark 完整性修复 commit：`5625e8d3be0bef8d0b302f6873acf04b912c5d25`
 > 目标：为 P1.5 ClickHouse 读侧优化提供真实 ClickHouse 基线，后续是否引入 projection、materialized view 或小时聚合表必须先和这份基线对比。
 
 ## 本次命令
@@ -52,6 +52,8 @@ go test ./internal/e2e -run '^$' -bench 'BenchmarkEventReaderClickHouseExecution
 - explain 直接复用 sealed query plan SQL 和 bound args：`仓库: analytics-core, commit: 93cff0f, file: internal/e2e/clickhouse_reader_benchmark_test.go:773-795`。
 - builder-only benchmark 的 high property 场景在 `be47dfb` 修复后，allowlist 和实际 query 都覆盖 `button` string、`score` number、`is_paid` bool 三类 typed property predicate：`仓库: analytics-core, commit: be47dfb, file: storage/clickhouse/query_builder_benchmark_test.go:25-29` 与 `storage/clickhouse/query_builder_benchmark_test.go:53-72`。
 - 同一 high property 场景的预期 `EventQueryEvidence` 也显式记录这三类 value-free property filter shape，避免 benchmark label 与实际 query 分叉：`仓库: analytics-core, commit: be47dfb, file: storage/clickhouse/query_builder_benchmark_test.go:124-163`。
+- 真实 ClickHouse reader benchmark / explain fixture 在 `d850197` 修复后，也复用同一组 `button` string、`score` number、`is_paid` bool typed property predicate：allowlist 位于 `仓库: analytics-core, commit: d850197, file: internal/e2e/clickhouse_reader_benchmark_test.go:115-118` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:299-302`；共享 filters 位于 `internal/e2e/clickhouse_reader_benchmark_test.go:631-636`；seeded JSON / typed property rows / result assertions 分别位于 `internal/e2e/clickhouse_reader_benchmark_test.go:806-807`、`internal/e2e/clickhouse_reader_benchmark_test.go:845-859` 和 `internal/e2e/clickhouse_reader_benchmark_test.go:1043-1062`。
+- 提交前补充审查发现 bool property filter 只在 opt-in benchmark / explain 路径被覆盖，`5625e8d` 已把普通 query builder 单测也推进到同一 typed property evidence：allowlist 与输入 filter 覆盖 `button` string、`plan` string、`is_paid` bool，位于 `仓库: analytics-core, commit: 5625e8d, file: storage/clickhouse/query_builder_test.go:318-359`；SQL shape 明确断言 `bool_value = ?`，value-free evidence 明确包含 `is_paid` bool，位于 `storage/clickhouse/query_builder_test.go:365-418`。
 
 ## 默认 10k 行结果
 
@@ -424,6 +426,8 @@ BenchmarkEventReaderClickHouseExecution/high_events_property_wide_window-20     
 - `analytics-service` commit `c08e1da` 已撤回“bounded Events `24h+` 且无 property join => pressure=high`”这条 service heuristic。原因是 `24h` 和 `72h` bounded scalar 证据都仍落在 direct fact-table 的中等观察区，而不是 wide-window scalar 的压力区。
 - `analytics-core` commit `a99147f` 之后，bounded scalar 已经形成 `24h -> 72h -> 7d` 的证据梯度：前两档仍偏中等，`7d @ 1,000,000 rows` 才首次稳定进入 `46-52ms/op` 压力区。
 - `analytics-core` commit `be47dfb` 之后，builder-only `high_events_property` 的实际 query 与预期 evidence 已重新对齐到 string / number / bool typed property 形状；这次修复不改变既有 ClickHouse 性能数字，但提高了后续引用 benchmark label 的可信度。
+- `analytics-core` commit `d850197` 之后，真实 ClickHouse reader benchmark / explain fixture 也与 builder-only evidence 口径对齐；这次修复仍不产生新的性能数字，但避免后续真实 benchmark 继续只代表 string-only 属性过滤。
+- `analytics-core` commit `5625e8d` 之后，普通 query builder 单测也覆盖 bool typed property filter、3 条 property evidence 和 value-free `is_paid` bool 证据；这次修复不改变 benchmark 数字，但补齐了默认测试路径对 typed bool 分支的回归保护。
 - 这说明 bounded scalar Events 的 pressure triage 目前不适合只靠一个时间窗阈值推断；如果未来要重引入类似规则，至少要把时间窗和 row volume 一起纳入判断，而不是简单回到 `24h+` 特判。
 - 如果后续要支持超过 7 天的 property 历史过滤，必须先回到实施决策评审，补新的 query evidence、benchmark、explain 和物理结构方案；不能只删除 query-builder guardrail。
 
