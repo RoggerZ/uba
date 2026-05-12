@@ -31,3 +31,4 @@
 | 跟随模板 UI 栈和重做业务控制台有什么区别 | [跟随模板UI栈和重做业务控制台有什么区别.md](跟随模板UI栈和重做业务控制台有什么区别.md) |
 | Supastarter 内置 PostgreSQL 是什么作用 | [Supastarter内置PostgreSQL是什么作用.md](Supastarter内置PostgreSQL是什么作用.md) |
 | Windows SSH 仓库权限怎么配置 | [Windows-SSH仓库权限怎么配置.md](Windows-SSH仓库权限怎么配置.md) |
+| 本地真实验收启动参数怎么配置 | [本地真实验收启动参数怎么配置.md](本地真实验收启动参数怎么配置.md) |
