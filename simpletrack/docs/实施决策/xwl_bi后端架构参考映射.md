@@ -1,7 +1,7 @@
 # xwl_bi 后端架构参考映射
 
 > 状态：已确定为架构设计参考，不作为代码搬运来源  
-> 最近更新：2026-04-30  
+> 最近更新：2026-05-17
 > 参考目录：`references/xwl_bi-backend/`
 
 ## 结论
@@ -24,8 +24,8 @@
 | report_server 运行时装配 | `cmd/report_server/runtime.go` | 后续 `cmd/collect-api` 只负责装配 collect handler、EventBus、metadata resolver 和观测能力。 |
 | 采集主流程编排 | `controller/report_ingress_handler.go` | `internal/collect` 采用“标准化请求 -> 校验 -> 形成 EventEnvelope -> 发布 EventBus”的编排。 |
 | sinker 运行时装配 | `cmd/sinker/internal/runner/runtime.go` | 后续 `cmd/worker` 装配 RedisStreamBus/KafkaBus、ingestion processor、ClickHouse writer、Realtime writer 和 status writer。 |
-| Kafka mark offset | `platform-basic-libs/sinker/kafka_sarama.go` | `analytics-core` 保持“处理完成才 ack/mark”的语义；Redis Stream 先用 pending/ack，KafkaBus 后续对齐。 |
-| 顺序提交与完成门 | `cmd/sinker/internal/runner/ordered_commit.go`、`report_completion_gate.go` | 后续 KafkaBus 或并发 worker 需要参考“异步任务全部完成后才推进 offset”的设计。 |
+| Kafka mark offset | `platform-basic-libs/sinker/kafka_sarama.go` | `analytics-core` 已在 Kafka provider 内保持“处理完成或 DLQ 成功后才 mark”的语义；Redis Stream 继续用 pending/ack 模拟同类 provider-owned completion。 |
+| 顺序提交与完成门 | `cmd/sinker/internal/runner/ordered_commit.go`、`report_completion_gate.go` | Kafka provider 已参考该思路实现 per-partition ordered commit 与 message completion gate，后续只继续补生产硬化和 rebalance 集成验证。 |
 | 批量器公共行为 | `platform-basic-libs/service/consumer_data/batch_core.go` | 后续实现通用 batch writer：swap buffer、失败恢复、定时 flush、大小触发、异步 flush 去重。 |
 | ClickHouse 明细写入 | `platform-basic-libs/service/consumer_data/reportdata2ck.go` | `EventWriter` 默认使用 `clickhouse-go/v2 PrepareBatch`，按 TableRouter 分表后批量写入。 |
 | 实时写入 | `platform-basic-libs/service/consumer_data/real_time_warehousing.go` | 后续 `RealtimeWriter` 单独建模，不与明细 writer 混成一个职责。 |
