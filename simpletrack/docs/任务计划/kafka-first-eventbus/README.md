@@ -23,6 +23,7 @@
 | [进度表.md](进度表.md) | 记录当前阶段状态、证据、下一步动作 | 阶段节点和明显状态变化时更新 |
 | [踩坑记录.md](踩坑记录.md) | 记录执行过程中遇到的真实问题、根因和处理动作 | 遇到坑或解除 blocker 时更新 |
 | [执行规范.md](执行规范.md) | 记录本任务覆盖 AGENTS.md 的轻量执行节奏 | 规则变化时更新 |
+| [待办事项.md](待办事项.md) | 记录本任务完成后拆出的 Kafka 生产硬化和验证后续项 | 新增、关闭或调整后续任务时更新 |
 
 ## 当前原则
 
@@ -38,3 +39,5 @@
 ## 当前状态
 
 Kafka-first EventBus 的代码实现已完成并推送：`analytics-core` `4f42947` 已完成公共契约调整、Redis/direct 适配、Sarama Kafka provider、根目录注释规范补强，以及 `Message.ID` delivery-id 语义收口；`analytics-service` `171aca1` 已完成 Kafka 配置与 runtime 装配；父仓同步 commit `9231441` 已记录任务 plan、正式实施决策文档和两个子模块 gitlink。后续 Kafka 生产硬化项单独评审，不再作为本任务阻塞。
+
+后续待办统一维护在 [待办事项.md](待办事项.md)。
