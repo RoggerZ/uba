@@ -1,6 +1,6 @@
 # Kafka-First EventBus 任务计划
 
-> 状态：实现已完成，阶段评审与正式文档同步中
+> 状态：已完成
 > 创建时间：2026-05-17
 > 适用范围：`src/analytics-core`、`src/analytics-service` 以及本任务相关的本地运行依赖与文档同步。
 
@@ -37,4 +37,4 @@
 
 ## 当前状态
 
-Kafka-first EventBus 的代码实现已恢复并推进到阶段性交付点：`analytics-core` 已完成公共契约调整、Redis/direct 适配和 Sarama Kafka provider；`analytics-service` 已完成 Kafka 配置与 runtime 装配；本地 compose 已加入单节点 Kafka。当前剩余工作是处理阶段性子代理评审结论，并在任务全部完成后把精简结论同步到正式实施决策文档。
+Kafka-first EventBus 的代码实现已完成并推送：`analytics-core` `2b4f38d` 已完成公共契约调整、Redis/direct 适配、Sarama Kafka provider 和根目录注释规范补强；`analytics-service` `171aca1` 已完成 Kafka 配置与 runtime 装配；父仓同步 commit `cb5be3a` 已记录任务 plan、正式实施决策文档和两个子模块 gitlink。后续 Kafka 生产硬化项单独评审，不再作为本任务阻塞。
