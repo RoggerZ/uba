@@ -164,7 +164,7 @@ type EventEnvelope struct {
 
 实现策略：
 
-- `KafkaBus`：生产主实现，使用 Sarama 发布 JSON `EventEnvelope`，consumer group 消费，provider 内部负责 retry、DLQ、completion gate 和 per-partition ordered commit。
+- `KafkaBus`：生产主实现，使用 Sarama 发布 JSON `EventEnvelope`，consumer group 消费，provider 内部负责 retry、DLQ、completion gate 和 per-partition ordered commit；`simpletrack-anaysitics-service` 通过默认关闭的内部 diagnostics route 读取 provider 进程级 `Stats()` 快照。
 - `RedisStreamBus`：本地、小流量和测试实现，继续用 pending 优先重试和死信 stream 模拟同类语义。
 - `DirectBus`：本地开发、单进程测试、最小 demo，不允许作为生产 ingestion provider。
 
@@ -723,7 +723,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 | Go library 边界 | `analytics-core` 公共能力位于根目录包，可被外部 Go 服务 import；不作为 SimpleTrack 业务服务运行 |
 | P1 运行依赖 | Kafka 是生产主 EventBus；Redis Stream + MySQL + ClickHouse 仍可跑通本地/小流量链路 |
 | 本地依赖 | 当前已提供 `src/analytics-core/docker-compose.yml`，包含 Redis Stack、MySQL 8.4、ClickHouse 25.3 和单节点 Kafka 3.9；默认使用高位端口避开本机已有数据库 / Kafka |
-| Kafka provider | `KafkaBus` 已实现 Sarama producer / consumer group / ordered commit / completion gate / retry / DLQ；生产默认已收口到 `acks=all` / `WaitForAll` 与 retry 默认值；当前又补齐 rebalance-safe generation abort、诊断 `Stats()`、TLS/mTLS、SASL/PLAIN、ACL/runbook 和 KafkaBus benchmark；SCRAM/OAuth/Kerberos、真实认证 broker 演练、metrics exporter/SLO 和更大规模压测后续评审 |
+| Kafka provider | `KafkaBus` 已实现 Sarama producer / consumer group / ordered commit / completion gate / retry / DLQ；生产默认已收口到 `acks=all` / `WaitForAll` 与 retry 默认值；当前又补齐 rebalance-safe generation abort、诊断 `Stats()`、TLS/mTLS、SASL/PLAIN、ACL/runbook、KafkaBus benchmark，以及 `analytics-service` `0f695db` 的默认关闭内部 `/v1/kafka/diagnostics` route；SCRAM/OAuth/Kerberos、真实认证 broker 演练、metrics exporter/SLO 和更大规模压测后续评审 |
 | EventBus message identity | `Message.ID` 表示队列投递 id，`Message.Envelope.ID` 表示业务事件 id；provider 不得把两者混用 |
 | 事件协议 | 标准字段清楚，不提供 xwl_bi legacy 字段兼容 |
 | HTTP collect API | `collect/httpapi` 可作为 Fiber 协议适配器；SimpleTrack 产品运行时的 write key、domain/CORS、quota 由 `simpletrack-anaysitics-service` 执行 |
@@ -750,7 +750,7 @@ SimpleTrack / AppTrack / xwl_bi 产品层负责：
 
 - 方案 B 下物理表名 hash 规则、生产 DDL 迁移/回滚策略和跨 source 查询 fan-out / merge 细节；本地/小部署 auto migrate 只解决当前 runtime config 内所有启用 source 的 routed tables 创建，不替代生产 migration pipeline。
 - GORM `CreateInBatches` 与 `clickhouse-go/v2 PrepareBatch` 的初步压测差异已完成；后续只在批量大小、网络环境或 ClickHouse 版本变化时复测。
-- Kafka provider 的下一层生产硬化：本轮已完成 `acks=all` / `WaitForAll` 默认、idempotent producer opt-in 约束、SASL/TLS 与 broker ACL 配置矩阵、consumer lag / DLQ / retry / pause-resume 诊断快照、rebalance ordered commit 场景、kill/restart replay 验证和 KafkaBus provider 内部 benchmark；后续只评审 SCRAM/OAuth/Kerberos、真实认证 broker 演练、metrics exporter / SLO、跨 broker 故障和更大规模真实吞吐压测阈值。
+- Kafka provider 的下一层生产硬化：本轮已完成 `acks=all` / `WaitForAll` 默认、idempotent producer opt-in 约束、SASL/TLS 与 broker ACL 配置矩阵、consumer lag / DLQ / retry / pause-resume 诊断快照、`analytics-service` 内部 diagnostics route、rebalance ordered commit 场景、kill/restart replay 验证和 KafkaBus provider 内部 benchmark；后续只评审 SCRAM/OAuth/Kerberos、真实认证 broker 演练、metrics exporter / SLO、跨 broker 故障和更大规模真实吞吐压测阈值。
 - 是否继续删除 Kafka diagnostic 冗余字段，以及是否把 worker pool / protector 命名进一步从 xwl_bi 历史概念收口。
 - Funnel / Retention 查询如何落到统一 GORM query builder。
 - `analytics-core` 压测基线指标、数据量级和验收阈值。
