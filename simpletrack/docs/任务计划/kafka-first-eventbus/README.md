@@ -39,6 +39,6 @@
 
 ## 当前状态
 
-Kafka-first EventBus 的代码实现、生产硬化、服务级 diagnostics / metrics 出口、本机 `SASL_SSL` drill 和生产级认证 drill 均已有阶段记录：`analytics-core` `d835341` 已完成 Kafka provider、生产默认、rebalance-safe ordered commit、SASL/TLS options、真实 broker integration、replicated/outage gate、本机 disposable `SASL_SSL` integration；`analytics-service` `c6d1139` 已完成 Kafka runtime、diagnostics JSON route 和 Prometheus text metrics route。父仓 `c31750e` 已记录并推送本机认证 drill 证据；当前父仓 `a189f35` 又新增 3 broker KRaft `SASL_SSL` drill，并在 `127.0.0.1:39193,39194,39195` 下跑通五条目标 integration tests。下一步按 [生产级认证与压测计划.md](生产级认证与压测计划.md) 继续推进认证 broker benchmark、broker/exporter SLO 指标源和 SCRAM/OAuth/Kerberos 路线评审。
+Kafka-first EventBus 的代码实现、生产硬化、服务级 diagnostics / metrics 出口、本机 `SASL_SSL` drill 和生产级认证 drill 均已有阶段记录：`analytics-core` `d835341` 已完成 Kafka provider、生产默认、rebalance-safe ordered commit、SASL/TLS options、真实 broker integration、replicated/outage gate、本机 disposable `SASL_SSL` integration；`analytics-service` `c6d1139` 已完成 Kafka runtime、diagnostics JSON route 和 Prometheus text metrics route。父仓 `c31750e` 已记录并推送本机认证 drill 证据；当前父仓 `d444717` 又新增 3 broker KRaft `SASL_SSL` drill，并在 `127.0.0.1:39193,39194,39195` 下跑通五条目标 integration tests。下一步按 [生产级认证与压测计划.md](生产级认证与压测计划.md) 继续推进认证 broker benchmark、broker/exporter SLO 指标源和 SCRAM/OAuth/Kerberos 路线评审。
 
 后续待办统一维护在 [待办事项.md](待办事项.md)。
