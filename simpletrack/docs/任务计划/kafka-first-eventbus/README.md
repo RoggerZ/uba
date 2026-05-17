@@ -24,6 +24,7 @@
 | [踩坑记录.md](踩坑记录.md) | 记录执行过程中遇到的真实问题、根因和处理动作 | 遇到坑或解除 blocker 时更新 |
 | [执行规范.md](执行规范.md) | 记录本任务覆盖 AGENTS.md 的轻量执行节奏 | 规则变化时更新 |
 | [待办事项.md](待办事项.md) | 记录本任务完成后拆出的 Kafka 生产硬化和验证后续项 | 新增、关闭或调整后续任务时更新 |
+| [生产级认证与压测计划.md](生产级认证与压测计划.md) | 记录生产级多 broker `SASL_SSL`、认证 benchmark、Kafka exporter/SLO 和 SCRAM/OAuth/Kerberos 的下一阶段计划 | 阶段 10-13 推进时更新 |
 
 ## 当前原则
 
@@ -38,6 +39,6 @@
 
 ## 当前状态
 
-Kafka-first EventBus 的代码实现、本轮生产硬化和 KAFKA-PROD-001 服务级诊断出口已完成并推送：`analytics-core` `2e52263` 已完成公共契约调整、Redis/direct 适配、Sarama Kafka provider、根目录注释规范补强、`Message.ID` delivery-id 语义收口、rebalance-safe ordered commit、诊断 `Stats()`、SASL/TLS provider options 和 KafkaBus benchmark；`analytics-service` `0f695db` 已完成 Kafka 配置/runtime 装配、TLS/SASL env 校验、runtime TLS assembly、`KafkaEventBusStats()` 窄出口，以及默认关闭的内部 `GET /v1/kafka/diagnostics` route。父仓同步 commit `32b4dbf` 已回填任务目录、正式实施决策文档和 `src/analytics-service` gitlink。
+Kafka-first EventBus 的代码实现、生产硬化、服务级 diagnostics / metrics 出口、本机 `SASL_SSL` drill 和生产级下一阶段计划均已有阶段记录：`analytics-core` `d835341` 已完成 Kafka provider、生产默认、rebalance-safe ordered commit、SASL/TLS options、真实 broker integration、replicated/outage gate、本机 disposable `SASL_SSL` integration；`analytics-service` `c6d1139` 已完成 Kafka runtime、diagnostics JSON route 和 Prometheus text metrics route。父仓 `c31750e` 已记录并推送本机认证 drill 证据；下一阶段按 [生产级认证与压测计划.md](生产级认证与压测计划.md) 推进。
 
 后续待办统一维护在 [待办事项.md](待办事项.md)。
