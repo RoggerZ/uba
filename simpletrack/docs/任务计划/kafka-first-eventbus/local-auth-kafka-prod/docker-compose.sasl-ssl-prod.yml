@@ -1,0 +1,75 @@
+x-kafka-auth-prod-env: &kafka-auth-prod-env
+  CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-auth-prod-1:29093,2@kafka-auth-prod-2:29093,3@kafka-auth-prod-3:29093
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:SASL_SSL,EXTERNAL:SASL_SSL
+  KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+  KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+  KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf
+  KAFKA_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/broker.truststore.p12
+  KAFKA_SSL_TRUSTSTORE_PASSWORD: "${KAFKA_AUTH_PROD_STORE_PASSWORD:?set KAFKA_AUTH_PROD_STORE_PASSWORD from .tmp/kafka-auth-prod/certs/compose-env.ps1}"
+  KAFKA_SSL_TRUSTSTORE_TYPE: PKCS12
+  KAFKA_SSL_CLIENT_AUTH: none
+  KAFKA_SSL_ENABLED_PROTOCOLS: TLSv1.2,TLSv1.3
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_NUM_PARTITIONS: 3
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+services:
+  kafka-auth-prod-1:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: simpletrack-kafka-auth-prod-1
+    ports:
+      - "39193:9093"
+    volumes:
+      - "${KAFKA_AUTH_PROD_CERTS_DIR:?set KAFKA_AUTH_PROD_CERTS_DIR to .tmp/kafka-auth-prod/certs}:/etc/kafka/secrets:ro"
+    environment:
+      <<: *kafka-auth-prod-env
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENERS: CONTROLLER://0.0.0.0:29093,INTERNAL://0.0.0.0:9094,EXTERNAL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-auth-prod-1:9094,EXTERNAL://127.0.0.1:39193
+      KAFKA_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/broker-1.keystore.p12
+      KAFKA_SSL_KEYSTORE_PASSWORD: "${KAFKA_AUTH_PROD_STORE_PASSWORD:?set KAFKA_AUTH_PROD_STORE_PASSWORD from .tmp/kafka-auth-prod/certs/compose-env.ps1}"
+      KAFKA_SSL_KEYSTORE_TYPE: PKCS12
+      KAFKA_SSL_KEY_PASSWORD: "${KAFKA_AUTH_PROD_STORE_PASSWORD:?set KAFKA_AUTH_PROD_STORE_PASSWORD from .tmp/kafka-auth-prod/certs/compose-env.ps1}"
+
+  kafka-auth-prod-2:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: simpletrack-kafka-auth-prod-2
+    ports:
+      - "39194:9093"
+    volumes:
+      - "${KAFKA_AUTH_PROD_CERTS_DIR:?set KAFKA_AUTH_PROD_CERTS_DIR to .tmp/kafka-auth-prod/certs}:/etc/kafka/secrets:ro"
+    environment:
+      <<: *kafka-auth-prod-env
+      KAFKA_NODE_ID: 2
+      KAFKA_LISTENERS: CONTROLLER://0.0.0.0:29093,INTERNAL://0.0.0.0:9094,EXTERNAL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-auth-prod-2:9094,EXTERNAL://127.0.0.1:39194
+      KAFKA_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/broker-2.keystore.p12
+      KAFKA_SSL_KEYSTORE_PASSWORD: "${KAFKA_AUTH_PROD_STORE_PASSWORD:?set KAFKA_AUTH_PROD_STORE_PASSWORD from .tmp/kafka-auth-prod/certs/compose-env.ps1}"
+      KAFKA_SSL_KEYSTORE_TYPE: PKCS12
+      KAFKA_SSL_KEY_PASSWORD: "${KAFKA_AUTH_PROD_STORE_PASSWORD:?set KAFKA_AUTH_PROD_STORE_PASSWORD from .tmp/kafka-auth-prod/certs/compose-env.ps1}"
+
+  kafka-auth-prod-3:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: simpletrack-kafka-auth-prod-3
+    ports:
+      - "39195:9093"
+    volumes:
+      - "${KAFKA_AUTH_PROD_CERTS_DIR:?set KAFKA_AUTH_PROD_CERTS_DIR to .tmp/kafka-auth-prod/certs}:/etc/kafka/secrets:ro"
+    environment:
+      <<: *kafka-auth-prod-env
+      KAFKA_NODE_ID: 3
+      KAFKA_LISTENERS: CONTROLLER://0.0.0.0:29093,INTERNAL://0.0.0.0:9094,EXTERNAL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-auth-prod-3:9094,EXTERNAL://127.0.0.1:39195
+      KAFKA_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/broker-3.keystore.p12
+      KAFKA_SSL_KEYSTORE_PASSWORD: "${KAFKA_AUTH_PROD_STORE_PASSWORD:?set KAFKA_AUTH_PROD_STORE_PASSWORD from .tmp/kafka-auth-prod/certs/compose-env.ps1}"
+      KAFKA_SSL_KEYSTORE_TYPE: PKCS12
+      KAFKA_SSL_KEY_PASSWORD: "${KAFKA_AUTH_PROD_STORE_PASSWORD:?set KAFKA_AUTH_PROD_STORE_PASSWORD from .tmp/kafka-auth-prod/certs/compose-env.ps1}"
