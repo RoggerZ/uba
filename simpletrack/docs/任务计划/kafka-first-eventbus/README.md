@@ -38,6 +38,6 @@
 
 ## 当前状态
 
-Kafka-first EventBus 的代码实现和本轮生产硬化已完成并推送：`analytics-core` `2e52263` 已完成公共契约调整、Redis/direct 适配、Sarama Kafka provider、根目录注释规范补强、`Message.ID` delivery-id 语义收口、rebalance-safe ordered commit、诊断 `Stats()`、SASL/TLS provider options 和 KafkaBus benchmark；`analytics-service` `9acadab` 已完成 Kafka 配置/runtime 装配、TLS/SASL env 校验、runtime TLS assembly 和 `KafkaEventBusStats()` 窄出口。父仓同步 commit 待本轮提交后回填。
+Kafka-first EventBus 的代码实现和本轮生产硬化已完成并推送：`analytics-core` `2e52263` 已完成公共契约调整、Redis/direct 适配、Sarama Kafka provider、根目录注释规范补强、`Message.ID` delivery-id 语义收口、rebalance-safe ordered commit、诊断 `Stats()`、SASL/TLS provider options 和 KafkaBus benchmark；`analytics-service` `9acadab` 已完成 Kafka 配置/runtime 装配、TLS/SASL env 校验、runtime TLS assembly 和 `KafkaEventBusStats()` 窄出口。父仓同步 commit `279e001` 已记录任务目录、正式实施决策文档和两个子模块 gitlink。
 
 后续待办统一维护在 [待办事项.md](待办事项.md)。
