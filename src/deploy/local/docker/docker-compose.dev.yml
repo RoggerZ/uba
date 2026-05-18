@@ -1,0 +1,49 @@
+services:
+  saas:
+    build:
+      context: ../../../simpletrack-saas
+      dockerfile: apps/saas/Dockerfile
+      args:
+        NEXT_PUBLIC_SAAS_URL: ${SIMPLETRACK_PUBLIC_SAAS_URL:-http://localhost:33005}
+        NEXT_PUBLIC_MARKETING_URL: ${SIMPLETRACK_PUBLIC_MARKETING_URL:-http://localhost:33004}
+        NEXT_PUBLIC_DOCS_URL: ${SIMPLETRACK_PUBLIC_DOCS_URL:-http://localhost:33002}
+        BETTER_AUTH_SECRET: simpletrack-local-dev-secret
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        ALL_PROXY: ${ALL_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+
+  marketing:
+    build:
+      context: ../../../simpletrack-saas
+      dockerfile: apps/marketing/Dockerfile
+      args:
+        NEXT_PUBLIC_SAAS_URL: ${SIMPLETRACK_PUBLIC_SAAS_URL:-http://localhost:33005}
+        NEXT_PUBLIC_MARKETING_URL: ${SIMPLETRACK_PUBLIC_MARKETING_URL:-http://localhost:33004}
+        NEXT_PUBLIC_DOCS_URL: ${SIMPLETRACK_PUBLIC_DOCS_URL:-http://localhost:33002}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        ALL_PROXY: ${ALL_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+
+  docs:
+    build:
+      context: ../../../simpletrack-saas
+      dockerfile: apps/docs/Dockerfile
+      args:
+        NEXT_PUBLIC_DOCS_URL: ${SIMPLETRACK_PUBLIC_DOCS_URL:-http://localhost:33002}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        ALL_PROXY: ${ALL_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+
+  analytics-service:
+    build:
+      context: ../../..
+      dockerfile: analytics-service/Dockerfile
+      args:
+        GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        ALL_PROXY: ${ALL_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}

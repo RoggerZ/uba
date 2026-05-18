@@ -1,0 +1,12 @@
+services:
+  saas:
+    image: ${IMAGE_REGISTRY:-local}/${IMAGE_NAMESPACE:-simpletrack}/saas:${IMAGE_TAG:-latest}
+
+  marketing:
+    image: ${IMAGE_REGISTRY:-local}/${IMAGE_NAMESPACE:-simpletrack}/marketing:${IMAGE_TAG:-latest}
+
+  docs:
+    image: ${IMAGE_REGISTRY:-local}/${IMAGE_NAMESPACE:-simpletrack}/docs:${IMAGE_TAG:-latest}
+
+  analytics-service:
+    image: ${IMAGE_REGISTRY:-local}/${IMAGE_NAMESPACE:-simpletrack}/analytics-service:${IMAGE_TAG:-latest}

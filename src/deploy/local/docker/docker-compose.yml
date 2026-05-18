@@ -1,0 +1,181 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    hostname: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${SIMPLETRACK_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${SIMPLETRACK_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${SIMPLETRACK_POSTGRES_DB:-simpletrack}
+    ports:
+      - "${SIMPLETRACK_POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - simpletrack_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SIMPLETRACK_POSTGRES_USER:-postgres} -d ${SIMPLETRACK_POSTGRES_DB:-simpletrack}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.2
+
+  minio:
+    image: minio/minio:latest
+    hostname: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${SIMPLETRACK_MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${SIMPLETRACK_MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${SIMPLETRACK_MINIO_API_HOST_PORT:-9000}:9000"
+      - "${SIMPLETRACK_MINIO_CONSOLE_HOST_PORT:-9001}:9001"
+    volumes:
+      - simpletrack_minio_data:/data
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.3
+
+  minio-setup:
+    image: minio/mc:latest
+    restart: "no"
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 ${SIMPLETRACK_MINIO_ROOT_USER:-minioadmin} ${SIMPLETRACK_MINIO_ROOT_PASSWORD:-minioadmin}; do sleep 2; done;
+      mc mb local/${SIMPLETRACK_AVATARS_BUCKET:-avatars} --ignore-existing;
+      mc anonymous set download local/${SIMPLETRACK_AVATARS_BUCKET:-avatars};
+      echo 'Bucket setup complete';
+      "
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.4
+
+  redis:
+    image: redis/redis-stack:latest
+    hostname: redis
+    restart: unless-stopped
+    ports:
+      - "${SIMPLETRACK_REDIS_HOST_PORT:-26379}:6379"
+      - "${SIMPLETRACK_REDIS_INSIGHT_HOST_PORT:-28001}:8001"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.5
+
+  mysql:
+    image: mysql:8.4
+    hostname: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SIMPLETRACK_ANALYTICS_MYSQL_ROOT_PASSWORD:-analytics_core_root}
+      MYSQL_DATABASE: ${SIMPLETRACK_ANALYTICS_MYSQL_DATABASE:-analytics_core}
+      MYSQL_USER: ${SIMPLETRACK_ANALYTICS_MYSQL_USER:-analytics_core}
+      MYSQL_PASSWORD: ${SIMPLETRACK_ANALYTICS_MYSQL_PASSWORD:-analytics_core}
+    ports:
+      - "${SIMPLETRACK_MYSQL_HOST_PORT:-23306}:3306"
+    volumes:
+      - analytics_core_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u${SIMPLETRACK_ANALYTICS_MYSQL_USER:-analytics_core} -p${SIMPLETRACK_ANALYTICS_MYSQL_PASSWORD:-analytics_core} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.6
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3
+    hostname: clickhouse
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${SIMPLETRACK_ANALYTICS_CLICKHOUSE_DATABASE:-analytics_core}
+      CLICKHOUSE_USER: ${SIMPLETRACK_ANALYTICS_CLICKHOUSE_USER:-analytics_core}
+      CLICKHOUSE_PASSWORD: ${SIMPLETRACK_ANALYTICS_CLICKHOUSE_PASSWORD:-analytics_core}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "${SIMPLETRACK_CLICKHOUSE_HTTP_HOST_PORT:-28123}:8123"
+      - "${SIMPLETRACK_CLICKHOUSE_NATIVE_HOST_PORT:-29000}:9000"
+    volumes:
+      - analytics_core_clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.7
+
+  kafka:
+    image: ${SIMPLETRACK_KAFKA_IMAGE:-bitnami/kafka:3.9}
+    hostname: kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_BROKER_ID: "1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "${SIMPLETRACK_KAFKA_HOST_PORT:-29092}:9092"
+    volumes:
+      - analytics_core_kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "unset JMX_PORT; kafka-topics --bootstrap-server 127.0.0.1:9092 --list >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.8
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    restart: unless-stopped
+    ports:
+      - "32181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - analytics_core_zookeeper_data:/var/lib/zookeeper/data
+      - analytics_core_zookeeper_log:/var/lib/zookeeper/log
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 127.0.0.1 2181 | grep imok >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.9
+
+networks:
+  simpletrack-network-internal:
+    name: simpletrack-network-internal
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+volumes:
+  simpletrack_postgres_data:
+  simpletrack_minio_data:
+  analytics_core_mysql_data:
+  analytics_core_clickhouse_data:
+  analytics_core_kafka_data:
+  analytics_core_zookeeper_data:
+  analytics_core_zookeeper_log:

@@ -1,0 +1,128 @@
+services:
+  saas:
+    restart: unless-stopped
+    hostname: saas
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      minio-setup:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://${SIMPLETRACK_POSTGRES_USER:-postgres}:${SIMPLETRACK_POSTGRES_PASSWORD:-postgres}@postgres:5432/${SIMPLETRACK_POSTGRES_DB:-simpletrack}
+      DIRECT_URL: postgres://${SIMPLETRACK_POSTGRES_USER:-postgres}:${SIMPLETRACK_POSTGRES_PASSWORD:-postgres}@postgres:5432/${SIMPLETRACK_POSTGRES_DB:-simpletrack}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: auto
+      S3_ACCESS_KEY_ID: ${SIMPLETRACK_MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_ACCESS_KEY: ${SIMPLETRACK_MINIO_ROOT_PASSWORD:-minioadmin}
+      NEXT_PUBLIC_AVATARS_BUCKET_NAME: ${SIMPLETRACK_AVATARS_BUCKET:-avatars}
+      NEXT_PUBLIC_SAAS_URL: ${SIMPLETRACK_PUBLIC_SAAS_URL:-http://localhost:3005}
+      NEXT_PUBLIC_MARKETING_URL: ${SIMPLETRACK_PUBLIC_MARKETING_URL:-http://localhost:3004}
+      NEXT_PUBLIC_DOCS_URL: ${SIMPLETRACK_PUBLIC_DOCS_URL:-http://localhost:3002}
+      AUTH_REQUIRE_EMAIL_VERIFICATION: "0"
+      AUTH_RATE_LIMIT_ENABLED: "0"
+      BETTER_AUTH_SECRET: simpletrack-local-dev-secret
+      MAIL_PROVIDER: console
+      MAIL_FROM: noreply@example.com
+      SIMPLETRACK_ANALYTICS_RUNTIME_SOURCE_TOKEN: ${SIMPLETRACK_RUNTIME_SOURCE_TOKEN:-runtime-service-token}
+      SIMPLETRACK_ANALYTICS_SERVICE_URL: http://analytics-service:8080
+      SIMPLETRACK_ANALYTICS_SERVICE_QUERY_TOKEN: ${SIMPLETRACK_QUERY_TOKEN:-query-service-token}
+      PORT: "3000"
+    ports:
+      - "${SIMPLETRACK_SAAS_HOST_PORT:-3005}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/login').then((r)=>process.exit(r.status < 500 ? 0 : 1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.20
+
+  marketing:
+    restart: unless-stopped
+    hostname: marketing
+    environment:
+      NEXT_PUBLIC_SAAS_URL: ${SIMPLETRACK_PUBLIC_SAAS_URL:-http://localhost:3005}
+      NEXT_PUBLIC_MARKETING_URL: ${SIMPLETRACK_PUBLIC_MARKETING_URL:-http://localhost:3004}
+      NEXT_PUBLIC_DOCS_URL: ${SIMPLETRACK_PUBLIC_DOCS_URL:-http://localhost:3002}
+      PORT: "3000"
+    ports:
+      - "${SIMPLETRACK_MARKETING_HOST_PORT:-3004}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/').then((r)=>process.exit(r.ok ? 0 : 1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.21
+
+  docs:
+    restart: unless-stopped
+    hostname: docs
+    environment:
+      NEXT_PUBLIC_DOCS_URL: ${SIMPLETRACK_PUBLIC_DOCS_URL:-http://localhost:3002}
+      PORT: "3000"
+    ports:
+      - "${SIMPLETRACK_DOCS_HOST_PORT:-3002}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/quickstart').then((r)=>process.exit(r.ok ? 0 : 1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.22
+
+  analytics-service:
+    restart: unless-stopped
+    hostname: analytics-service
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      saas:
+        condition: service_healthy
+    environment:
+      ANALYTICS_SERVICE_ADDR: 0.0.0.0:8080
+      ANALYTICS_SERVICE_REDIS_ADDR: redis:6379
+      ANALYTICS_SERVICE_SOURCE_RESOLVER: http
+      ANALYTICS_SERVICE_CONTROL_PLANE_URL: http://saas:3000/api/internal/analytics/runtime-source
+      ANALYTICS_SERVICE_CONTROL_PLANE_TOKEN: ${SIMPLETRACK_RUNTIME_SOURCE_TOKEN:-runtime-service-token}
+      ANALYTICS_SERVICE_CONTROL_PLANE_ALLOW_INSECURE_LOOPBACK: "true"
+      ANALYTICS_SERVICE_CONTROL_PLANE_ALLOW_INSECURE_PRIVATE_NETWORK: "true"
+      ANALYTICS_SERVICE_QUERY_ENABLED: "true"
+      ANALYTICS_SERVICE_QUERY_TOKEN: ${SIMPLETRACK_QUERY_TOKEN:-query-service-token}
+      ANALYTICS_SERVICE_QUERY_TOKEN_SCOPES: realtime,events,properties,goals
+      ANALYTICS_SERVICE_INGESTION_ENABLED: "true"
+      ANALYTICS_SERVICE_MYSQL_DSN: ${SIMPLETRACK_ANALYTICS_MYSQL_USER:-analytics_core}:${SIMPLETRACK_ANALYTICS_MYSQL_PASSWORD:-analytics_core}@tcp(mysql:3306)/${SIMPLETRACK_ANALYTICS_MYSQL_DATABASE:-analytics_core}?parseTime=true
+      ANALYTICS_SERVICE_MYSQL_AUTO_MIGRATE: "true"
+      ANALYTICS_SERVICE_CLICKHOUSE_ADDR: clickhouse:9000
+      ANALYTICS_SERVICE_CLICKHOUSE_DATABASE: ${SIMPLETRACK_ANALYTICS_CLICKHOUSE_DATABASE:-analytics_core}
+      ANALYTICS_SERVICE_CLICKHOUSE_USER: ${SIMPLETRACK_ANALYTICS_CLICKHOUSE_USER:-analytics_core}
+      ANALYTICS_SERVICE_CLICKHOUSE_PASSWORD: ${SIMPLETRACK_ANALYTICS_CLICKHOUSE_PASSWORD:-analytics_core}
+      ANALYTICS_SERVICE_CLICKHOUSE_AUTO_MIGRATE: "true"
+      ANALYTICS_SERVICE_EVENTBUS: redis
+      ANALYTICS_SERVICE_REDIS_STREAM: analytics.events
+      ANALYTICS_SERVICE_REDIS_DEAD_LETTER_STREAM: analytics.events.dead
+    ports:
+      - "${SIMPLETRACK_ANALYTICS_SERVICE_HOST_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      simpletrack-network-internal:
+        ipv4_address: 172.30.0.23
+
+networks:
+  simpletrack-network-internal:
+    name: simpletrack-network-internal
